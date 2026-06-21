@@ -1,0 +1,29 @@
+name: Gateway CI
+
+on:
+  push:
+    paths:
+      - 'services/gateway/**'
+  pull_request:
+    paths:
+      - 'services/gateway/**'
+
+defaults:
+  run:
+    working-directory: services/gateway
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: services/gateway/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pip install ruff mypy
+      - run: ruff check app/
+      - run: mypy app/
+      - run: pytest
