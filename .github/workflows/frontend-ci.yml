@@ -1,0 +1,15 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - 'apps/**'
+  pull_request:
+    paths:
+      - 'apps/**'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Frontend CI coming soon"
