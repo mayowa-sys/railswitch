@@ -55,6 +55,10 @@ export interface DunningPolicy {
   ussdEnabled: boolean;
   /** Hours to wait in past_due before auto-cancelling. */
   graceHours: number;
+  /** Base delay between retries in minutes. Exponential backoff multiplies this. Default 60. */
+  baseDelayMinutes: number;
+  /** Cap on computed retry delay in hours. Default 72. */
+  maxDelayHours: number;
 }
 
 export interface SubscriptionContext {
