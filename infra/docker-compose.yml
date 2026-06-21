@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: railswitch
+      POSTGRES_PASSWORD: railswitch_dev
+      POSTGRES_DB: railswitch
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U railswitch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  engine:
+    build:
+      context: ../services/engine
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://railswitch:railswitch_dev@postgres:5432/railswitch
+      REDIS_URL: redis://redis:6379
+      ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../services/engine/src:/app/src   # hot reload
+
+  gateway:
+    build:
+      context: ../services/gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENGINE_INTERNAL_URL: http://engine:3001
+      ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
+      DATABASE_URL: postgresql://railswitch:railswitch_dev@postgres:5432/railswitch
+    depends_on:
+      - engine
+    volumes:
+      - ../services/gateway/app:/app/app   # hot reload
+
+volumes:
+  pgdata:
