@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard - Railswitch",
-  description: "Railswitch Merchant Dashboard",
+  title: "RailSwitch — Recurring billing for a country where cards fail",
+  description:
+    "RailSwitch recovers recurring revenue when cards fail. Multi-rail cascade: smart retries → virtual accounts → USSD → WhatsApp.",
 };
 
 export default function RootLayout({
