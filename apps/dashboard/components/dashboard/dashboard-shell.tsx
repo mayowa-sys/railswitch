@@ -17,13 +17,21 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { EmptyState } from "@/components/shared/empty-state";
 
 const NAV_ITEMS = [
-  { label: "Overview",       icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Plans",          icon: FileText,        href: "/dashboard/plans" },
-  { label: "Subscriptions",  icon: Zap,             href: "/dashboard/subscriptions" },
-  { label: "Customers",      icon: Users,           href: "/dashboard/customers" },
-  { label: "Audit Log",      icon: BookOpen,        href: "/dashboard/audit-log" },
+  { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Plans", icon: FileText, href: "/dashboard/plans" },
+  { label: "Subscriptions", icon: Zap, href: "/dashboard/subscriptions" },
+  { label: "Customers", icon: Users, href: "/dashboard/customers" },
+  { label: "Audit Log", icon: BookOpen, href: "/dashboard/audit-log" },
 ];
 
 export default function DashboardShell({
@@ -33,6 +41,8 @@ export default function DashboardShell({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [hasNewNotifications, setHasNewNotifications] = useState(true);
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -89,12 +99,12 @@ export default function DashboardShell({
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive(item.href)
-                  ? "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-950 dark:text-white"
+                  ? "bg-zinc-100 dark:bg-zinc-800/80"
                   : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/30"
               )}
             >
-              <item.icon className="size-4 shrink-0" />
-              {item.label}
+              <item.icon className={`size-4 shrink-0 ${isActive(item.href) ? 'text-indigo-700 dark:text-indigo-500' : 'text-zinc-500 dark:text-zinc-400'}`} />
+              <p className={`font-semibold ${isActive(item.href) ? 'bg-zinc-100 dark:bg-zinc-800/80' : 'text-zinc-500 dark:text-zinc-400'}`}>{item.label}</p>
             </Link>
           ))}
         </nav>
@@ -133,15 +143,24 @@ export default function DashboardShell({
             </button>
           </div>
 
+          <h1 className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold">Merchant Dashboard</h1>
+
+
           {/* Right: bell + new plan button */}
           <div className="flex items-center gap-3 ml-auto">
             {/* Bell — plain button, no base-ui wrapper */}
             <button
               className="relative p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
               aria-label="Notifications"
+              onClick={() => {
+                setNotificationsOpen(true);
+                setHasNewNotifications(false);
+              }}
             >
               <Bell className="size-4" />
-              <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500" />
+              {hasNewNotifications && (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500 animate-pulse" />
+              )}
             </button>
 
             <div className="hidden md:block h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
@@ -163,6 +182,29 @@ export default function DashboardShell({
           {children}
         </main>
       </div>
+
+      <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md bg-white dark:bg-[#111113] border-l border-zinc-200 dark:border-zinc-800/80 p-0 overflow-y-auto flex flex-col"
+        >
+          <SheetHeader className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800/60">
+            <SheetTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              Notifications
+            </SheetTitle>
+            <SheetDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+              Real-time activity and platform updates.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 flex items-center justify-center p-6">
+            <EmptyState
+              icon={Bell}
+              title="No new notifications"
+              description="We will notify you here when transactions recover, plans are modified, or events trigger."
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

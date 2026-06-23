@@ -43,7 +43,7 @@ export function DataTable<T>({
   rowClassName,
 }: DataTableProps<T>) {
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] overflow-hidden">
+    <div className="border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-zinc-200 dark:border-zinc-800/80 hover:bg-transparent">

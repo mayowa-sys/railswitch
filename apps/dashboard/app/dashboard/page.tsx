@@ -35,7 +35,7 @@ export default function OverviewPage() {
       />
 
       {/* KPI row — MRR hero + 3 stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* MRR hero card */}
         <div className="lg:col-span-2 relative overflow-hidden rounded-xl border border-indigo-200/70 dark:border-indigo-800/50 bg-gradient-to-br from-indigo-600 to-violet-600 p-6 shadow-lg shadow-indigo-500/20">
           <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200">

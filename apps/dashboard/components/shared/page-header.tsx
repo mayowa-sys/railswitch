@@ -13,7 +13,7 @@ export function PageHeader({ title, description, action, badge, className }: Pag
     <div className={cn("flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between", className)}>
       <div>
         <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-700 dark:from-white dark:to-zinc-400">
+          <h1 className="text-xl font-bold tracking-tight">
             {title}
           </h1>
           {badge}

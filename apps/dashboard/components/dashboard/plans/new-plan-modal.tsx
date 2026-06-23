@@ -73,17 +73,17 @@ export function NewPlanModal({ open, onOpenChange, onCreate }: NewPlanModalProps
       description="Define pricing, billing interval and trial period."
       size="md"
       footer={
-        <>
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+        <div className="flex flex-row-reverse items-center justify-end gap-4 p-2">
+          <Button variant="destructive" size="lg" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            size="sm"
+            size="lg"
             onClick={handleSubmit}
             disabled={loading}
             className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0"
           >
             {loading ? "Creating…" : "Create plan"}
           </Button>
-        </>
+        </div>
       }
     >
       <div className="space-y-4">
