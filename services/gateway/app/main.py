@@ -1,16 +1,14 @@
 import re
 from dataclasses import dataclass
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = FastAPI(title="RailSwitch Gateway", version="0.1.0")
 
 bearer_scheme = HTTPBearer()
 
-_KEY_FORMAT = re.compile(
-    r"^sk_(live|test)_[A-Za-z0-9]{8,}$"
-)
+_KEY_FORMAT = re.compile(r"^sk_(live|test)_[A-Za-z0-9]{8,}$")
 
 
 @dataclass(frozen=True)
@@ -21,11 +19,13 @@ class ApiKeyRecord:
 
 MOCK_KEYS = {
     "sk_test_mockmerchanta": ApiKeyRecord("merchant_a", "test"),
-    "sk_live_mockmerchantb": ApiKeyRecord("merchant_b", "live")
+    "sk_live_mockmerchantb": ApiKeyRecord("merchant_b", "live"),
 }
 
 
-async def get_current_merchant(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> ApiKeyRecord:
+async def get_current_merchant(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> ApiKeyRecord:
     token = credentials.credentials
 
     if not _KEY_FORMAT.match(token):
