@@ -358,7 +358,7 @@ export const SUBSCRIPTIONS: Subscription[] = [
     cascadeHistory: [
       { step: "card", status: "failed", attemptedAt: "2026-06-01T09:00:00Z", note: "Insufficient funds" },
       { step: "retry", status: "failed", attemptedAt: "2026-06-03T09:00:00Z" },
-      { step: "virtual_account", status: "success", attemptedAt: "2026-06-04T14:12:00Z", note: "Customer transferred ₦7,990.00" },
+      { step: "virtual_account", status: "success", attemptedAt: "2026-06-04T14:12:00Z", note: "Customer transferred ₦79,900.00" },
     ],
     billingHistory: [
       { id: "bil_004", amount: 7990000, status: "paid", date: "2026-06-04", method: "virtual_account" },

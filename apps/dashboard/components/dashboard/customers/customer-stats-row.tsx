@@ -1,5 +1,5 @@
 import { formatNaira, type Customer } from "@/lib/mock-data";
-import { DollarSign, Zap, CreditCard } from "lucide-react";
+import { Banknote, Zap, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CustomerStatsRowProps {
@@ -10,7 +10,7 @@ const STATS = (customer: Customer) => [
   {
     label: "Total Revenue",
     value: formatNaira(customer.totalRevenue),
-    icon: DollarSign,
+    icon: Banknote,
     colorConfig: {
       bg: "bg-indigo-50 dark:bg-indigo-950/40",
       icon: "text-indigo-600 dark:text-indigo-400",

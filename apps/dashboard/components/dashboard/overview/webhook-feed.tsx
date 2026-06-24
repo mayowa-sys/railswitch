@@ -3,6 +3,7 @@
 import { WEBHOOK_EVENTS } from "@/lib/mock-data";
 import { ArrowRight, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -25,9 +26,12 @@ export function WebhookFeed() {
             Last {WEBHOOK_EVENTS.length} deliveries
           </p>
         </div>
-        <button className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline">
+        <Link
+          href="/dashboard/audit-log"
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline"
+        >
           View all <ArrowRight className="size-3" />
-        </button>
+        </Link>
       </div>
 
       <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">

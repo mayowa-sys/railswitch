@@ -175,6 +175,7 @@ export function SubscriptionsTable() {
         <DataTable
           columns={columns}
           data={filtered}
+          rowKey={(row) => row.id}
           onRowClick={setSelected}
           emptyTitle="No subscriptions found"
           emptyDescription="Try a different search term or clear your filters."

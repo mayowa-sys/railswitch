@@ -104,7 +104,7 @@ export default function DashboardShell({
               )}
             >
               <item.icon className={`size-4 shrink-0 ${isActive(item.href) ? 'text-indigo-700 dark:text-indigo-500' : 'text-zinc-500 dark:text-zinc-400'}`} />
-              <p className={`font-semibold ${isActive(item.href) ? 'bg-zinc-100 dark:bg-zinc-800/80' : 'text-zinc-500 dark:text-zinc-400'}`}>{item.label}</p>
+              <p className={`font-semibold ${isActive(item.href) ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400'}`}>{item.label}</p>
             </Link>
           ))}
         </nav>
@@ -142,9 +142,6 @@ export default function DashboardShell({
               <Menu className="size-5" />
             </button>
           </div>
-
-          <h1 className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold">Merchant Dashboard</h1>
-
 
           {/* Right: bell + new plan button */}
           <div className="flex items-center gap-3 ml-auto">

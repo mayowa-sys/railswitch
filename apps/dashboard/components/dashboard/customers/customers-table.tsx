@@ -130,6 +130,7 @@ export function CustomersTable() {
         <DataTable
           columns={COLUMNS}
           data={filtered}
+          rowKey={(row) => row.id}
           onRowClick={(row) => router.push(`/dashboard/customers/${row.id}`)}
           rowClassName="group"
           emptyTitle="No customers found"

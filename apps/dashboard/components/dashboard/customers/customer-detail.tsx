@@ -6,7 +6,6 @@ import {
   getSubscriptionsByCustomer,
   PLANS,
   formatNaira,
-  type Customer,
   type Subscription,
 } from "@/lib/mock-data";
 import { CustomerStatsRow } from "@/components/dashboard/customers/customer-stats-row";

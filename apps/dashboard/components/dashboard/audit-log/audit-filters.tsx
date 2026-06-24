@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchFilterBar } from "@/components/shared/search-filter-bar";
-import { SUBSCRIPTIONS } from "@/lib/mock-data";
+import { SUBSCRIPTIONS, CUSTOMERS } from "@/lib/mock-data";
 
 const ACTOR_TYPE_OPTIONS = [
   { value: "system", label: "System" },
@@ -9,10 +9,13 @@ const ACTOR_TYPE_OPTIONS = [
   { value: "customer", label: "Customer" },
 ];
 
-const SUBSCRIPTION_OPTIONS = SUBSCRIPTIONS.map((s) => ({
-  value: s.id,
-  label: s.id,
-}));
+const SUBSCRIPTION_OPTIONS = SUBSCRIPTIONS.map((s) => {
+  const customer = CUSTOMERS.find((c) => c.id === s.customerId);
+  return {
+    value: s.id,
+    label: customer ? `${customer.name} (${s.id})` : s.id,
+  };
+});
 
 const TIME_RANGE_OPTIONS = [
   { value: "today", label: "Today" },

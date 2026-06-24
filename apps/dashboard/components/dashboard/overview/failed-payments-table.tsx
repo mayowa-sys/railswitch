@@ -16,6 +16,7 @@ import {
   MessageCircle,
   ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 
 const CASCADE_ICON: Record<string, React.ReactNode> = {
   card: <CreditCard className="size-3.5" />,
@@ -119,9 +120,12 @@ export function FailedPaymentsTable() {
             {FAILED_PAYMENTS.length} payments in recovery
           </p>
         </div>
-        <button className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline">
+        <Link
+          href="/dashboard/subscriptions"
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline"
+        >
           View all <ArrowRight className="size-3" />
-        </button>
+        </Link>
       </div>
       <DataTable
         columns={COLUMNS}

@@ -54,34 +54,38 @@ export function RevenueChart() {
       <div className="h-52 mt-5 flex items-end gap-2 justify-between px-1">
         {REVENUE_BARS.map(({ day, collected, recovered }, idx) => {
           const total = collected + recovered;
-          const collectedPct = (collected / maxVal) * 100;
-          const recoveredPct = (recovered / maxVal) * 100;
+          const totalPct = (total / maxVal) * 100;
+          const collectedPct = (collected / total) * 100;
+          const recoveredPct = (recovered / total) * 100;
           return (
             <div
               key={day}
               className="flex-1 flex flex-col items-center gap-1.5 group/bar"
             >
               <div
-                className="w-full relative flex flex-col justify-end rounded-md overflow-hidden bg-zinc-100 dark:bg-zinc-800/40"
+                className="w-full flex flex-col justify-end rounded-md overflow-hidden bg-zinc-100 dark:bg-zinc-800/40"
                 style={{ height: "180px" }}
                 title={`${day}: ${formatNaira(total)}`}
               >
-                {/* Collected segment */}
+                {/* Stacked bar wrapper — grows from bottom */}
                 <div
+                  className="w-full flex flex-col-reverse overflow-hidden"
                   style={{
-                    height: `${collectedPct}%`,
+                    height: `${totalPct}%`,
                     animation: `rs-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) ${idx * 60}ms backwards`,
                   }}
-                  className="w-full bg-indigo-600 group-hover/bar:brightness-110 transition-all duration-300"
-                />
-                {/* Recovered segment */}
-                <div
-                  style={{
-                    height: `${recoveredPct}%`,
-                    animation: `rs-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) ${idx * 60 + 100}ms backwards`,
-                  }}
-                  className="w-full bg-violet-400 absolute bottom-0"
-                />
+                >
+                  {/* Collected segment (bottom) */}
+                  <div
+                    style={{ height: `${collectedPct}%` }}
+                    className="w-full bg-indigo-600 group-hover/bar:brightness-110 transition-all duration-300 shrink-0"
+                  />
+                  {/* Recovered segment (top) */}
+                  <div
+                    style={{ height: `${recoveredPct}%` }}
+                    className="w-full bg-violet-400 shrink-0"
+                  />
+                </div>
               </div>
               <span className="text-[10px] font-medium text-zinc-400 group-hover/bar:text-zinc-700 dark:group-hover/bar:text-zinc-200 transition-colors">
                 {day}

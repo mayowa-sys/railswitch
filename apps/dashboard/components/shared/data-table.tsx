@@ -30,6 +30,8 @@ interface DataTableProps<T> {
   emptyDescription?: string;
   onRowClick?: (row: T) => void;
   rowClassName?: string | ((row: T) => string);
+  /** Extractor for a stable row key — required for filterable / sorted lists to avoid index-key issues */
+  rowKey?: (row: T) => string;
 }
 
 export function DataTable<T>({
@@ -41,9 +43,10 @@ export function DataTable<T>({
   emptyDescription = "Try adjusting your filters or search query.",
   onRowClick,
   rowClassName,
+  rowKey,
 }: DataTableProps<T>) {
   return (
-    <div className="border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] overflow-hidden">
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-zinc-200 dark:border-zinc-800/80 hover:bg-transparent">
@@ -84,7 +87,7 @@ export function DataTable<T>({
           ) : (
             data.map((row, i) => (
               <TableRow
-                key={i}
+                key={rowKey ? rowKey(row) : i}
                 onClick={() => onRowClick?.(row)}
                 className={cn(
                   "border-zinc-100 dark:border-zinc-800/50 transition-colors duration-150",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AUDIT_LOG, type AuditEntry, type SubscriptionStatus } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/components/dashboard/audit-log/audit-log-table";
