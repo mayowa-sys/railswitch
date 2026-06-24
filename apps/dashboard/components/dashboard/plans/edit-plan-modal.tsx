@@ -31,10 +31,13 @@ export function EditPlanModal({ open, onOpenChange, plan, onSave }: EditPlanModa
 
   // Sync when plan prop changes
   useEffect(() => {
+    // Intentional prop-to-state sync on plan change.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setName(plan.name);
     setDescription(plan.description);
     setPrice(String(plan.price / 100));
     setInterval(plan.interval);
+    /* eslint-enable react-hooks/set-state-in-effect */
     setTrialDays(String(plan.trialDays));
   }, [plan]);
 

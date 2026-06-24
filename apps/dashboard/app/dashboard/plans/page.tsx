@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Plan } from "@/lib/mock-data";
+import type {} from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { PlansTable } from "@/components/dashboard/plans/plans-table";
 import { NewPlanModal } from "@/components/dashboard/plans/new-plan-modal";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { AUDIT_LOG, type AuditEntry, type SubscriptionStatus } from "@/lib/mock-data";
+import { AUDIT_LOG, type AuditEntry } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/components/dashboard/audit-log/audit-log-table";
 import { AuditFilters } from "@/components/dashboard/audit-log/audit-filters";
