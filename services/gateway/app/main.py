@@ -1,10 +1,22 @@
 import re
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
-from fastapi import FastAPI, Depends, HTTPException
+import asyncpg
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-app = FastAPI(title="RailSwitch Gateway", version="0.1.0")
+DATABASE_URL = "postgresql://gateway_app:dev@localhost:5432/railswitch_test"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.db_pool = await asyncpg.create_pool(DATABASE_URL)
+    yield
+    await app.state.db_pool.close()
+
+
+app = FastAPI(title="RailSwitch Gateway", version="0.1.0", lifespan=lifespan)
 
 bearer_scheme = HTTPBearer()
 
@@ -24,7 +36,7 @@ MOCK_KEYS = {
 
 
 async def get_current_merchant(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+        credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> ApiKeyRecord:
     token = credentials.credentials
 
@@ -38,6 +50,21 @@ async def get_current_merchant(
     return record
 
 
+async def db_conn(
+        request: Request,
+        merchant: ApiKeyRecord = Depends(get_current_merchant),
+) -> asyncpg.Connection:
+    pool = request.app.state.db_pool
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "SELECT set_config('app.current_merchant_id', $1, true)",
+                merchant.merchant_id
+            )
+
+            yield conn
+
+
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": "gateway"}
@@ -46,3 +73,11 @@ async def health() -> dict:
 @app.get("/v1/whoami")
 async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict:
     return {"merchant": merchant.merchant_id, "mode": merchant.mode}
+
+
+@app.get("/v1/webhook-events")
+async def list_webhook_events(conn: asyncpg.Connection = Depends(db_conn)) -> list:
+    # TODO: remove mock once Daniel ships webhook_events
+    # rows = await conn.fetch("SELECT merchant_id, event_type FROM webhook_events")
+    # return [dict(r) for r in rows]
+    return []
