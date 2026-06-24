@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import DashboardShell from "@/components/dashboard/dashboard-shell";
 
 export const metadata: Metadata = {
-  title: "Overview — RailSwitch Dashboard",
-  description: "Monitor your recurring revenue, payments, and recovery stats.",
+  title: "RailSwitch Dashboard",
+  description: "Monitor recurring revenue, recovery rates, and subscription health.",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <DashboardShell>{children}</DashboardShell>;
 }
