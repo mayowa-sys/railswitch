@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
 import { prefixedId } from "../utils/id_prefix.js";
 
 export const MerchantsTable = pgTable("merchants", {

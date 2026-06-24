@@ -12,7 +12,7 @@ export const PlansTable = pgTable("plans", {
     currency: text("currency").notNull().default("NGN"),
     interval: text("interval").notNull(),
     interval_count: integer("interval_count").notNull(),
-}, (t) => [
+}, (_t) => [
     merchantIsolationPolicy()
 ]);
 

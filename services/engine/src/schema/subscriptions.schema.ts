@@ -5,8 +5,6 @@ import {
   boolean,
   timestamp,
   jsonb,
-  primaryKey,
-  foreignKey,
   index,
   AnyPgColumn,
 } from "drizzle-orm/pg-core";

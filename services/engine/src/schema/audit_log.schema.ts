@@ -1,4 +1,4 @@
-import { sql, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,

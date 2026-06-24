@@ -1,4 +1,4 @@
-import { pgTable, bigserial, text, timestamp, jsonb, index, unique, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, index, unique, uuid } from "drizzle-orm/pg-core";
 import { MerchantsTable } from "./merchants.schema.js";
 import { sql } from "drizzle-orm";
 import { SubscriptionsTable, SubscriptionStateEnum } from "./subscriptions.schema.js";

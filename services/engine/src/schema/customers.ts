@@ -10,6 +10,6 @@ export const CustomersTable = pgTable('customers', {
     phone: text('phone'), 
     metadata: jsonb('metadata'), 
     created_at: timestamp('created_at', {withTimezone: true}).defaultNow()
-}, (t) => [
+}, (_t) => [
     merchantIsolationPolicy()
 ]);
