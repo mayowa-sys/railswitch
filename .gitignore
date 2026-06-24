@@ -60,7 +60,3 @@ htmlcov/
 
 # Docker
 *.pid
-
-
-# Drizzle
-services/engine/src/drizzle/
