@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
 import { loadPortalState, formatNaira, type Invoice } from "@/lib/mock-data";
-import { Download, Receipt, Search, FileText } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default function InvoicesPage() {
   const [state, setState] = useState(loadPortalState());
@@ -78,75 +78,11 @@ Orchestrated by: RailSwitch smart recovery engine
         />
       </div>
 
-      {/* Invoices List */}
-      <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-[#16161a]/40 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                <th className="p-4">Invoice ID</th>
-                <th className="p-4">Plan / Service</th>
-                <th className="p-4">Billing Date</th>
-                <th className="p-4">Method</th>
-                <th className="p-4">Amount</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/40 text-xs">
-              {filteredInvoices.length > 0 ? (
-                filteredInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/10 transition-colors">
-                    <td className="p-4 font-mono font-semibold text-zinc-950 dark:text-zinc-200">
-                      {inv.id}
-                    </td>
-                    <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
-                      {inv.planName}
-                    </td>
-                    <td className="p-4 text-zinc-500 dark:text-zinc-400">
-                      {inv.date}
-                    </td>
-                    <td className="p-4 text-zinc-500 dark:text-zinc-400">
-                      {inv.method}
-                    </td>
-                    <td className="p-4 font-bold text-zinc-900 dark:text-zinc-100">
-                      {formatNaira(inv.amount)}
-                    </td>
-                    <td className="p-4">
-                      <StatusBadge status={inv.status} />
-                    </td>
-                    <td className="p-4 text-right">
-                      {inv.status === "paid" ? (
-                        <button
-                          onClick={() => handleDownloadReceipt(inv)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-300 font-bold transition-all"
-                        >
-                          <Download className="size-3" />
-                          Receipt
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-zinc-400 dark:text-zinc-600 font-semibold italic">
-                          No receipt
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-zinc-500 dark:text-zinc-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <FileText className="size-8 text-zinc-300 dark:text-zinc-700" />
-                      <p className="font-semibold text-sm">No statements found</p>
-                      <p className="text-xs">No matching invoices exist in your account.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Invoices List Table */}
+      <InvoicesTable
+        invoices={filteredInvoices}
+        onDownloadReceipt={handleDownloadReceipt}
+      />
     </div>
   );
 }
