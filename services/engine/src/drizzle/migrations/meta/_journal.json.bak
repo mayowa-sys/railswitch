@@ -29,13 +29,6 @@
       "when": 1782377248137,
       "tag": "0005_conscious_scarlet_witch",
       "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1782387071851,
-      "tag": "0006_rich_magneto",
-      "breakpoints": true
     }
   ]
 }
