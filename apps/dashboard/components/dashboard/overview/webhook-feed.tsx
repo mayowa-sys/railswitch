@@ -76,7 +76,7 @@ export function WebhookFeed() {
                 >
                   {ev.statusCode}
                 </span>
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5" suppressHydrationWarning>
                   {ev.latency}ms · {timeAgo(ev.deliveredAt)}
                 </p>
               </div>

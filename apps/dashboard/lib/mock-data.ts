@@ -665,3 +665,149 @@ export const REVENUE_BARS = [
   { day: "Sat", collected: 8900000, recovered: 2200000 },
   { day: "Sun", collected: 8100000, recovered: 1700000 },
 ];
+
+// ─── Settings — Dunning ───────────────────────────────────────────────────────
+
+export type RailId = "card" | "virtual_account" | "ussd" | "whatsapp";
+
+export interface DunningPolicy {
+  retries: number; // 0-5
+  intervalPreset: "aggressive" | "balanced" | "gentle";
+  railOrder: RailId[];
+  railEnabled: Record<RailId, boolean>;
+  gracePeriodDays: number;
+}
+
+export const DUNNING_POLICY: DunningPolicy = {
+  retries: 3,
+  intervalPreset: "balanced",
+  railOrder: ["card", "virtual_account", "ussd", "whatsapp"],
+  railEnabled: {
+    card: true,
+    virtual_account: true,
+    ussd: true,
+    whatsapp: false,
+  },
+  gracePeriodDays: 7,
+};
+
+// ─── Settings — Webhooks ──────────────────────────────────────────────────────
+
+export type WebhookStatus = "active" | "failing" | "disabled";
+export type DeliveryStatus = "delivered" | "failed" | "pending_retry";
+
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  status: WebhookStatus;
+  createdAt: string;
+  lastDeliveryAt: string | null;
+  signingSecret: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  event: string;
+  statusCode: number | null;
+  status: DeliveryStatus;
+  attempts: number;
+  deliveredAt: string;
+}
+
+export const WEBHOOK_ENDPOINTS: WebhookEndpoint[] = [
+  {
+    id: "wep_001",
+    url: "https://api.acme.ng/webhooks/rail",
+    status: "active",
+    createdAt: "2026-01-15T09:00:00Z",
+    lastDeliveryAt: "2026-06-22T10:22:01Z",
+    signingSecret: "whsec_DEMO_000000000000000000000000000000",
+  },
+  {
+    id: "wep_002",
+    url: "https://hooks.zapier.com/catch/1234/abcde",
+    status: "failing",
+    createdAt: "2026-03-01T11:30:00Z",
+    lastDeliveryAt: "2026-06-21T14:05:12Z",
+    signingSecret: "whsec_DEMO_111111111111111111111111111111",
+  },
+];
+
+export const WEBHOOK_DELIVERIES: WebhookDelivery[] = [
+  { id: "del_001", endpointId: "wep_001", event: "charge.succeeded",            statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-22T10:22:01Z" },
+  { id: "del_002", endpointId: "wep_001", event: "invoice.payment_failed",      statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-22T09:15:42Z" },
+  { id: "del_003", endpointId: "wep_001", event: "dunning.cascade_started",     statusCode: 500,  status: "failed",        attempts: 3, deliveredAt: "2026-06-22T09:15:43Z" },
+  { id: "del_004", endpointId: "wep_002", event: "invoice.recovered",           statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-21T14:05:12Z" },
+  { id: "del_005", endpointId: "wep_001", event: "subscription.cancelled",      statusCode: 404, status: "failed",         attempts: 3, deliveredAt: "2026-06-20T18:44:09Z" },
+  { id: "del_006", endpointId: "wep_001", event: "subscription.updated",        statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-20T08:00:01Z" },
+  { id: "del_007", endpointId: "wep_002", event: "charge.succeeded",            statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:22:05Z" },
+  { id: "del_008", endpointId: "wep_001", event: "subscription.updated",        statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:23:10Z" },
+  { id: "del_009", endpointId: "wep_002", event: "invoice.payment_failed",      statusCode: null, status: "pending_retry", attempts: 2, deliveredAt: "2026-06-18T15:10:00Z" },
+  { id: "del_010", endpointId: "wep_001", event: "dunning.cascade_started",     statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-18T11:00:00Z" },
+  { id: "del_011", endpointId: "wep_001", event: "charge.succeeded",            statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-17T09:00:00Z" },
+  { id: "del_012", endpointId: "wep_002", event: "subscription.updated",        statusCode: 500,  status: "failed",        attempts: 3, deliveredAt: "2026-06-16T08:00:00Z" },
+  { id: "del_004", endpointId: "wep_002", event: "subscription.cascade.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-21T14:05:12Z" },
+  { id: "del_005", endpointId: "wep_001", event: "customer.subscription.cancelled", statusCode: 404, status: "failed",       attempts: 3, deliveredAt: "2026-06-20T18:44:09Z" },
+  { id: "del_006", endpointId: "wep_001", event: "subscription.trial.ending",     statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-20T08:00:01Z" },
+  { id: "del_007", endpointId: "wep_002", event: "subscription.payment.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:22:05Z" },
+  { id: "del_008", endpointId: "wep_001", event: "subscription.status.updated",   statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:23:10Z" },
+];
+// ─── Settings — API Keys ──────────────────────────────────────────────────────
+
+export type ApiKeyType = "live" | "test";
+
+export interface ApiKey {
+  id: string;
+  label: string;
+  type: ApiKeyType;
+  prefix: string;
+  secret: string; // full key (shown once then masked)
+  createdAt: string;
+  lastUsedAt: string | null;
+  revoked: boolean;
+}
+
+export const API_KEYS: ApiKey[] = [
+  {
+    id: "key_001",
+    label: "Production",
+    type: "live",
+    prefix: "rs_live_DEMO00",
+    secret: "rs_live_DEMO_0000000000000000000000000000000000000000000000",
+    createdAt: "2026-01-10T09:00:00Z",
+    lastUsedAt: "2026-06-22T10:22:01Z",
+    revoked: false,
+  },
+  {
+    id: "key_002",
+    label: "Backup",
+    type: "live",
+    prefix: "rs_live_DEMO11",
+    secret: "rs_live_DEMO_1111111111111111111111111111111111111111111111",
+    createdAt: "2026-02-20T14:00:00Z",
+    lastUsedAt: "2026-06-15T08:10:00Z",
+    revoked: false,
+  },
+  {
+    id: "key_003",
+    label: "Local dev",
+    type: "test",
+    prefix: "rs_test_DEMO22",
+    secret: "rs_test_DEMO_2222222222222222222222222222222222222222222222",
+    createdAt: "2026-01-15T10:30:00Z",
+    lastUsedAt: "2026-06-24T11:00:00Z",
+    revoked: false,
+  },
+  {
+    id: "key_004",
+    label: "CI/CD pipeline",
+    type: "test",
+    prefix: "rs_test_DEMO33",
+    secret: "rs_test_DEMO_3333333333333333333333333333333333333333333333",
+    createdAt: "2026-03-05T08:00:00Z",
+    lastUsedAt: null,
+    revoked: true,
+  },
+];
+

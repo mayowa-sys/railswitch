@@ -13,6 +13,7 @@ import {
   Bell,
   ChevronDown,
   ArrowUpRight,
+  Settings2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { label: "Subscriptions", icon: Zap, href: "/dashboard/subscriptions" },
   { label: "Customers", icon: Users, href: "/dashboard/customers" },
   { label: "Audit Log", icon: BookOpen, href: "/dashboard/audit-log" },
+  { label: "Settings", icon: Settings2, href: "/dashboard/settings" },
 ];
 
 export default function DashboardShell({
