@@ -28,6 +28,7 @@ export const SubscriptionStateEnum = pgEnum("subscription_state", [
   "paused",
   "past_due",
   "cancelled",
+  "refunded",
 ]);
 
 interface DunningPolicy {
@@ -69,6 +70,8 @@ export const SubscriptionsTable = pgTable(
     va_id: text("va_id"),
     va_expires_at: timestamp("va_expires_at", { withTimezone: true }),
     current_invoice_id: text("current_invoice_id").references((): AnyPgColumn => InvoicesTable.id),
+    cancel_at_period_end: boolean("cancel_at_period_end").notNull().default(false),
+    metadata: jsonb("metadata").default({}),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

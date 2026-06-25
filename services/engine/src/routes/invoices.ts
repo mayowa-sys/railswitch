@@ -61,7 +61,7 @@ invoicesRouter.get('/:id', async (req: Request, res: Response) => {
 
 invoicesRouter.post('/', async (req: Request, res: Response) => {
   try {
-    const { subscription_id, amount, due_date } = req.body;
+    const { subscription_id, amount, currency, description, metadata, due_date } = req.body;
 
     if (!subscription_id || !amount || !due_date) {
       res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'subscription_id, amount, and due_date are required' } });
@@ -88,6 +88,9 @@ invoicesRouter.post('/', async (req: Request, res: Response) => {
       subscription_id,
       merchant_id: req.merchantId,
       amount: amount.toString(),
+      currency: currency ?? 'NGN',
+      description: description ?? null,
+      metadata: metadata ?? {},
       due_date: new Date(due_date),
       status: 'open',
     }).returning();
@@ -138,5 +141,71 @@ invoicesRouter.post('/:id/retry', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[invoices] retry error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to retry invoice' } });
+  }
+});
+
+invoicesRouter.post('/:id/fallback', async (req: Request, res: Response) => {
+  try {
+    const [invoice] = await db
+      .select()
+      .from(InvoicesTable)
+      .where(
+        and(
+          eq(InvoicesTable.id, req.params.id),
+          eq(InvoicesTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!invoice) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Invoice not found' } });
+      return;
+    }
+
+    const [subscription] = await db
+      .select()
+      .from(SubscriptionsTable)
+      .where(
+        and(
+          eq(SubscriptionsTable.id, invoice.subscription_id),
+          eq(SubscriptionsTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!subscription) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Subscription not found' } });
+      return;
+    }
+
+    const fallbackMethods = [];
+
+    if (subscription.state === 'va_fallback' || subscription.state === 'charging' || subscription.state === 'retrying') {
+      const now = new Date();
+      const vaExpiry = new Date(now.getTime() + 7 * 86_400_000);
+      fallbackMethods.push({
+        type: 'virtual_account',
+        account_number: `${Math.floor(1_000_000_000 + Math.random() * 9_000_000_000)}`,
+        bank_name: 'Nomba',
+        expires_at: vaExpiry.toISOString(),
+      });
+    }
+
+    if (subscription.state === 'ussd_fallback' || subscription.state === 'va_fallback') {
+      const ussdExpiry = new Date(Date.now() + 15 * 60_000);
+      fallbackMethods.push({
+        type: 'ussd',
+        code: `*402*${Math.floor(1000 + Math.random() * 9000)}#`,
+        expires_at: ussdExpiry.toISOString(),
+      });
+    }
+
+    res.status(201).json({
+      invoice_id: invoice.id,
+      fallback_methods: fallbackMethods,
+    });
+  } catch (err) {
+    console.error('[invoices] fallback error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate fallback methods' } });
   }
 });
