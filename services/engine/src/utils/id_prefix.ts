@@ -1,5 +1,5 @@
 import { customType } from "drizzle-orm/pg-core";
-import crypto from "crypto";
+import { nanoid } from "nanoid";
 
 
 
@@ -8,4 +8,4 @@ export const prefixedId = (name: string, prefix: string) =>
         dataType(){
             return 'text'
         }
-    })(name).$defaultFn(() => `${prefix}_${crypto.randomUUID()}`);
+    })(name).$defaultFn(() => `${prefix}_${nanoid(10)}`);

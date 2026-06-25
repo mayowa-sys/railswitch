@@ -47,10 +47,12 @@ export const AuditLog = pgTable(
     pgPolicy('audit_log_no_delete_policy', {
       as: 'restrictive', 
       for: 'delete',
+      using: sql`false`
     }), 
     pgPolicy('audit_log_no_update_policy', {
       as: 'restrictive', 
-      for: 'update'
+      for: 'update', 
+      using: sql`false`
     }), 
     merchantIsolationPolicy()
   ],

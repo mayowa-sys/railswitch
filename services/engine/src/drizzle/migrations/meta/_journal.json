@@ -10,24 +10,17 @@
       "breakpoints": true
     },
     {
-      "idx": 1,
-      "version": "7",
-      "when": 1782295402171,
-      "tag": "0001_roles",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1782295420000,
-      "tag": "0002_merchant_isolation",
-      "breakpoints": true
-    },
-    {
       "idx": 3,
       "version": "7",
       "when": 1782301693516,
       "tag": "0003_even_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782374318665,
+      "tag": "0004_striped_skaar",
       "breakpoints": true
     }
   ]

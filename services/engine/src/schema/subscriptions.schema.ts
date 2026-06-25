@@ -12,7 +12,7 @@ import { prefixedId } from "../utils/id_prefix.js";
 import { MerchantsTable } from "./merchants.schema.js";
 import { pgEnum } from "drizzle-orm/pg-core";
 import { PlansTable } from "./plans.schema.js";
-import { CustomersTable } from "./customers.js";
+import { CustomersTable } from "./customers.schema.js";
 import { InvoicesTable } from "./invoices.schema.js";
 import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy.js";
 
@@ -75,7 +75,13 @@ export const SubscriptionsTable = pgTable(
     updated_at: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-  },
+    next_billing_at: timestamp('next_billing_at', {withTimezone: true}), 
+    trial_ends_at: timestamp('trial_ends_at', {withTimezone: true}), 
+    current_period_start: timestamp('current_period_start', {withTimezone: true}).notNull(), 
+    current_period_end: timestamp('current_period_end', {withTimezone: true}).notNull(),
+    paused_at: timestamp('paused_at', {withTimezone: true}), 
+    cancelled_at: timestamp('cancelled_at', {withTimezone: true})
+  },  
   (table) => [
     index("subscriptions_merchant_id_state_idx").on(
       table.merchant_id,
@@ -85,7 +91,11 @@ export const SubscriptionsTable = pgTable(
       table.merchant_id,
       table.current_invoice_id,
     ),
-    merchantIsolationPolicy()
+    merchantIsolationPolicy(),
+    index("subscriptoin_merchant_id_next_billing_at_idx").on(
+      table.merchant_id, 
+      table.next_billing_at
+    )
   ],
 );
 
