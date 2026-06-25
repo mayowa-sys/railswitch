@@ -18,7 +18,7 @@ function makeContext(): SubscriptionContext {
     merchantId: 'mer_test_abc12345',
     customerId: 'cus_test',
     planId: 'plan_test',
-    policy: { maxRetries: 3, ussdEnabled: true, graceHours: 72 },
+    policy: { maxRetries: 3, ussdEnabled: true, graceHours: 72, baseDelayMinutes: 60, maxDelayHours: 72 },
     retryCount: 0,
   };
 }
