@@ -1,0 +1,4 @@
+ALTER TABLE "payment_methods" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "payment_methods" ADD COLUMN "merchant_id" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE POLICY "merchant_isolation" ON "payment_methods" AS RESTRICTIVE FOR ALL TO public USING (merchant_id = current_setting('app.current_merchant_id')::text) WITH CHECK (merchant_id = current_setting('app.current_merchant_id')::text);
