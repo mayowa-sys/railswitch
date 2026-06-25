@@ -591,14 +591,14 @@ export const FAILED_PAYMENTS: FailedPayment[] = [
 // ─── Webhook Events ───────────────────────────────────────────────────────────
 
 export const WEBHOOK_EVENTS: WebhookEvent[] = [
-  { id: "wh_001", event: "subscription.payment.success", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T10:22:01Z", latency: 143 },
-  { id: "wh_002", event: "subscription.payment.failed", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T09:15:42Z", latency: 289 },
-  { id: "wh_003", event: "subscription.cascade.started", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 500, deliveredAt: "2026-06-22T09:15:43Z", latency: 4012 },
-  { id: "wh_004", event: "subscription.cascade.success", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-21T14:05:12Z", latency: 88 },
-  { id: "wh_005", event: "customer.subscription.cancelled", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 404, deliveredAt: "2026-06-20T18:44:09Z", latency: 1234 },
-  { id: "wh_006", event: "subscription.trial.ending", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-20T08:00:01Z", latency: 102 },
-  { id: "wh_007", event: "subscription.payment.success", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-19T10:22:05Z", latency: 77 },
-  { id: "wh_008", event: "subscription.status.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-19T10:23:10Z", latency: 201 },
+  { id: "wh_001", event: "charge.succeeded", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T10:22:01Z", latency: 143 },
+  { id: "wh_002", event: "invoice.payment_failed", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T09:15:42Z", latency: 289 },
+  { id: "wh_003", event: "dunning.cascade_started", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 500, deliveredAt: "2026-06-22T09:15:43Z", latency: 4012 },
+  { id: "wh_004", event: "invoice.recovered", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-21T14:05:12Z", latency: 88 },
+  { id: "wh_005", event: "subscription.cancelled", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 404, deliveredAt: "2026-06-20T18:44:09Z", latency: 1234 },
+  { id: "wh_006", event: "subscription.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-20T08:00:01Z", latency: 102 },
+  { id: "wh_007", event: "charge.succeeded", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-19T10:22:05Z", latency: 77 },
+  { id: "wh_008", event: "subscription.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-19T10:23:10Z", latency: 201 },
 ];
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
