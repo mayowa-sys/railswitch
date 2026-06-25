@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from .routes.webhooks import router as webhooks_router
 
 app = FastAPI(title="RailSwitch Gateway", version="0.1.0")
 
@@ -46,3 +47,6 @@ async def health() -> dict:
 @app.get("/v1/whoami")
 async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict:
     return {"merchant": merchant.merchant_id, "mode": merchant.mode}
+
+
+app.include_router(webhooks_router)

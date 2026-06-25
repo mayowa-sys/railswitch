@@ -55,6 +55,25 @@ describe('RailOrchestrator', () => {
         expect(result.retryable).toBe(false);
       }
     });
+
+    it('forwards customerId and currency to the Nomba client', async () => {
+      const spy = vi.spyOn(nomba, 'chargeCard');
+      await orchestrator.attemptCharge({
+        context: makeContext(),
+        paymentMethodToken: 'tok_test',
+        amount: 5000,
+        idempotencyKey: 'sub_test:cycle_1:attempt_1',
+      });
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: 'tok_test',
+          amount: 5000,
+          currency: 'NGN',
+          customerId: 'cus_test',
+          merchantTxRef: 'sub_test:cycle_1:attempt_1',
+        }),
+      );
+    });
   });
 
   describe('createVirtualAccount', () => {
@@ -112,6 +131,65 @@ describe('RailOrchestrator', () => {
       });
       expect(result).toBeUndefined();
       expect(silentLogger.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('revokePaymentMethod', () => {
+    it('delegates to nomba.revokeCardToken', async () => {
+      const spy = vi.spyOn(nomba, 'revokeCardToken');
+      await orchestrator.revokePaymentMethod('tok_xyz');
+      expect(spy).toHaveBeenCalledWith('tok_xyz');
+      expect(nomba.isTokenRevoked('tok_xyz')).toBe(true);
+    });
+  });
+
+  describe('lookupBankForRefund', () => {
+    it('delegates to nomba.lookupBankAccount and returns the resolved name', async () => {
+      const c = new MockNombaClient({
+        bankLookups: {
+          '0123456789': {
+            accountName: 'Adaeze Kitchen',
+            accountNumber: '0123456789',
+            bankCode: '044',
+            bankName: 'Access Bank',
+          },
+        },
+      });
+      const o = new RailOrchestrator({ nomba: c, logger: silentLogger });
+
+      const result = await o.lookupBankForRefund('044', '0123456789');
+      expect(result.accountName).toBe('Adaeze Kitchen');
+      expect(result.bankName).toBe('Access Bank');
+    });
+  });
+
+  describe('sendRefund', () => {
+    it('delegates to nomba.sendTransfer and returns transfer result', async () => {
+      const spy = vi.spyOn(nomba, 'sendTransfer');
+      const result = await orchestrator.sendRefund({
+        amount: 5000,
+        bankCode: '044',
+        accountNumber: '0123456789',
+        accountName: 'Adaeze Kitchen',
+        senderName: 'RailSwitch',
+        narration: 'Refund overpayment — INV 42',
+        merchantTxRef: 'refund_inv42_001',
+      });
+
+      expect(result.status).toBe('success');
+      expect(result.transferId).toMatch(/^xfer_mock_/);
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 5000,
+          currency: 'NGN',
+          bankCode: '044',
+          accountNumber: '0123456789',
+          accountName: 'Adaeze Kitchen',
+          senderName: 'RailSwitch',
+          narration: 'Refund overpayment — INV 42',
+          merchantTxRef: 'refund_inv42_001',
+        }),
+      );
     });
   });
 });
