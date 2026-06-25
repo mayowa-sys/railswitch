@@ -10,6 +10,7 @@ import { plansRouter } from './routes/plans.js';
 import { customersRouter } from './routes/customers.js';
 import { subscriptionsRouter } from './routes/subscriptions.js';
 import { invoicesRouter } from './routes/invoices.js';
+import { debugRouter } from './routes/debug.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -34,6 +35,9 @@ app.get(
     gitSha: process.env.GIT_SHA ?? 'unknown',
   }),
 );
+
+// Debug / developer tooling — unprotected.
+app.use('/debug', debugRouter);
 
 // Internal API — gateway-only, protected by shared secret + merchant scoping.
 app.use('/internal/v1/plans', requireInternalAuth, extractMerchantId, plansRouter);
