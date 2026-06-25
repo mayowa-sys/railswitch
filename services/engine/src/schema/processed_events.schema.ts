@@ -4,8 +4,6 @@ import { sql } from "drizzle-orm";
 import { SubscriptionsTable, SubscriptionStateEnum } from "./subscriptions.schema.js";
 import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy.js";
 
-// filepath: /home/lavender/workspace/lavender/railswitch/services/engine/src/schema/processed_events.schema.ts
-
 export const ProcessedEventsTable = pgTable(
     "processed_events",
     {
