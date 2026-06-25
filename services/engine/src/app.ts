@@ -13,6 +13,7 @@ import { subscriptionsRouter } from './routes/subscriptions.js';
 import { invoicesRouter } from './routes/invoices.js';
 import { paymentMethodsRouter } from './routes/payment_methods.js';
 import { debugRouter } from './routes/debug.js';
+import { webhooksRouter } from './routes/webhooks.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -48,3 +49,6 @@ app.use('/internal/v1/customers', requireInternalAuth, extractMerchantId, custom
 app.use('/internal/v1/subscriptions', requireInternalAuth, extractMerchantId, subscriptionsRouter);
 app.use('/internal/v1/invoices', requireInternalAuth, extractMerchantId, invoicesRouter);
 app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, paymentMethodsRouter);
+
+// Internal webhook ingress — auth only, no merchant scoping (engine handler resolves merchant from Nomba payload).
+app.use('/internal/v1/webhooks', requireInternalAuth, webhooksRouter);

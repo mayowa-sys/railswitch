@@ -63,6 +63,16 @@ export interface SendUSSDInput {
   customerPhone: string;
 }
 
+export interface SendRefundInput {
+  amount: number;
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  senderName: string;
+  narration: string;
+  merchantTxRef: string;
+}
+
 export class RailOrchestrator {
   private readonly nomba: NombaClient;
   private readonly logger: OrchestratorLogger;
@@ -83,11 +93,13 @@ export class RailOrchestrator {
       idempotencyKey: input.idempotencyKey,
       retryCount: input.context.retryCount,
     });
-    return this.nomba.chargeCard(
-      input.paymentMethodToken,
-      input.amount,
-      input.idempotencyKey,
-    );
+    return this.nomba.chargeCard({
+      token: input.paymentMethodToken,
+      amount: input.amount,
+      currency: 'NGN',
+      customerId: input.context.customerId,
+      merchantTxRef: input.idempotencyKey,
+    });
   }
 
   /**
@@ -137,6 +149,41 @@ export class RailOrchestrator {
     this.logger.warn('sendWhatsAppRecovery is a stub — WhatsApp integration is a window-phase task', {
       subscriptionId: input.context.subscriptionId,
       invoiceId: input.invoiceId,
+    });
+  }
+
+  /**
+   * Revoke a stored card token. Called when a customer removes a payment method.
+   */
+  async revokePaymentMethod(tokenId: string) {
+    this.logger.info('revokePaymentMethod', { tokenId });
+    await this.nomba.revokeCardToken(tokenId);
+  }
+
+  /**
+   * Resolve a bank account number to a verified account name.
+   * Required before initiating a refund transfer.
+   */
+  async lookupBankForRefund(bankCode: string, accountNumber: string) {
+    this.logger.info('lookupBankForRefund', { bankCode, accountNumber });
+    return this.nomba.lookupBankAccount(bankCode, accountNumber);
+  }
+
+  /**
+   * Initiate a bank transfer for a refund or payout.
+   * Always call lookupBankForRefund first to verify the recipient.
+   */
+  async sendRefund(input: SendRefundInput) {
+    this.logger.info('sendRefund', { merchantTxRef: input.merchantTxRef });
+    return this.nomba.sendTransfer({
+      amount: input.amount,
+      currency: 'NGN',
+      bankCode: input.bankCode,
+      accountNumber: input.accountNumber,
+      accountName: input.accountName,
+      senderName: input.senderName,
+      narration: input.narration,
+      merchantTxRef: input.merchantTxRef,
     });
   }
 }
