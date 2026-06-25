@@ -64,7 +64,7 @@ export default function OverviewPage() {
 
       {/* Main Overview Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        
+
         {/* Subscription Plan details */}
         <SubscriptionDetails
           subscriptionStatus={subscription.status}

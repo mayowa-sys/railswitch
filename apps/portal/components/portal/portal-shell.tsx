@@ -72,7 +72,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const toggleDemoPastDue = () => {
     const nextStatus = subscription.status === "past_due" ? "active" : "past_due";
     const updatedSub = { ...subscription, status: nextStatus };
-    
+
     // If setting to active, make sure we have at least one default card
     savePortalState({ subscription: updatedSub });
     setState((s) => ({ ...s, subscription: updatedSub }));
@@ -92,7 +92,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0c0c0e] font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden">
-      
+
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
@@ -165,9 +165,9 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-zinc-200 dark:border-zinc-800/80 relative">
           {profileOpen && (
             <>
-              <div 
-                className="fixed inset-0 z-40 cursor-default" 
-                onClick={() => setProfileOpen(false)} 
+              <div
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setProfileOpen(false)}
               />
               <div className="absolute bottom-16 left-4 right-4 z-50 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-3.5 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
                 <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2 px-1">
@@ -191,7 +191,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
             </>
           )}
 
-          <div 
+          <div
             onClick={() => setProfileOpen(!profileOpen)}
             className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors duration-200 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
           >
@@ -209,7 +209,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
       {/* ── Main area ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
+
         {/* Top header */}
         <header className="h-16 flex items-center justify-between py-4 px-4 md:px-8 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-[#0c0c0e]/70 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center">
@@ -242,7 +242,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
               {notificationsOpen && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setNotificationsOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-4 shadow-xl z-40 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="absolute right-[-125px] md:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-4 shadow-xl z-40 animate-in fade-in slide-in-from-top-1 duration-200">
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-2">Notifications</h4>
                     {isPastDue ? (
                       <div className="flex gap-2.5 p-2 rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 text-xs">

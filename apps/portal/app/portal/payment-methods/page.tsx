@@ -10,7 +10,7 @@ import { Plus, Shield } from "lucide-react";
 export default function PaymentMethodsPage() {
   const [state, setState] = useState(loadPortalState());
   const [modalOpen, setModalOpen] = useState(false);
-  
+
   // Card tokenizer form states
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -72,11 +72,11 @@ export default function PaymentMethodsPage() {
     if (!cardName || cardNumber.length < 15 || cardExpiry.length < 5 || cardCvv.length < 3) return;
 
     setTokenizing(true);
-    
+
     // Simulate multi-stage secure encryption handshake
     setTimeout(() => {
       const last4 = cardNumber.replace(/\s/g, "").slice(-4);
-      
+
       const newMethod: PaymentMethod = {
         id: `pm_${Date.now()}`,
         type: "card",

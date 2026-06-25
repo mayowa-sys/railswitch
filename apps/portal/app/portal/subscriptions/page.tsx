@@ -44,7 +44,7 @@ export default function SubscriptionsPage() {
     }
 
     setPreviewLoading(true);
-    
+
     // Simulate gateway request latency
     setTimeout(() => {
       const newPlan = PLANS.find((p) => p.id === newPlanId);
@@ -53,7 +53,7 @@ export default function SubscriptionsPage() {
       const periodStart = new Date("2026-06-15T00:00:00");
       const periodEnd = new Date("2026-07-15T00:00:00");
       const today = new Date("2026-06-25T00:00:00");
-      
+
       const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / 86_400_000);
       const remainingDays = Math.max(0, Math.ceil((periodEnd.getTime() - today.getTime()) / 86_400_000));
 
@@ -119,7 +119,7 @@ export default function SubscriptionsPage() {
 
       setApplying(false);
       setSuccess(true);
-      
+
       setTimeout(() => {
         setModalOpen(false);
       }, 1000);

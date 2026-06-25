@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { formatNaira, PLANS, type Plan } from "@/lib/mock-data";
 import { AlertCircle, CheckCircle, Loader2, TrendingUp } from "lucide-react";
 
@@ -137,17 +138,18 @@ export function ChangePlanModal({
 
         {!success && (
           <DialogFooter>
-            <button
+            <Button
+              variant="destructive"
               onClick={() => onOpenChange(false)}
               disabled={applying}
               className="h-9 px-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-850 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800"
             >
               Cancel
-            </button>
+            </Button>
             <button
               onClick={onConfirm}
               disabled={applying || selectedPlanId === currentPlan.id || !previewData}
-              className="h-9 px-5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              className="h-9 px-5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
             >
               {applying ? (
                 <><Loader2 className="size-3.5 animate-spin" /> Committing Changes...</>
