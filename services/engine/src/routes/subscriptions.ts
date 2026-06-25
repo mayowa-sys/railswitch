@@ -122,7 +122,7 @@ subscriptionsRouter.get('/:id', async (req: Request, res: Response) => {
 
 subscriptionsRouter.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const { plan_id } = req.body;
+    const { plan_id, cancel_at_period_end, metadata } = req.body;
 
     const existing = await db
       .select()
@@ -140,6 +140,11 @@ subscriptionsRouter.patch('/:id', async (req: Request, res: Response) => {
       return;
     }
 
+    const updates: Record<string, unknown> = {};
+    if (plan_id !== undefined) updates.plan_id = plan_id;
+    if (cancel_at_period_end !== undefined) updates.cancel_at_period_end = cancel_at_period_end;
+    if (metadata !== undefined) updates.metadata = metadata;
+
     if (plan_id) {
       const [newPlan] = await db
         .select()
@@ -151,10 +156,13 @@ subscriptionsRouter.patch('/:id', async (req: Request, res: Response) => {
         res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'New plan not found' } });
         return;
       }
+    }
 
+    if (Object.keys(updates).length > 0) {
       const [updated] = await db
         .update(SubscriptionsTable)
-        .set({ plan_id })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .set(updates as any)
         .where(
           and(
             eq(SubscriptionsTable.id, req.params.id),
@@ -294,12 +302,14 @@ subscriptionsRouter.post('/:id/preview', async (req: Request, res: Response) => 
     res.json({
       current_plan: {
         id: currentPlan.id,
+        name: currentPlan.name,
         amount: currentPlan.amount,
         currency: currentPlan.currency,
         interval: currentPlan.interval,
       },
       new_plan: {
         id: newPlan.id,
+        name: newPlan.name,
         amount: newPlan.amount,
         currency: newPlan.currency,
         interval: newPlan.interval,
@@ -311,11 +321,11 @@ subscriptionsRouter.post('/:id/preview', async (req: Request, res: Response) => 
       total_days_in_period: totalDays,
       credit: {
         amount: Math.round(creditAmount * 100) / 100,
-        description: `Unused portion of current plan (${currentPlan.id})`,
+        description: `Unused portion of ${currentPlan.name}`,
       },
       charge: {
         amount: Math.round(chargeAmount * 100) / 100,
-        description: `Prorated charge for new plan (${newPlan.id}) for ${remainingDays} days`,
+        description: `Prorated charge for ${newPlan.name} for ${remainingDays} days`,
       },
       net_amount: Math.round(netAmount * 100) / 100,
       currency: currentPlan.currency,

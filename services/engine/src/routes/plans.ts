@@ -8,19 +8,23 @@ export const plansRouter = Router();
 
 plansRouter.post('/', async (req: Request, res: Response) => {
   try {
-    const { amount, currency, interval, interval_count } = req.body;
+    const { name, description, amount, currency, interval, interval_count, is_active, metadata } = req.body;
 
-    if (amount === undefined || !interval) {
-      res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'amount and interval are required' } });
+    if (!name || amount === undefined || !interval) {
+      res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'name, amount, and interval are required' } });
       return;
     }
 
     const [plan] = await db.insert(PlansTable).values({
       merchant_id: req.merchantId,
+      name,
+      description: description ?? null,
       amount,
       currency: currency ?? 'NGN',
       interval,
       interval_count: interval_count ?? 1,
+      is_active: is_active ?? true,
+      metadata: metadata ?? {},
     }).returning();
 
     res.status(201).json(plan);

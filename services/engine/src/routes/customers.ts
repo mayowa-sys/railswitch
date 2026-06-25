@@ -8,7 +8,7 @@ export const customersRouter = Router();
 
 customersRouter.post('/', async (req: Request, res: Response) => {
   try {
-    const { email, phone, metadata } = req.body;
+    const { email, name, phone, metadata } = req.body;
 
     if (!email) {
       res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'email is required' } });
@@ -18,6 +18,7 @@ customersRouter.post('/', async (req: Request, res: Response) => {
     const [customer] = await db.insert(CustomersTable).values({
       merchant_id: req.merchantId,
       email,
+      name: name ?? null,
       phone: phone ?? null,
       metadata: metadata ?? {},
     }).returning();
