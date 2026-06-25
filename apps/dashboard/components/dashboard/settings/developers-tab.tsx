@@ -30,19 +30,19 @@ function relativeDate(iso: string): string {
 function generateKeyId() {
   return "key_" + Math.random().toString(36).slice(2, 9);
 }
-
 function generateSecret(type: ApiKeyType): string {
+  const prefix = type === "live" ? "rs_live_" : "rs_test_";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const body = Array.from({ length: 48 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return prefix + body;
+}
+
 function getPrefix(secret: string): string {
   // Match "rs_live_" or "rs_test_" then first 6 chars of the random body
   const match = secret.match(/^(rs_(?:live|test)_)([A-Za-z0-9]{6})/);
   return match ? match[1] + match[2] : secret.slice(0, 14);
 }
-}
 
-function getPrefix(secret: string) {
-  const parts = secret.split("_");
-  return parts.slice(0, 3).join("_") + "_" + secret.slice(parts.slice(0, 3).join("_").length + 1, parts.slice(0, 3).join("_").length + 7);
-}
 
 // ─── Key row ───────────────────────────────────────────────────────────────────
 

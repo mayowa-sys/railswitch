@@ -726,6 +726,15 @@ export const WEBHOOK_ENDPOINTS: WebhookEndpoint[] = [
   },
   {
     id: "wep_002",
+    url: "https://hooks.zapier.com/catch/1234/abcde",
+    status: "failing",
+    createdAt: "2026-03-01T11:30:00Z",
+    lastDeliveryAt: "2026-06-21T14:05:12Z",
+    signingSecret: "whsec_DEMO_111111111111111111111111111111",
+  },
+];
+
+export const WEBHOOK_DELIVERIES: WebhookDelivery[] = [
   { id: "del_001", endpointId: "wep_001", event: "charge.succeeded",            statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-22T10:22:01Z" },
   { id: "del_002", endpointId: "wep_001", event: "invoice.payment_failed",      statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-22T09:15:42Z" },
   { id: "del_003", endpointId: "wep_001", event: "dunning.cascade_started",     statusCode: 500,  status: "failed",        attempts: 3, deliveredAt: "2026-06-22T09:15:43Z" },
@@ -743,12 +752,7 @@ export const WEBHOOK_ENDPOINTS: WebhookEndpoint[] = [
   { id: "del_006", endpointId: "wep_001", event: "subscription.trial.ending",     statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-20T08:00:01Z" },
   { id: "del_007", endpointId: "wep_002", event: "subscription.payment.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:22:05Z" },
   { id: "del_008", endpointId: "wep_001", event: "subscription.status.updated",   statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:23:10Z" },
-  { id: "del_009", endpointId: "wep_002", event: "subscription.payment.failed",   statusCode: null, status: "pending_retry", attempts: 2, deliveredAt: "2026-06-18T15:10:00Z" },
-  { id: "del_010", endpointId: "wep_001", event: "subscription.cascade.started",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-18T11:00:00Z" },
-  { id: "del_011", endpointId: "wep_001", event: "subscription.payment.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-17T09:00:00Z" },
-  { id: "del_012", endpointId: "wep_002", event: "subscription.trial.ending",     statusCode: 500,  status: "failed",        attempts: 3, deliveredAt: "2026-06-16T08:00:00Z" },
 ];
-
 // ─── Settings — API Keys ──────────────────────────────────────────────────────
 
 export type ApiKeyType = "live" | "test";
