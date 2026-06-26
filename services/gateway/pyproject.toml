@@ -20,3 +20,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.8.0",
 ]
+
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "decouple"]
+ignore_missing_imports = true
