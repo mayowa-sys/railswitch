@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str
+    DATABASE_URL: str
     internal_auth_secret: str
     engine_url: str
 

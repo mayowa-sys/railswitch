@@ -4,22 +4,22 @@ import asyncpg
 import httpx
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from auth import ApiKeyRecord, get_current_merchant
+from app.auth import ApiKeyRecord, get_current_merchant
 from typing_extensions import Any
 
-from engine_client import (
+from app.engine_client import (
     CreateSubscriptionRequest,
     EngineClient,
     get_engine_client,
 )
 
-from db import db_conn
-from services.gateway.app.config import settings
+from app.db import db_conn
+from app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db_pool = await asyncpg.create_pool()
+    app.state.db_pool = await asyncpg.create_pool(settings.DATABASE_URL)
     app.state.http_client = httpx.AsyncClient(
         base_url=settings.engine_url, timeout=10.0
     )

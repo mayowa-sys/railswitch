@@ -1,12 +1,12 @@
 import asyncpg
 from fastapi import Depends, Request
 
-from auth import ApiKeyRecord, get_current_merchant
-from config import settings
+from app.auth import ApiKeyRecord, get_current_merchant
+from app.config import settings
 
 
 async def create_pool() -> asyncpg.Pool:
-    return await asyncpg.create_pool(settings.database_url)
+    return await asyncpg.create_pool(settings.DATABASE_URL)
 
 
 async def db_conn(
