@@ -15,13 +15,12 @@ import {
   Copy,
   CheckCircle,
   RefreshCw,
-  HelpCircle,
   ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { loadPortalState, savePortalState, formatNaira, PLANS } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, formatNaira, PLANS, getServerPortalState } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/portal" },
@@ -39,11 +38,16 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Portal State
-  const [state, setState] = useState(loadPortalState());
+  // Initialize with server-safe state first to avoid hydration errors
+  const [state, setState] = useState(() => getServerPortalState());
 
   useEffect(() => {
+    setMounted(true);
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     // Keep local component state in sync with localStorage updates
     const handleStorageChange = () => {
       setState(loadPortalState());
@@ -52,7 +56,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const subscription = state.subscription;
+  const subscription = state?.subscription || getServerPortalState().subscription;
   const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
   const isPastDue = subscription.status === "past_due";
 
@@ -89,6 +93,18 @@ export default function PortalShell({ children }: { children: React.ReactNode })
     setProfileOpen(false);
     router.refresh();
   };
+
+  // Prevent server-side pre-render mismatch by returning placeholder shell until mounted
+  if (!mounted) {
+    return (
+      <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0c0c0e] font-sans items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+          <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0c0c0e] font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden">

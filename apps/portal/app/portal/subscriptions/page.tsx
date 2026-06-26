@@ -5,11 +5,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PlanComparison } from "@/components/portal/subscriptions/plan-comparison";
 import { ChangePlanModal } from "@/components/portal/subscriptions/change-plan-modal";
-import { loadPortalState, savePortalState, formatNaira, PLANS, type Invoice } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, formatNaira, PLANS, type Invoice, getServerPortalState } from "@/lib/mock-data";
 import { CreditCard, Zap, Calendar } from "lucide-react";
 
 export default function SubscriptionsPage() {
-  const [state, setState] = useState(loadPortalState());
+  const [state, setState] = useState(() => getServerPortalState());
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -18,6 +18,9 @@ export default function SubscriptionsPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     const handleStorageChange = () => {
       setState(loadPortalState());
     };
@@ -25,9 +28,9 @@ export default function SubscriptionsPage() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const subscription = state.subscription;
+  const subscription = state?.subscription || getServerPortalState().subscription;
   const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
-  const defaultCard = state.paymentMethods.find((pm) => pm.id === subscription.paymentMethodId) || state.paymentMethods[0];
+  const defaultCard = (state?.paymentMethods || getServerPortalState().paymentMethods).find((pm) => pm.id === subscription.paymentMethodId) || (state?.paymentMethods || getServerPortalState().paymentMethods)[0];
 
   const handleOpenPlanModal = () => {
     setSelectedPlanId(currentPlan.id);

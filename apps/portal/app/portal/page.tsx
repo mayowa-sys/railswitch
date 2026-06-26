@@ -4,14 +4,17 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCards } from "@/components/portal/overview/kpi-cards";
 import { SubscriptionDetails } from "@/components/portal/overview/subscription-details";
-import { loadPortalState, PLANS } from "@/lib/mock-data";
+import { loadPortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
 import { AlertOctagon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function OverviewPage() {
-  const [state, setState] = useState(loadPortalState());
+  const [state, setState] = useState(() => getServerPortalState());
 
   useEffect(() => {
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     const handleStorageChange = () => {
       setState(loadPortalState());
     };
@@ -19,9 +22,9 @@ export default function OverviewPage() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const subscription = state.subscription;
+  const subscription = state?.subscription || getServerPortalState().subscription;
   const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
-  const activePaymentMethod = state.paymentMethods.find((pm) => pm.id === subscription.paymentMethodId) || state.paymentMethods[0];
+  const activePaymentMethod = (state?.paymentMethods || getServerPortalState().paymentMethods).find((pm) => pm.id === subscription.paymentMethodId) || (state?.paymentMethods || getServerPortalState().paymentMethods)[0];
 
   // Calculate stats
   const totalSpentKobo = state.invoices

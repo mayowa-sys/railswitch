@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button"
 import { AlertTriangle, X } from "lucide-react";
 
 const CANCELLATION_REASONS = [
@@ -44,7 +45,7 @@ export function CancelModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={!applying}>
         <DialogHeader>
-          <div className="flex items-center gap-2 text-red-650 dark:text-red-400">
+          <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 shrink-0" />
             <DialogTitle>Cancel Subscription Feedback</DialogTitle>
           </div>
@@ -59,11 +60,10 @@ export function CancelModal({
             {CANCELLATION_REASONS.map((reason) => (
               <label
                 key={reason}
-                className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
-                  selectedReason === reason
-                    ? "border-red-600 bg-red-50/20 dark:border-red-500 dark:bg-red-950/20 text-zinc-900 dark:text-white"
-                    : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 text-zinc-650 dark:text-zinc-350"
-                }`}
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${selectedReason === reason
+                  ? "border-red-600 bg-red-50/20 dark:border-red-500 dark:bg-red-950/20 text-zinc-900 dark:text-white"
+                  : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 text-zinc-650 dark:text-zinc-350"
+                  }`}
               >
                 <input
                   type="radio"
@@ -71,8 +71,17 @@ export function CancelModal({
                   value={reason}
                   checked={selectedReason === reason}
                   onChange={() => onSelectReason(reason)}
-                  className="accent-red-650 shrink-0"
+                  className="sr-only"
                 />
+                <div className={`size-3.5 rounded-full border flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  selectedReason === reason
+                    ? "border-red-600 dark:border-red-500 bg-red-600/10 dark:bg-red-500/10"
+                    : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                }`}>
+                  {selectedReason === reason && (
+                    <span className="size-1.5 rounded-full bg-red-600 dark:bg-red-500 animate-in zoom-in-50 duration-200" />
+                  )}
+                </div>
                 {reason}
               </label>
             ))}
@@ -100,13 +109,13 @@ export function CancelModal({
           >
             Keep Subscription
           </button>
-          <button
+          <Button
+            variant="destructive"
             onClick={onConfirm}
             disabled={!selectedReason || (selectedReason === "Other" && !otherDetails)}
-            className="h-8 px-4 text-xs font-bold text-white bg-red-650 hover:bg-red-750 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors shadow-sm"
           >
             Confirm Cancellation
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

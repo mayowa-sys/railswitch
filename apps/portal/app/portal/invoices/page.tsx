@@ -3,14 +3,17 @@
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
-import { loadPortalState, formatNaira, type Invoice } from "@/lib/mock-data";
+import { loadPortalState, formatNaira, type Invoice, getServerPortalState } from "@/lib/mock-data";
 import { Search } from "lucide-react";
 
 export default function InvoicesPage() {
-  const [state, setState] = useState(loadPortalState());
+  const [state, setState] = useState(() => getServerPortalState());
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     const handleStorageChange = () => {
       setState(loadPortalState());
     };
@@ -18,7 +21,8 @@ export default function InvoicesPage() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const filteredInvoices = state.invoices.filter((inv) =>
+  const invoices = state?.invoices || getServerPortalState().invoices;
+  const filteredInvoices = invoices.filter((inv) =>
     inv.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     inv.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     inv.status.toLowerCase().includes(searchQuery.toLowerCase())

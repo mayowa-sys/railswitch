@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { MethodsList } from "@/components/portal/payment-methods/methods-list";
 import { AddCardModal } from "@/components/portal/payment-methods/add-card-modal";
-import { loadPortalState, savePortalState, type PaymentMethod } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, type PaymentMethod, getServerPortalState } from "@/lib/mock-data";
 import { Plus, Shield } from "lucide-react";
 
 export default function PaymentMethodsPage() {
-  const [state, setState] = useState(loadPortalState());
+  const [state, setState] = useState(() => getServerPortalState());
   const [modalOpen, setModalOpen] = useState(false);
 
   // Card tokenizer form states
@@ -20,6 +20,9 @@ export default function PaymentMethodsPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     const handleStorageChange = () => {
       setState(loadPortalState());
     };
@@ -27,7 +30,7 @@ export default function PaymentMethodsPage() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const subscription = state.subscription;
+  const subscription = state?.subscription || getServerPortalState().subscription;
 
   // Format Card Number inline
   const handleCardNumberChange = (value: string) => {

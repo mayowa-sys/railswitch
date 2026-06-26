@@ -132,23 +132,63 @@ const KEY_SUBSCRIPTION = "railswitch_portal_sub";
 const KEY_PAYMENT_METHODS = "railswitch_portal_pms";
 const KEY_INVOICES = "railswitch_portal_invoices";
 
+export function getServerPortalState() {
+  return {
+    subscription: DEFAULT_SUBSCRIPTION,
+    paymentMethods: DEFAULT_PAYMENT_METHODS,
+    invoices: DEFAULT_INVOICES,
+  };
+}
+
 export function loadPortalState() {
   if (typeof window === "undefined") {
-    return {
-      subscription: DEFAULT_SUBSCRIPTION,
-      paymentMethods: DEFAULT_PAYMENT_METHODS,
-      invoices: DEFAULT_INVOICES,
-    };
+    return getServerPortalState();
   }
 
   const storedSub = localStorage.getItem(KEY_SUBSCRIPTION);
   const storedPms = localStorage.getItem(KEY_PAYMENT_METHODS);
   const storedInvoices = localStorage.getItem(KEY_INVOICES);
 
+  let subscription = DEFAULT_SUBSCRIPTION;
+  if (storedSub && storedSub !== "undefined" && storedSub !== "null") {
+    try {
+      const parsed = JSON.parse(storedSub);
+      if (parsed && typeof parsed === "object") {
+        subscription = parsed as Subscription;
+      }
+    } catch (e) {
+      console.error("Error parsing subscription from localStorage:", e);
+    }
+  }
+
+  let paymentMethods = DEFAULT_PAYMENT_METHODS;
+  if (storedPms && storedPms !== "undefined" && storedPms !== "null") {
+    try {
+      const parsed = JSON.parse(storedPms);
+      if (Array.isArray(parsed)) {
+        paymentMethods = parsed as PaymentMethod[];
+      }
+    } catch (e) {
+      console.error("Error parsing payment methods from localStorage:", e);
+    }
+  }
+
+  let invoices = DEFAULT_INVOICES;
+  if (storedInvoices && storedInvoices !== "undefined" && storedInvoices !== "null") {
+    try {
+      const parsed = JSON.parse(storedInvoices);
+      if (Array.isArray(parsed)) {
+        invoices = parsed as Invoice[];
+      }
+    } catch (e) {
+      console.error("Error parsing invoices from localStorage:", e);
+    }
+  }
+
   return {
-    subscription: storedSub ? (JSON.parse(storedSub) as Subscription) : DEFAULT_SUBSCRIPTION,
-    paymentMethods: storedPms ? (JSON.parse(storedPms) as PaymentMethod[]) : DEFAULT_PAYMENT_METHODS,
-    invoices: storedInvoices ? (JSON.parse(storedInvoices) as Invoice[]) : DEFAULT_INVOICES,
+    subscription,
+    paymentMethods,
+    invoices,
   };
 }
 

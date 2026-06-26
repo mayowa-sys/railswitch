@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusManagement } from "@/components/portal/settings/status-management";
 import { CancelModal } from "@/components/portal/settings/cancel-modal";
-import { loadPortalState, savePortalState, PLANS } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
 import { CheckCircle } from "lucide-react";
 
 export default function SettingsPage() {
-  const [state, setState] = useState(loadPortalState());
+  const [state, setState] = useState(() => getServerPortalState());
   const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedReason, setSelectedReason] = useState("");
@@ -16,6 +16,9 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
+    // Hydrate state from localStorage on mount
+    setState(loadPortalState());
+
     const handleStorageChange = () => {
       setState(loadPortalState());
     };
@@ -23,7 +26,7 @@ export default function SettingsPage() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const subscription = state.subscription;
+  const subscription = state?.subscription || getServerPortalState().subscription;
   const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
 
   const handlePause = () => {
