@@ -295,7 +295,7 @@ subscriptionsRouter.post('/:id/preview', async (req: Request, res: Response) => 
     const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / 86_400_000);
     const remainingDays = Math.max(0, Math.ceil((periodEnd.getTime() - effectiveAt.getTime()) / 86_400_000));
 
-    const creditAmount = (currentPlan.amount / totalDays) * (totalDays - remainingDays);
+    const creditAmount = (currentPlan.amount / totalDays) * remainingDays;
     const chargeAmount = (newPlan.amount / totalDays) * remainingDays;
     const netAmount = chargeAmount - creditAmount;
 
