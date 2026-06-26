@@ -47,7 +47,7 @@ SUBTOTAL                              ${formatNaira(invoice.amount)}
 TOTAL PAID                            ${formatNaira(invoice.amount)}
 ---------------------------------------------------------
 Status:         ${invoice.status.toUpperCase()}
-Transaction ID: tx_${Math.random().toString(36).substr(2, 9)}
+Transaction ID: tx_${Math.random().toString(36).slice(2, 11)}
 Orchestrated by: RailSwitch smart recovery engine
 =========================================================
          Thank you for choosing NaijaMusicPro!

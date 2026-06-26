@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { loadPortalState, savePortalState, formatNaira, PLANS, getServerPortalState } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, resetPortalState, formatNaira, PLANS, getServerPortalState } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/portal" },
@@ -86,7 +86,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   // Reset demo state completely
   const resetDemoState = () => {
-    localStorage.clear();
+    resetPortalState();
     const cleanState = loadPortalState();
     savePortalState(cleanState);
     setState(cleanState);
