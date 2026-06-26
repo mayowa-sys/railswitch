@@ -19,12 +19,12 @@ from app.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db_pool = await asyncpg.create_pool(settings.DATABASE_URL)
+    # app.state.db_pool = await asyncpg.create_pool(settings.DATABASE_URL)
     app.state.http_client = httpx.AsyncClient(
         base_url=settings.engine_url, timeout=10.0
     )
     yield
-    await app.state.db_pool.close()
+    # await app.state.db_pool.close()
     await app.state.http_client.aclose()
 
 

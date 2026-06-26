@@ -21,6 +21,7 @@ dev = [
     "mypy>=1.8.0",
 ]
 
+[tool.mypy]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
