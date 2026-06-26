@@ -23,6 +23,3 @@ export const InvoicesTable = pgTable("invoices", {
 }, (_t) => [
     merchantIsolationPolicy()
 ]);
-
-
-type InsertType = typeof InvoicesTable.$inferInsert;
