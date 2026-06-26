@@ -1,35 +1,45 @@
 from contextlib import asynccontextmanager
 
 import asyncpg
-from fastapi import FastAPI, Depends, Request
-from app.auth import ApiKeyRecord, get_current_merchant
+import httpx
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from auth import ApiKeyRecord, get_current_merchant
+from typing_extensions import Any
 
-DATABASE_URL = "postgresql://gateway_app:dev@localhost:5432/railswitch_test"
+from engine_client import (
+    CreateSubscriptionRequest,
+    EngineClient,
+    get_engine_client,
+)
+
+from db import db_conn
+from services.gateway.app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.db_pool = await asyncpg.create_pool(DATABASE_URL)
+    app.state.db_pool = await asyncpg.create_pool()
+    app.state.http_client = httpx.AsyncClient(
+        base_url=settings.engine_url, timeout=10.0
+    )
     yield
     await app.state.db_pool.close()
+    await app.state.http_client.aclose()
 
 
 app = FastAPI(title="RailSwitch Gateway", version="0.1.0", lifespan=lifespan)
 
-
-async def db_conn(
-    request: Request,
-    merchant: ApiKeyRecord = Depends(get_current_merchant),
-) -> asyncpg.Connection:
-    pool = request.app.state.db_pool
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                "SELECT set_config('app.current_merchant_id', $1, true)",
-                merchant.merchant_id,
-            )
-
-            yield conn
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3100",
+    ],  # Include production urls after deployment
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -48,3 +58,12 @@ async def list_webhook_events(conn: asyncpg.Connection = Depends(db_conn)) -> li
     # rows = await conn.fetch("SELECT merchant_id, event_type FROM webhook_events")
     # return [dict(r) for r in rows]
     return []
+
+
+@app.post("/v1/subscriptions")
+async def create_subscriptions(
+    payload: CreateSubscriptionRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> dict[str, Any]:
+    sub = await engine.create_subscriptions(payload)
+    return {"data": sub.model_dump(), "error": None, "meta": None}
