@@ -11,9 +11,9 @@ import {
   Menu,
   X,
   Bell,
-  ChevronDown,
   ArrowUpRight,
   Settings2,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -42,6 +43,7 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(true);
@@ -50,6 +52,15 @@ export default function DashboardShell({
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   }
+
+  const initials = user
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??";
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0c0c0e] font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden">
@@ -113,19 +124,25 @@ export default function DashboardShell({
 
         {/* User chip */}
         <div className="p-4 border-t border-zinc-200 dark:border-zinc-800/80">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors duration-200">
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors duration-200">
             <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-semibold text-xs text-white shrink-0">
-              MA
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                Mayowa Adegoke
+                {user?.name ?? "User"}
               </p>
               <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                mayowa@naijamusicpro.ng
+                {user?.email ?? ""}
               </p>
             </div>
-            <ChevronDown className="size-3.5 text-zinc-400 shrink-0" />
+            <button
+              onClick={logout}
+              className="p-1 rounded text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+              aria-label="Sign out"
+            >
+              <LogOut className="size-3.5 shrink-0" />
+            </button>
           </div>
         </div>
       </aside>
