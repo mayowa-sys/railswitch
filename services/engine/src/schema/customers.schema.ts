@@ -7,9 +7,11 @@ export const CustomersTable = pgTable('customers', {
     id: prefixedId('id', 'cus').primaryKey(), 
     merchant_id: text('merchant_id').notNull().references(() => MerchantsTable.id), 
     email: text('email').notNull(), 
+    name: text('name'),
     phone: text('phone'), 
     metadata: jsonb('metadata'), 
-    created_at: timestamp('created_at', {withTimezone: true}).defaultNow()
+    created_at: timestamp('created_at', {withTimezone: true}).defaultNow(),
+    updated_at: timestamp('updated_at', {withTimezone: true}).defaultNow(),
 }, (_t) => [
     merchantIsolationPolicy()
 ]);

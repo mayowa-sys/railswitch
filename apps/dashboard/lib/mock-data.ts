@@ -591,14 +591,14 @@ export const FAILED_PAYMENTS: FailedPayment[] = [
 // ─── Webhook Events ───────────────────────────────────────────────────────────
 
 export const WEBHOOK_EVENTS: WebhookEvent[] = [
-  { id: "wh_001", event: "subscription.payment.success", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T10:22:01Z", latency: 143 },
-  { id: "wh_002", event: "subscription.payment.failed", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T09:15:42Z", latency: 289 },
-  { id: "wh_003", event: "subscription.cascade.started", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 500, deliveredAt: "2026-06-22T09:15:43Z", latency: 4012 },
-  { id: "wh_004", event: "subscription.cascade.success", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-21T14:05:12Z", latency: 88 },
-  { id: "wh_005", event: "customer.subscription.cancelled", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 404, deliveredAt: "2026-06-20T18:44:09Z", latency: 1234 },
-  { id: "wh_006", event: "subscription.trial.ending", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-20T08:00:01Z", latency: 102 },
-  { id: "wh_007", event: "subscription.payment.success", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-19T10:22:05Z", latency: 77 },
-  { id: "wh_008", event: "subscription.status.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-19T10:23:10Z", latency: 201 },
+  { id: "wh_001", event: "charge.succeeded", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T10:22:01Z", latency: 143 },
+  { id: "wh_002", event: "invoice.payment_failed", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-22T09:15:42Z", latency: 289 },
+  { id: "wh_003", event: "dunning.cascade_started", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 500, deliveredAt: "2026-06-22T09:15:43Z", latency: 4012 },
+  { id: "wh_004", event: "invoice.recovered", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-21T14:05:12Z", latency: 88 },
+  { id: "wh_005", event: "subscription.cancelled", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 404, deliveredAt: "2026-06-20T18:44:09Z", latency: 1234 },
+  { id: "wh_006", event: "subscription.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-20T08:00:01Z", latency: 102 },
+  { id: "wh_007", event: "charge.succeeded", endpoint: "https://hooks.zapier.com/catch/1234/abcde", statusCode: 200, deliveredAt: "2026-06-19T10:22:05Z", latency: 77 },
+  { id: "wh_008", event: "subscription.updated", endpoint: "https://api.acme.ng/webhooks/rail", statusCode: 200, deliveredAt: "2026-06-19T10:23:10Z", latency: 201 },
 ];
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
@@ -747,12 +747,8 @@ export const WEBHOOK_DELIVERIES: WebhookDelivery[] = [
   { id: "del_010", endpointId: "wep_001", event: "dunning.cascade_started",     statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-18T11:00:00Z" },
   { id: "del_011", endpointId: "wep_001", event: "charge.succeeded",            statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-17T09:00:00Z" },
   { id: "del_012", endpointId: "wep_002", event: "subscription.updated",        statusCode: 500,  status: "failed",        attempts: 3, deliveredAt: "2026-06-16T08:00:00Z" },
-  { id: "del_004", endpointId: "wep_002", event: "subscription.cascade.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-21T14:05:12Z" },
-  { id: "del_005", endpointId: "wep_001", event: "customer.subscription.cancelled", statusCode: 404, status: "failed",       attempts: 3, deliveredAt: "2026-06-20T18:44:09Z" },
-  { id: "del_006", endpointId: "wep_001", event: "subscription.trial.ending",     statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-20T08:00:01Z" },
-  { id: "del_007", endpointId: "wep_002", event: "subscription.payment.success",  statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:22:05Z" },
-  { id: "del_008", endpointId: "wep_001", event: "subscription.status.updated",   statusCode: 200,  status: "delivered",     attempts: 1, deliveredAt: "2026-06-19T10:23:10Z" },
 ];
+
 // ─── Settings — API Keys ──────────────────────────────────────────────────────
 
 export type ApiKeyType = "live" | "test";

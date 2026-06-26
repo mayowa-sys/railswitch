@@ -114,7 +114,8 @@ export type SubscriptionEvent =
   // Intent from customer or merchant
   | { type: 'PAUSE_REQUESTED'; actor: Actor }
   | { type: 'RESUME_REQUESTED'; actor: Actor }
-  | { type: 'CANCEL_REQUESTED'; actor: Actor; reason?: string };
+  | { type: 'CANCEL_REQUESTED'; actor: Actor; reason?: string }
+  | { type: 'REFUND_REQUESTED'; actor: Actor; reason?: string };
 
 // ---------- Audit log contract (consumed by the wrapper) ----------
 
@@ -192,6 +193,7 @@ export const subscriptionMachine = setup({
         START_TRIAL: { target: 'trialing' },
         START_BILLING: { target: 'charging' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -199,6 +201,7 @@ export const subscriptionMachine = setup({
       on: {
         TRIAL_ENDED: { target: 'charging' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -210,6 +213,7 @@ export const subscriptionMachine = setup({
         },
         PAUSE_REQUESTED: { target: 'paused' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -232,6 +236,7 @@ export const subscriptionMachine = setup({
           },
         ],
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -240,6 +245,7 @@ export const subscriptionMachine = setup({
         RETRY_DUE: { target: 'charging' },
         RETRIES_EXHAUSTED: { target: 'va_fallback' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -255,6 +261,7 @@ export const subscriptionMachine = setup({
           { target: 'whatsapp_fallback', guard: 'ussdDisabled' },
         ],
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -266,6 +273,7 @@ export const subscriptionMachine = setup({
         },
         USSD_TIMEOUT: { target: 'whatsapp_fallback' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -277,6 +285,7 @@ export const subscriptionMachine = setup({
         },
         GRACE_EXPIRED: { target: 'past_due' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -284,6 +293,7 @@ export const subscriptionMachine = setup({
       on: {
         RESUME_REQUESTED: { target: 'active' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
     },
 
@@ -295,7 +305,12 @@ export const subscriptionMachine = setup({
         },
         DUNNING_EXHAUSTED: { target: 'cancelled' },
         CANCEL_REQUESTED: { target: 'cancelled' },
+        REFUND_REQUESTED: { target: 'refunded' },
       },
+    },
+
+    refunded: {
+      type: 'final',
     },
 
     cancelled: {
