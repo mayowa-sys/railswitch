@@ -5,10 +5,11 @@
     "moduleResolution": "bundler",
     "types": ["node"],
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "strict": true,
     "outDir": "dist",
     "rootDir": "src",
-    "skipLibCheck": true
+    "skipLibCheck": false
   },
   "include": ["src/**/*"]
 }

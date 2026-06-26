@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, numeric, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, pgEnum } from "drizzle-orm/pg-core";
 import { prefixedId } from "../utils/id_prefix.js";
 import { SubscriptionsTable } from "./subscriptions.schema.js";
 import { MerchantsTable } from "./merchants.schema.js";
@@ -11,8 +11,8 @@ export const InvoicesTable = pgTable("invoices", {
     subscription_id: text('subscription_id').notNull().references(() => SubscriptionsTable.id),
     merchant_id: text('merchant_id').notNull().references(() => MerchantsTable.id),
     status: InvoiceStatusEnum('status').default('open').notNull(),
-    amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
-    amount_paid: numeric('amount_paid', { precision: 10, scale: 2 }).default('0').notNull(),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    amount_paid: decimal('amount_paid', { precision: 10, scale: 2 }).default('0').notNull(),
     due_date: timestamp('due_date', { withTimezone: true }).notNull(),
     paid_at: timestamp('paid_at', { withTimezone: true }),
     next_attempt_at: timestamp('next_attempt_at', { withTimezone: true }),
@@ -21,3 +21,5 @@ export const InvoicesTable = pgTable("invoices", {
     merchantIsolationPolicy()
 ]);
 
+
+type InsertType = typeof InvoicesTable.$inferInsert;
