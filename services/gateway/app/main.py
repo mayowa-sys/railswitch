@@ -49,7 +49,7 @@ async def health() -> dict:
 
 @app.get("/v1/whoami")
 async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict:
-    return {"merchant": merchant.merchant_id, "mode": merchant.mode}
+    return {"merchant_id": merchant.merchant_id, "mode": merchant.mode}
 
 
 @app.get("/v1/webhook-events")
@@ -61,7 +61,7 @@ async def list_webhook_events(conn: asyncpg.Connection = Depends(db_conn)) -> li
 
 
 @app.post("/v1/subscriptions")
-async def create_subscriptions(
+async def create_subscription(
     payload: CreateSubscriptionRequest,
     engine: EngineClient = Depends(get_engine_client),
 ) -> dict[str, Any]:

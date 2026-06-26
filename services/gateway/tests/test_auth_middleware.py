@@ -10,7 +10,7 @@ def test_auth_middleware_ok():
         "/v1/whoami", headers={"Authorization": "Bearer sk_test_mockmerchanta"}
     )
     assert response.status_code == 200
-    assert response.json() == {"merchant": "merchant_a", "mode": "test"}
+    assert response.json() == {"merchant_id": "merchant_a", "mode": "test"}
 
 
 def test_auth_middleware_bad_key():
