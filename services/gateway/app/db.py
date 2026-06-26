@@ -17,7 +17,7 @@ async def db_conn(
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                "SELECT set_config('app.current_merchant, $1, true')",
+                "SELECT set_config('app.current_merchant_id', $1, true)",
                 merchant.merchant_id,
             )
             yield conn

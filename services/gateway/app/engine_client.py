@@ -2,12 +2,12 @@ from datetime import datetime
 
 import httpx
 from pydantic import BaseModel
-from typing_extensions import Any
-from decouple import config
+from typing import Any
 
 from fastapi import Request, Depends, Header
 
 from app.auth import ApiKeyRecord, get_current_merchant
+from app.config import settings
 
 
 class CreateSubscriptionRequest(BaseModel):
@@ -43,14 +43,14 @@ class EngineClient:
 
     def _headers(self) -> dict[str, str]:
         headers = {
-            "X-Internal-Auth": config("INTERNAL_AUTH_SECRET", cast=str),
-            "X-Merchant-id": self._merchant_id,
+            "X-Internal-Auth": settings.internal_auth_secret,
+            "X-Merchant-Id": self._merchant_id,
         }
         if self._idempotency_key:
             headers["Idempotency-Key"] = self._idempotency_key
         return headers
 
-    async def create_subscriptions(
+    async def create_subscription(
         self, payload: CreateSubscriptionRequest
     ) -> SubscriptionResponse:
         resp = await self._client.post(

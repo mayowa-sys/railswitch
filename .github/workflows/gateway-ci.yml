@@ -25,12 +25,7 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: ruff check app/
       - run: mypy app/
-      - name: Run Tests
-        env:
-          DATABASE_URL: postgres://dev:dev@localhost:5432/railswitch
-          internal_auth_secret: local-dev-shared-secret
-          engine_url: http://localhost:3001
-        run: pytest
+      - run: pytest
 
   deploy:
     needs: ci
