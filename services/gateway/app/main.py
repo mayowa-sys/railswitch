@@ -1,42 +1,42 @@
-import re
-from dataclasses import dataclass
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .routes.webhooks import router as webhooks_router
+import httpx
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from app.auth import ApiKeyRecord, get_current_merchant
+from typing_extensions import Any
 
-app = FastAPI(title="RailSwitch Gateway", version="0.1.0")
+from app.engine_client import (
+    CreateSubscriptionRequest,
+    EngineClient,
+    get_engine_client,
+)
 
-bearer_scheme = HTTPBearer()
-
-_KEY_FORMAT = re.compile(r"^sk_(live|test)_[A-Za-z0-9]{8,}$")
-
-
-@dataclass(frozen=True)
-class ApiKeyRecord:
-    merchant_id: str
-    mode: str
+from app.config import settings
+from app.routes.webhooks import router as webhooks_router
 
 
-MOCK_KEYS = {
-    "sk_test_mockmerchanta": ApiKeyRecord("merchant_a", "test"),
-    "sk_live_mockmerchantb": ApiKeyRecord("merchant_b", "live"),
-}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.http_client = httpx.AsyncClient(
+        base_url=settings.engine_url, timeout=10.0
+    )
+    yield
+    await app.state.http_client.aclose()
 
 
-async def get_current_merchant(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> ApiKeyRecord:
-    token = credentials.credentials
+app = FastAPI(title="RailSwitch Gateway", version="0.1.0", lifespan=lifespan)
 
-    if not _KEY_FORMAT.match(token):
-        raise HTTPException(status_code=401, detail="Malformed API Key")
-
-    record = MOCK_KEYS.get(token)
-    if record is None:
-        raise HTTPException(status_code=401, detail="Unknown or revoked API key")
-
-    return record
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3100",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -47,6 +47,20 @@ async def health() -> dict:
 @app.get("/v1/whoami")
 async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict:
     return {"merchant": merchant.merchant_id, "mode": merchant.mode}
+
+
+@app.get("/v1/webhook-events")
+async def list_webhook_events() -> list:
+    return []
+
+
+@app.post("/v1/subscriptions")
+async def create_subscription(
+    payload: CreateSubscriptionRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> dict[str, Any]:
+    sub = await engine.create_subscription(payload)
+    return {"data": sub.model_dump(), "error": None, "meta": None}
 
 
 app.include_router(webhooks_router)
