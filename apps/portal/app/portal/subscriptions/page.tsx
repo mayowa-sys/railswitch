@@ -60,7 +60,7 @@ export default function SubscriptionsPage() {
       const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / 86_400_000);
       const remainingDays = Math.max(0, Math.ceil((periodEnd.getTime() - today.getTime()) / 86_400_000));
 
-      const creditAmount = (currentPlan.price / totalDays) * (totalDays - remainingDays);
+      const creditAmount = (currentPlan.price / totalDays) * remainingDays;
       const chargeAmount = (newPlan.price / totalDays) * remainingDays;
       const netAmount = chargeAmount - creditAmount;
 
