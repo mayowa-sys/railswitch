@@ -71,8 +71,12 @@ def _verify_signature(
 
 async def _forward_to_engine(payload: bytes, request_id: str) -> None:
     """Forward a verified webhook payload to the engine."""
-    engine_url = os.getenv("ENGINE_INTERNAL_URL", os.getenv("ENGINE_URL", "http://localhost:3001"))
-    internal_secret = os.getenv("ENGINE_INTERNAL_SECRET", os.getenv("INTERNAL_AUTH_SECRET", ""))
+    engine_url = os.getenv(
+        "ENGINE_INTERNAL_URL", os.getenv("ENGINE_URL", "http://localhost:3001")
+    )
+    internal_secret = os.getenv(
+        "ENGINE_INTERNAL_SECRET", os.getenv("INTERNAL_AUTH_SECRET", "")
+    )
 
     try:
         async with httpx.AsyncClient() as client:
@@ -131,7 +135,9 @@ async def nomba_webhook(
 
     webhook_secret = os.getenv("NOMBA_WEBHOOK_SECRET", "")
     if webhook_secret:
-        if not _verify_signature(payload, nomba_signature, nomba_timestamp, webhook_secret):
+        if not _verify_signature(
+            payload, nomba_signature, nomba_timestamp, webhook_secret
+        ):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
     else:
         logger.warning(

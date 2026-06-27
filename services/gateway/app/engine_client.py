@@ -14,6 +14,7 @@ from app.config import settings
 
 # ====================== SUBSCRIPTIONS ==================
 
+
 class CreateSubscriptionRequest(BaseModel):
     customer_id: str
     plan_id: str
@@ -38,6 +39,7 @@ class SubscriptionResponse(BaseModel):
 
 
 # =================== PLANS ===========================
+
 
 class CreatePlanRequest(BaseModel):
     name: str
@@ -80,6 +82,7 @@ class AllPlans(BaseModel):
 
 # ============== INVOICES ================
 
+
 class CreateInvoice(BaseModel):
     subscription_id: str
     amount: decimal
@@ -104,6 +107,7 @@ class Invoice(BaseModel):
 
 # ================ CUSTOMERS ==============
 
+
 class CreateCustomerRequest(BaseModel):
     email: str
     name: str
@@ -124,7 +128,7 @@ class Customer(BaseModel):
 
 class EngineClient:
     def __init__(
-            self, client: httpx.AsyncClient, merchant_id: str, idempotency_key: str | None
+        self, client: httpx.AsyncClient, merchant_id: str, idempotency_key: str | None
     ):
         self._client = client
         self._merchant_id = merchant_id
@@ -140,7 +144,9 @@ class EngineClient:
         return headers
 
     async def _request(self, method: str, path: str, **kwargs) -> dict:
-        resp = await self._client.request(method, path, headers=self._headers(), **kwargs)
+        resp = await self._client.request(
+            method, path, headers=self._headers(), **kwargs
+        )
         if resp.status_code >= 400:
             try:
                 body = resp.json()
@@ -150,8 +156,13 @@ class EngineClient:
             raise HTTPException(status_code=resp.status_code, detail=detail)
         return resp.json()
 
-    async def _paginated_get(self, path: str, starting_after: str | None, ending_before: str | None, limit: int) -> \
-            tuple[list[dict], bool]:
+    async def _paginated_get(
+        self,
+        path: str,
+        starting_after: str | None,
+        ending_before: str | None,
+        limit: int,
+    ) -> tuple[list[dict], bool]:
         params = dict[str, str | int] = {"limit": limit}
         if starting_after:
             params["starting_after"] = starting_after
@@ -163,7 +174,7 @@ class EngineClient:
     # =========== SUBSCRIPTIONS ============
 
     async def create_subscription(
-            self, payload: CreateSubscriptionRequest
+        self, payload: CreateSubscriptionRequest
     ) -> SubscriptionResponse:
         resp = await self._request(
             "POST",
@@ -172,17 +183,27 @@ class EngineClient:
         )
         return SubscriptionResponse.model_validate(resp)
 
-    async def list_subscriptions(self, starting_after: str | None,
-                                 ending_before: str | None, limit: int) -> tuple[list[SubscriptionResponse], bool]:
-        rows, has_more = self._paginated_get("/internal/v1/subscriptions", starting_after=starting_after, ending_before=ending_before, limit=limit)
+    async def list_subscriptions(
+        self, starting_after: str | None, ending_before: str | None, limit: int
+    ) -> tuple[list[SubscriptionResponse], bool]:
+        rows, has_more = self._paginated_get(
+            "/internal/v1/subscriptions",
+            starting_after=starting_after,
+            ending_before=ending_before,
+            limit=limit,
+        )
         return [SubscriptionResponse.model_validate(r) for r in rows], has_more
 
     async def get_subscription(self, sub_id: str) -> SubscriptionResponse:
         resp = await self._request("GET", f"/internal/v1/subscriptions/{sub_id}")
         return SubscriptionResponse.model_validate(resp)
 
-    async def _subscription_action(self, action: str, sub_id: str) -> SubscriptionResponse:
-        body = await self._request("POST", f"/internal/v1/subscriptions/{sub_id}/{action}")
+    async def _subscription_action(
+        self, action: str, sub_id: str
+    ) -> SubscriptionResponse:
+        body = await self._request(
+            "POST", f"/internal/v1/subscriptions/{sub_id}/{action}"
+        )
         return SubscriptionResponse.model_validate(body)
 
     async def pause_subscription(self, sub_id: str) -> SubscriptionResponse:
@@ -197,14 +218,19 @@ class EngineClient:
     # ============= PLANS ===================
 
     async def create_plan(self, payload: CreatePlanRequest) -> Plan:
-        resp = await self._request("POST", "/internal/v1/plans",
-                                   json=payload.model_dump())
+        resp = await self._request(
+            "POST", "/internal/v1/plans", json=payload.model_dump()
+        )
         return Plan.model_validate(resp)
 
-    async def list_plans(self, starting_after: str | None,
-                         ending_before: str | None, limit: int) -> tuple[list[Plan], bool]:
+    async def list_plans(
+        self, starting_after: str | None, ending_before: str | None, limit: int
+    ) -> tuple[list[Plan], bool]:
         rows, has_more = await self._paginated_get(
-            "internal/v1/plans", starting_after=starting_after, ending_before=ending_before, limit=limit
+            "internal/v1/plans",
+            starting_after=starting_after,
+            ending_before=ending_before,
+            limit=limit,
         )
         return [Plan.model_validate(r) for r in rows], has_more
 
@@ -214,7 +240,9 @@ class EngineClient:
 
     async def update_plan(self, plan_id: str, payload: UpdatePlanRequest) -> Plan:
         body = await self._request(
-            "PATCH", f"/internal/v1/plans/{plan_id}", json=payload.model_dump(exclude_none=True)
+            "PATCH",
+            f"/internal/v1/plans/{plan_id}",
+            json=payload.model_dump(exclude_none=True),
         )
         return Plan.model_validate(body)
 
@@ -224,7 +252,9 @@ class EngineClient:
     # ================ CUSTOMERS ==================
 
     async def create_customer(self, payload: CreateCustomerRequest) -> Customer:
-        resp = self._request("POST", "/internal/v1/customers", json=payload.model_dump())
+        resp = self._request(
+            "POST", "/internal/v1/customers", json=payload.model_dump()
+        )
         return Customer.model_validate(resp)
 
     async def get_customer(self, customer_id: str) -> Customer:
@@ -233,9 +263,15 @@ class EngineClient:
 
     # =========== INVOICES ==================
 
-    async def list_invoices(self, starting_after: str, ending_before: str, limit: int) -> tuple[list[Invoice], bool]:
-        rows, has_more = await self._paginated_get("/internal/v1/invoices", starting_after=starting_after,
-                                                   ending_before=ending_before, limit=limit)
+    async def list_invoices(
+        self, starting_after: str, ending_before: str, limit: int
+    ) -> tuple[list[Invoice], bool]:
+        rows, has_more = await self._paginated_get(
+            "/internal/v1/invoices",
+            starting_after=starting_after,
+            ending_before=ending_before,
+            limit=limit,
+        )
         return [Invoice.model_validate(r) for r in rows], has_more
 
     async def get_invoice(self, invoice_id: str) -> Invoice:
@@ -243,7 +279,9 @@ class EngineClient:
         return Invoice.model_validate(resp)
 
     async def _invoice_action(self, invoice_id: str, action: str) -> Invoice:
-        resp = await self._request("POST", f"/internal/v1/invoices/{invoice_id}/{action}")
+        resp = await self._request(
+            "POST", f"/internal/v1/invoices/{invoice_id}/{action}"
+        )
         return Invoice.model_validate(resp)
 
     async def retry_invoice(self, invoice_id: str):
@@ -252,10 +290,11 @@ class EngineClient:
     async def refund_invoice(self, invoice_id):
         return await self._invoice_action(invoice_id, "refund")
 
+
 async def get_engine_client(
-        request: Request,
-        merchant: ApiKeyRecord = Depends(get_current_merchant),
-        idempotency_key: str | None = Header(default=None),
+    request: Request,
+    merchant: ApiKeyRecord = Depends(get_current_merchant),
+    idempotency_key: str | None = Header(default=None),
 ) -> EngineClient:
     return EngineClient(
         client=request.app.state.http_client,

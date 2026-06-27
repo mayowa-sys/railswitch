@@ -18,12 +18,19 @@ class Envelope(BaseModel):
 
 
 async def handle_http_exceptions(request: Request, exc: HTTPException) -> JSONResponse:
-    body = Envelope(error=ErrorDetail(code=str(exc.status_code), message=str(exc.detail)))
+    body = Envelope(
+        error=ErrorDetail(code=str(exc.status_code), message=str(exc.detail))
+    )
     return JSONResponse(status_code=exc.status_code, content=body.model_dump())
 
 
-async def handle_http_validation_errors(request: Request, exc: RequestValidationError) -> JSONResponse:
-    body = Envelope(error=ErrorDetail(code="422", message="Validation Error"), meta={"errors": exc.errors()})
+async def handle_http_validation_errors(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    body = Envelope(
+        error=ErrorDetail(code="422", message="Validation Error"),
+        meta={"errors": exc.errors()},
+    )
     return JSONResponse(status_code=422, content=body.model_dump())
 
 
