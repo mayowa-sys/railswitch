@@ -25,4 +25,23 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: ruff check app/
       - run: mypy app/
-      - run: pytest
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgres://dev:dev@localhost:5432/railswitch
+          INTERNAL_AUTH_SECRET: local-dev-shared-secret
+          ENGINE_URL: http://localhost:3001
+        run: pytest
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-gateway
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only --config fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_GATEWAY }}
