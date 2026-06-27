@@ -38,6 +38,12 @@ class SubscriptionResponse(BaseModel):
     updated_at: datetime
 
 
+class UpdateSubscriptionRequest(BaseModel):
+    plan_id: str | None = None
+    cancel_at_period_end: bool | None = None
+    metadata: dict[str, Any] | None = None
+
+
 # =================== PLANS ===========================
 
 
@@ -215,6 +221,16 @@ class EngineClient:
     async def cancel_subscription(self, sub_id: str) -> SubscriptionResponse:
         return await self._subscription_action(sub_id=sub_id, action="cancel")
 
+    async def update_subscription(
+        self, sub_id: str, payload: UpdateSubscriptionRequest
+    ) -> SubscriptionResponse:
+        body = await self._request(
+            "PATCH",
+            f"/internal/v1/subscriptions/{sub_id}",
+            json=payload.model_dump(exclude_none=True),
+        )
+        return SubscriptionResponse.model_validate(body)
+
     # ============= PLANS ===================
 
     async def create_plan(self, payload: CreatePlanRequest) -> Plan:
@@ -227,7 +243,7 @@ class EngineClient:
         self, starting_after: str | None, ending_before: str | None, limit: int
     ) -> tuple[list[Plan], bool]:
         rows, has_more = await self._paginated_get(
-            "internal/v1/plans",
+            "/internal/v1/plans",
             starting_after=starting_after,
             ending_before=ending_before,
             limit=limit,
@@ -252,7 +268,7 @@ class EngineClient:
     # ================ CUSTOMERS ==================
 
     async def create_customer(self, payload: CreateCustomerRequest) -> Customer:
-        resp = self._request(
+        resp = await self._request(
             "POST", "/internal/v1/customers", json=payload.model_dump()
         )
         return Customer.model_validate(resp)
