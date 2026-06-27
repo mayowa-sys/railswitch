@@ -222,6 +222,16 @@ class EngineClient:
     async def cancel_subscription(self, sub_id: str) -> SubscriptionResponse:
         return await self._subscription_action(sub_id=sub_id, action="cancel")
 
+    async def preview_subscription(
+        self, sub_id: str, new_plan_id: str, effective_date: str | None = None
+    ) -> dict:
+        body: dict[str, str] = {"new_plan_id": new_plan_id}
+        if effective_date:
+            body["effective_date"] = effective_date
+        return await self._request(
+            "POST", f"/internal/v1/subscriptions/{sub_id}/preview", json=body
+        )
+
     async def update_subscription(
         self, sub_id: str, payload: UpdateSubscriptionRequest
     ) -> SubscriptionResponse:
