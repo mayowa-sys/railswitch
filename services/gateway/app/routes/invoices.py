@@ -6,7 +6,7 @@ from app.engine_client import (
 )
 from app.envelope import Envelope
 
-router = APIRouter(prefix="/v1/invoice", tags=["invoices"])
+router = APIRouter(prefix="/v1/invoices", tags=["invoices"])
 
 
 @router.get("")
@@ -30,7 +30,7 @@ async def get_invoice(
     return Envelope(data=invoice.model_dump())
 
 
-@router.post("/{invoice_id/retry")
+@router.post("/{invoice_id}/retry")
 async def retry_invoice(
     invoice_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:

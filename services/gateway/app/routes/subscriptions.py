@@ -58,7 +58,7 @@ async def resume_sub(
     return Envelope(data=sub.model_dump())
 
 
-@router.post("/subscription_id}/cancel")
+@router.post("/{subscription_id}/cancel")
 async def cancel_sub(
     subscription_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:

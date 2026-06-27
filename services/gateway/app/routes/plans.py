@@ -48,7 +48,7 @@ async def update_plan(
     return Envelope(data=plan.model_dump())
 
 
-@router.delete("/plan_id")
+@router.delete("/{plan_id}")
 async def delete_plan(
     plan_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
