@@ -10,12 +10,12 @@ The Engine listens on `http://engine:3001` (Docker network) or `http://localhost
 
 Every request must include:
 
-| Header              | Value                                      | Required |
-|---------------------|--------------------------------------------|----------|
-| `X-Internal-Auth`   | A pre-shared secret (`ENGINE_INTERNAL_SECRET`) | Yes   |
-| `X-Merchant-Id`     | UUID of the merchant (for multi‑tenancy)   | Yes      |
-| `X-Request-Id`      | UUID for idempotency and tracing           | Yes      |
-| `Content-Type`      | `application/json`                         | Yes      |
+| Header            | Value                                          | Required |
+|-------------------|------------------------------------------------|----------|
+| `X-Internal-Auth` | A pre-shared secret (`ENGINE_INTERNAL_SECRET`) | Yes      |
+| `X-Merchant-Id`   | UUID of the merchant (for multi‑tenancy)       | Yes      |
+| `X-Request-Id`    | UUID for idempotency and tracing               | Yes      |
+| `Content-Type`    | `application/json`                             | Yes      |
 
 **Mutation endpoints** (POST, PATCH) additionally require:
 
