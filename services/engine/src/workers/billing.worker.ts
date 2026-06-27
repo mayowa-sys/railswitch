@@ -1,6 +1,6 @@
 import { Job, Worker } from "bullmq";
 import { BillingHandler } from "../rails/billing-handler";
-import {  BillingsQueue } from "../queues/billings.queue";
+import { BillingsQueue } from "../queues/billings.queue";
 import { GlobalLogger } from "../utils/logger";
 import { db } from "../db/client";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
@@ -117,7 +117,10 @@ class BillingService {
     });
   }
 
-  async processCharge(data: ChargeSubscriptionData, billingHandler: BillingHandler) {
+  async processCharge(
+    data: ChargeSubscriptionData,
+    billingHandler: BillingHandler,
+  ) {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
@@ -196,28 +199,30 @@ class BillingService {
   }
 }
 
-export const BillingWorker = new Worker("billings", async (job: Job) => {
-  const logger = new GlobalLogger("Billing Worker");
-  const billingService = new BillingService(
-    new BillingHelper(),
-    logger,
-  );
+export const BillingWorker = new Worker(
+  "billings",
+  async (job: Job) => {
+    const logger = new GlobalLogger("Billing Worker");
+    const billingService = new BillingService(new BillingHelper(), logger);
 
-  try {
-    switch (job.name) {
-      case "poll_subscriptions":
-        await billingService.pollForPendingSubscriptions();
-      case "process_charge":{
-        const merchantId = (job.data as ChargeSubscriptionData).merchantId;
-        const billingHandler = createBillingHandler(merchantId);
-        await billingService.processCharge(job.data, billingHandler);
-        break;
+    try {
+      switch (job.name) {
+        case "poll_subscriptions":
+          await billingService.pollForPendingSubscriptions();
+          break;
+        case "process_charge": {
+          const merchantId = (job.data as ChargeSubscriptionData).merchantId;
+          const billingHandler = createBillingHandler(merchantId);
+          await billingService.processCharge(job.data, billingHandler);
+          break;
+        }
+        default:
+          throw new Error(`Unknown Job : ${job.name}`);
       }
-      default:
-        throw new Error(`Unknown Job : ${job.name}`);
+    } catch (err) {
+      logger.error(`Job Failed: ${job.name}`, err);
+      throw err;
     }
-  } catch (err) {
-    logger.error(`Job Failed: ${job.name}`, err);
-    throw err;
-  }
-}, {connection: {url: process.env.REDIS_URL!}});
+  },
+  { connection: { url: process.env.REDIS_URL! } },
+);

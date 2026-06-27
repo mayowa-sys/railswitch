@@ -1,6 +1,5 @@
 import { Queue } from 'bullmq';
 import { queueOptions } from '../config/queue.config';
-import { createBillingHandler } from '../rails/billing-handler-dependencies';
 
 export const BillingsQueue = new Queue('billings', queueOptions);
 
