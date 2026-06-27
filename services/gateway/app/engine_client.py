@@ -141,10 +141,11 @@ class EngineClient:
         self._idempotency_key = idempotency_key
 
     def _headers(self) -> dict[str, str]:
-        headers = {
+        headers: dict[str, str] = {
             "X-Internal-Auth": settings.internal_auth_secret,
-            "X-Merchant-Id": self._merchant_id,
         }
+        if self._merchant_id:
+            headers["X-Merchant-Id"] = self._merchant_id
         if self._idempotency_key:
             headers["Idempotency-Key"] = self._idempotency_key
         return headers
@@ -306,6 +307,18 @@ class EngineClient:
     async def refund_invoice(self, invoice_id):
         return await self._invoice_action(invoice_id, "refund")
 
+    # =========== AUTH ===================
+
+    async def register(self, payload: dict) -> dict:
+        return await self._request(
+            "POST", "/internal/v1/auth/register", json=payload
+        )
+
+    async def login(self, payload: dict) -> dict:
+        return await self._request(
+            "POST", "/internal/v1/auth/login", json=payload
+        )
+
 
 async def get_engine_client(
     request: Request,
@@ -316,4 +329,12 @@ async def get_engine_client(
         client=request.app.state.http_client,
         merchant_id=merchant.merchant_id,
         idempotency_key=idempotency_key,
+    )
+
+
+async def get_engine_client_no_auth(request: Request) -> EngineClient:
+    return EngineClient(
+        client=request.app.state.http_client,
+        merchant_id="",
+        idempotency_key=None,
     )

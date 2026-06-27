@@ -11,7 +11,7 @@ from app.routes.webhooks import router as webhooks_router
 
 from app.envelope import register_envelope_handlers
 
-from app.routes import plans, customers, invoices, subscriptions
+from app.routes import plans, customers, invoices, subscriptions, auth
 
 
 @asynccontextmanager
@@ -54,6 +54,7 @@ async def list_webhook_events() -> list:
 
 
 app.include_router(webhooks_router)
+app.include_router(auth.router)
 app.include_router(plans.router)
 app.include_router(customers.router)
 app.include_router(subscriptions.router)

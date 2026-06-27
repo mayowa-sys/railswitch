@@ -47,7 +47,9 @@ async function request<T = unknown>(
     throw new ApiError(res.status, message);
   }
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  // Gateway wraps responses in { data, error, meta } envelope.
+  return (json.data ?? json) as T;
 }
 
 export class ApiError extends Error {
@@ -60,10 +62,11 @@ export class ApiError extends Error {
   }
 }
 
-// ---------- typed API surface ----------
+// ---------- types ----------
 
 export interface GatewayPlan {
   id: string;
+  merchant_id: string;
   name: string;
   description?: string;
   amount: number;
@@ -71,41 +74,98 @@ export interface GatewayPlan {
   interval: string;
   interval_count: number;
   is_active: boolean;
+  metadata?: Record<string, unknown>;
   created_at: string;
+  updated_at: string;
 }
 
 export interface GatewaySubscription {
   id: string;
+  merchant_id: string;
   customer_id: string;
   plan_id: string;
-  state: string;
-  amount: number;
+  status: string;
+  current_period_start: string;
+  current_period_end: string;
+  trial_end?: string;
+  cancel_at_period_end: boolean;
+  metadata?: Record<string, unknown>;
   created_at: string;
-  next_billing_at?: string;
+  updated_at: string;
 }
 
 export interface GatewayCustomer {
   id: string;
+  merchant_id: string;
   name: string;
   email: string;
   phone?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GatewayInvoice {
+  id: string;
+  subscription_id: string;
+  merchant_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description?: string;
+  due_date: string;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
+// ---------- API surface ----------
+
 export const api = {
-  // Plans
+  auth: {
+    login: (email: string, password: string) =>
+      request<{ merchant: { id: string; name: string; email: string; company: string }; api_key_prefix: string }>(
+        "/v1/auth/login",
+        { method: "POST", body: { email, password } },
+      ),
+    register: (name: string, email: string, password: string) =>
+      request<{ merchant: { id: string; name: string; email: string; company: string }; api_key: string }>(
+        "/v1/auth/register",
+        { method: "POST", body: { name, email, password } },
+      ),
+  },
+
   plans: {
     list: (apiKey: string) =>
-      request<{ data: GatewayPlan[] }>("/v1/plans", { apiKey }),
+      request<GatewayPlan[]>("/v1/plans", { apiKey }),
+    get: (id: string, apiKey: string) =>
+      request<GatewayPlan>(`/v1/plans/${id}`, { apiKey }),
+    create: (data: Record<string, unknown>, apiKey: string) =>
+      request<GatewayPlan>("/v1/plans", { method: "POST", body: data, apiKey }),
+    update: (id: string, data: Record<string, unknown>, apiKey: string) =>
+      request<GatewayPlan>(`/v1/plans/${id}`, { method: "PATCH", body: data, apiKey }),
   },
 
-  // Customers
+  subscriptions: {
+    list: (apiKey: string) =>
+      request<GatewaySubscription[]>("/v1/subscriptions", { apiKey }),
+    get: (id: string, apiKey: string) =>
+      request<GatewaySubscription>(`/v1/subscriptions/${id}`, { apiKey }),
+    create: (data: Record<string, unknown>, apiKey: string) =>
+      request<GatewaySubscription>("/v1/subscriptions", { method: "POST", body: data, apiKey }),
+  },
+
   customers: {
     get: (id: string, apiKey: string) =>
-      request<{ data: GatewayCustomer }>(`/v1/customers/${id}`, { apiKey }),
+      request<GatewayCustomer>(`/v1/customers/${id}`, { apiKey }),
+    create: (data: Record<string, unknown>, apiKey: string) =>
+      request<GatewayCustomer>("/v1/customers", { method: "POST", body: data, apiKey }),
   },
 
-  // Health
+  invoices: {
+    list: (apiKey: string) =>
+      request<GatewayInvoice[]>("/v1/invoices", { apiKey }),
+  },
+
   health: () => request<{ status: string }>("/health"),
 };
 
