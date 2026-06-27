@@ -18,10 +18,14 @@ def test_auth_middleware_bad_key():
         "/v1/whoami", headers={"Authorization": "Bearer sk__mockmerchanta"}
     )
     assert response.status_code == 401
-    assert response.json() == {"detail": "Malformed API Key"}
+    body = response.json()
+    assert body["error"]["code"] == "401"
+    assert body["error"]["message"] == "Malformed API Key"
 
 
 def test_auth_middleware_no_key():
     response = client.get("/v1/whoami")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    body = response.json()
+    assert body["error"]["code"] == "401"
+    assert body["error"]["message"] == "Not authenticated"
