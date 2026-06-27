@@ -10,6 +10,8 @@ import { PaymentMethodsTable } from "../schema/payment_methods.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
 import { getNextBillingDate } from "../utils/interval_util";
 import { createBillingHandler } from "../rails/billing-handler-dependencies";
+import { nextRetryAt } from "../rails/retry-timing";
+import type { DunningPolicy } from "../state-machines/subscription";
 
 interface ChargeSubscriptionData {
   subscriptionId: string;
@@ -19,12 +21,33 @@ interface ChargeSubscriptionData {
   merchantId: string;
 }
 
+interface TrialConversionData {
+  subscriptionId: string;
+  customerId: string;
+  planId: string;
+  merchantId: string;
+}
+
+type BillingJobData = ChargeSubscriptionData | TrialConversionData;
+
 class BillingHelper {
   async getPendingSubscriptions() {
     return db
       .select()
       .from(SubscriptionsTable)
-      .where(lte(SubscriptionsTable.next_billing_at, sql`now`));
+      .where(lte(SubscriptionsTable.next_billing_at, sql`now()`));
+  }
+
+  async getEndingTrials() {
+    return db
+      .select()
+      .from(SubscriptionsTable)
+      .where(
+        and(
+          lte(SubscriptionsTable.trial_ends_at, sql`now()`),
+          eq(SubscriptionsTable.state, "trialing"),
+        ),
+      );
   }
 
   async getPlanById(id: string) {
@@ -76,6 +99,40 @@ class BillingHelper {
       })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
+
+  async updateSubscriptionState(subscriptionId: string, state: string) {
+    await db
+      .update(SubscriptionsTable)
+      .set({ state: state as typeof SubscriptionsTable.$inferSelect["state"] })
+      .where(eq(SubscriptionsTable.id, subscriptionId));
+  }
+}
+
+function buildChargeData(
+  sub: typeof SubscriptionsTable.$inferSelect,
+): ChargeSubscriptionData {
+  return {
+    subscriptionId: sub.id,
+    customerId: sub.customer_id,
+    planId: sub.plan_id,
+    idemKey: `billing:${sub.id}:${Date.now()}`,
+    merchantId: sub.merchant_id,
+  };
+}
+
+function buildTrialData(
+  sub: typeof SubscriptionsTable.$inferSelect,
+): TrialConversionData {
+  return {
+    subscriptionId: sub.id,
+    customerId: sub.customer_id,
+    planId: sub.plan_id,
+    merchantId: sub.merchant_id,
+  };
+}
+
+function isChargeData(data: BillingJobData): data is ChargeSubscriptionData {
+  return "idemKey" in data;
 }
 
 class BillingService {
@@ -84,34 +141,41 @@ class BillingService {
     private logger: GlobalLogger,
   ) {}
 
-  private buildChargeData(
-    sub: typeof SubscriptionsTable.$inferSelect,
-  ): ChargeSubscriptionData {
-    return {
-      subscriptionId: sub.id,
-      customerId: sub.customer_id,
-      planId: sub.plan_id,
-      idemKey: `billing:${sub.id}:${Date.now()}`,
-      merchantId: sub.merchant_id,
-    };
-  }
-
   async pollForPendingSubscriptions() {
-    this.logger.info("Starting Poll..");
+    this.logger.info("Polling for due subscriptions...");
     const subscriptions = await this.billingHelper.getPendingSubscriptions();
 
     const jobs = await Promise.allSettled(
-      subscriptions.map((sub) => {
-        return BillingsQueue.add("charge", this.buildChargeData(sub), {
-          delay: 2000,
-        });
-      }),
+      subscriptions.map((sub) =>
+        BillingsQueue.add("charge", buildChargeData(sub), { delay: 2000 }),
+      ),
     );
 
     jobs.forEach((result, index) => {
       if (result.status === "rejected") {
         this.logger.error(
           `Failed to queue subscription ${subscriptions[index].id}`,
+        );
+      }
+    });
+  }
+
+  async pollForEndingTrials() {
+    this.logger.info("Polling for ending trials...");
+    const trials = await this.billingHelper.getEndingTrials();
+
+    const jobs = await Promise.allSettled(
+      trials.map((sub) =>
+        BillingsQueue.add("trial_conversion", buildTrialData(sub), {
+          delay: 1000,
+        }),
+      ),
+    );
+
+    jobs.forEach((result, index) => {
+      if (result.status === "rejected") {
+        this.logger.error(
+          `Failed to queue trial conversion ${trials[index].id}`,
         );
       }
     });
@@ -153,16 +217,54 @@ class BillingService {
     }
   }
 
+  async processTrialConversion(data: TrialConversionData) {
+    const plan = await this.billingHelper.getPlanById(data.planId);
+    const now = new Date();
+
+    const [invoice] = await db
+      .insert(InvoicesTable)
+      .values({
+        subscription_id: data.subscriptionId,
+        merchant_id: data.merchantId,
+        amount: `${plan.amount}`,
+        currency: "NGN",
+        description: `First invoice after trial — ${plan.name}`,
+        due_date: now,
+      })
+      .returning();
+
+    if (!invoice) {
+      throw new Error(
+        `Trial invoice for subscription ${data.subscriptionId} could not be created`,
+      );
+    }
+
+    // Schedule first billing — same as a regular charge but marks trial end
+    const nextDate = getNextBillingDate(now, plan.interval, plan.interval_count);
+    await this.billingHelper.updateSubscriptionNextBillingDate(
+      data.subscriptionId,
+      nextDate,
+    );
+
+    this.logger.info("Trial converted to paid", {
+      subscriptionId: data.subscriptionId,
+      invoiceId: invoice.id,
+      nextBilling: nextDate.toISOString(),
+    });
+  }
+
   private async handleSuccessfulPayment(
     subscriptionId: string,
     invoiceId: string,
     plan: Plan,
   ) {
-    // Mark invoice as paid
     await this.billingHelper.markInvoiceAsPaid(invoiceId, `${plan.amount}`);
 
-    // Schedule next billing
-    const nextBillingDate = this.calculateNextBillingDate(plan);
+    const nextBillingDate = getNextBillingDate(
+      new Date(),
+      plan.interval,
+      plan.interval_count,
+    );
     await this.billingHelper.updateSubscriptionNextBillingDate(
       subscriptionId,
       nextBillingDate,
@@ -170,38 +272,41 @@ class BillingService {
   }
 
   private async handleFailedPayment(subId: string, invoiceId: string) {
-    const subscriptions = await db
+    const [subscription] = await db
       .select()
       .from(SubscriptionsTable)
       .where(eq(SubscriptionsTable.id, subId));
 
-    const shouldRetry =
-      subscriptions[0].retry_count < subscriptions[0].policy.maxRetries;
+    if (!subscription) return;
 
-    // set the date of the date of the next billing to 3 days for now until you start the dunning policy
+    const shouldRetry =
+      subscription.retry_count < subscription.policy.maxRetries;
+
+    // Use retry timing engine for smart scheduling
+    const nextAttempt = nextRetryAt({
+      currentTime: new Date(),
+      retryCount: subscription.retry_count,
+      policy: subscription.policy as DunningPolicy,
+    });
+
     await db
       .update(InvoicesTable)
       .set({
-        status: `${shouldRetry ? "pending_retry" : "uncollectible"}`,
-        next_attempt_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        status: shouldRetry ? "pending_retry" : "uncollectible",
+        next_attempt_at: nextAttempt,
       })
       .where(eq(InvoicesTable.id, invoiceId));
 
     await db
       .update(SubscriptionsTable)
-      .set({ next_billing_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) })
+      .set({ next_billing_at: nextAttempt })
       .where(eq(SubscriptionsTable.id, subId));
-  }
-
-  private calculateNextBillingDate(plan: Plan): Date {
-    // Use your existing logic or refactor it
-    return getNextBillingDate(new Date(), plan.interval, plan.interval_count);
   }
 }
 
 export const BillingWorker = new Worker(
   "billings",
-  async (job: Job) => {
+  async (job: Job<BillingJobData>) => {
     const logger = new GlobalLogger("Billing Worker");
     const billingService = new BillingService(new BillingHelper(), logger);
 
@@ -209,18 +314,27 @@ export const BillingWorker = new Worker(
       switch (job.name) {
         case "poll_subscriptions":
           await billingService.pollForPendingSubscriptions();
+          await billingService.pollForEndingTrials();
           break;
         case "charge": {
-          const merchantId = (job.data as ChargeSubscriptionData).merchantId;
+          if (!isChargeData(job.data)) {
+            throw new Error("Invalid charge job data");
+          }
+          const merchantId = job.data.merchantId;
           const billingHandler = createBillingHandler(merchantId);
           await billingService.processCharge(job.data, billingHandler);
           break;
         }
+        case "trial_conversion": {
+          const data = job.data as TrialConversionData;
+          await billingService.processTrialConversion(data);
+          break;
+        }
         default:
-          throw new Error(`Unknown Job : ${job.name}`);
+          throw new Error(`Unknown job: ${job.name}`);
       }
     } catch (err) {
-      logger.error(`Job Failed: ${job.name}`, err);
+      logger.error(`Job failed: ${job.name}`, err as Error);
       throw err;
     }
   },
