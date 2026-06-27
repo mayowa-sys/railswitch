@@ -72,3 +72,59 @@ plansRouter.get('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get plan' } });
   }
 });
+
+plansRouter.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const { name, description, amount, currency, interval, interval_count, is_active, metadata } = req.body;
+
+    const [existing] = await db
+      .select()
+      .from(PlansTable)
+      .where(
+        and(
+          eq(PlansTable.id, req.params.id),
+          eq(PlansTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Plan not found' } });
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (amount !== undefined) updates.amount = amount;
+    if (currency !== undefined) updates.currency = currency;
+    if (interval !== undefined) updates.interval = interval;
+    if (interval_count !== undefined) updates.interval_count = interval_count;
+    if (is_active !== undefined) updates.is_active = is_active;
+    if (metadata !== undefined) updates.metadata = metadata;
+
+    if (Object.keys(updates).length === 0) {
+      res.json(existing);
+      return;
+    }
+
+    updates.updated_at = new Date();
+
+    const [updated] = await db
+      .update(PlansTable)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set(updates as any)
+      .where(
+        and(
+          eq(PlansTable.id, req.params.id),
+          eq(PlansTable.merchant_id, req.merchantId),
+        ),
+      )
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    console.error('[plans] patch error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update plan' } });
+  }
+});
