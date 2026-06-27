@@ -15,6 +15,8 @@ from app.engine_client import (
 from app.config import settings
 from app.routes.webhooks import router as webhooks_router
 
+from app.envelope import register_envelope_handlers
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,6 +28,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RailSwitch Gateway", version="0.1.0", lifespan=lifespan)
+register_envelope_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,

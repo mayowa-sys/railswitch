@@ -12,13 +12,13 @@ class ErrorDetail(BaseModel):
 
 
 class Envelope(BaseModel):
-    data: Any
+    data: Any = None
     error: ErrorDetail | None = None
     meta: dict[str, Any] | None = None
 
 
 async def handle_http_exceptions(request: Request, exc: HTTPException) -> JSONResponse:
-    body = Envelope(error=ErrorDetail(code=exc.status_code, message=exc.detail))
+    body = Envelope(error=ErrorDetail(code=str(exc.status_code), message=str(exc.detail)))
     return JSONResponse(status_code=exc.status_code, content=body.model_dump())
 
 
@@ -27,6 +27,6 @@ async def handle_http_validation_errors(request: Request, exc: RequestValidation
     return JSONResponse(status_code=422, content=body.model_dump())
 
 
-def register_envelope_handlers(app: FastAPI):
+def register_envelope_handlers(app: FastAPI) -> None:
     app.add_exception_handler(HTTPException, handle_http_exceptions)
     app.add_exception_handler(RequestValidationError, handle_http_validation_errors)
