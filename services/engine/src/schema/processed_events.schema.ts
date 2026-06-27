@@ -7,7 +7,7 @@ import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy.js";
 export const ProcessedEventsTable = pgTable(
     "processed_events",
     {
-        id: uuid('id').primaryKey().default(sql`uuid_generate_v4()`),
+        id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
         merchant_id: text('merchant_id').notNull().references(() => MerchantsTable.id),
         subscription_id: text('subscription_id').notNull().references(() => SubscriptionsTable.id),
         idempotency_key: text('idempotency_key').notNull(),

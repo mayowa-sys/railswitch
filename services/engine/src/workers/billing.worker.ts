@@ -1,6 +1,6 @@
 import { Job, Worker } from "bullmq";
 import { BillingHandler } from "../rails/billing-handler";
-import { billingHandler, BillingsQueue } from "../queues/billings.queue";
+import {  BillingsQueue } from "../queues/billings.queue";
 import { GlobalLogger } from "../utils/logger";
 import { db } from "../db/client";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
@@ -9,6 +9,7 @@ import { Plan, PlansTable } from "../schema/plans.schema";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
 import { getNextBillingDate } from "../utils/interval_util";
+import { createBillingHandler } from "../rails/billing-handler-dependencies";
 
 interface ChargeSubscriptionData {
   subscriptionId: string;
@@ -80,7 +81,6 @@ class BillingHelper {
 class BillingService {
   constructor(
     private billingHelper: BillingHelper,
-    private billingHandler: BillingHandler,
     private logger: GlobalLogger,
   ) {}
 
@@ -90,7 +90,7 @@ class BillingService {
     return {
       subscriptionId: sub.id,
       customerId: sub.customer_id,
-      planId: sub.customer_id,
+      planId: sub.plan_id,
       idemKey: "idemKey",
       merchantId: sub.merchant_id,
     };
@@ -117,7 +117,7 @@ class BillingService {
     });
   }
 
-  async processCharge(data: ChargeSubscriptionData) {
+  async processCharge(data: ChargeSubscriptionData, billingHandler: BillingHandler) {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
@@ -135,7 +135,7 @@ class BillingService {
         `Invoice for subscription ${data.subscriptionId} could not be made`,
       );
 
-    const result = await this.billingHandler.bill({
+    const result = await billingHandler.bill({
       subscriptionId: data.subscriptionId,
       invoiceId: invoice.id,
       amount: plan.amount,
@@ -200,7 +200,6 @@ export const BillingWorker = new Worker("billings", async (job: Job) => {
   const logger = new GlobalLogger("Billing Worker");
   const billingService = new BillingService(
     new BillingHelper(),
-    billingHandler,
     logger,
   );
 
@@ -208,8 +207,12 @@ export const BillingWorker = new Worker("billings", async (job: Job) => {
     switch (job.name) {
       case "poll_subscriptions":
         await billingService.pollForPendingSubscriptions();
-      case "charge":
-        await billingService.processCharge(job.data);
+      case "process_charge":{
+        const merchantId = (job.data as ChargeSubscriptionData).merchantId;
+        const billingHandler = createBillingHandler(merchantId);
+        await billingService.processCharge(job.data, billingHandler);
+        break;
+      }
       default:
         throw new Error(`Unknown Job : ${job.name}`);
     }
@@ -217,4 +220,4 @@ export const BillingWorker = new Worker("billings", async (job: Job) => {
     logger.error(`Job Failed: ${job.name}`, err);
     throw err;
   }
-});
+}, {connection: {url: process.env.REDIS_URL!}});

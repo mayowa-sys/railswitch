@@ -133,7 +133,7 @@ All tenant-scoped tables carry a Postgres RLS policy (`merchant_id = current_set
 ### `src/schema/audit_log.schema.ts`
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | `uuid` | Primary key, default `uuid_generate_v4()` |
+| `id` | `uuid` | Primary key, default `gen_random_uuid()` |
 | `merchant_id` | `text` | Not null, references `merchants.id` |
 | `subscription_id` | `text` | Not null, references `subscriptions.id` |
 | `from_state` | `SubscriptionStateEnum` | Not null |
@@ -147,7 +147,7 @@ Additionally: `audit_log` has restrictive policies blocking all `DELETE` and `UP
 ### `src/schema/processed_events.schema.ts`
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | `uuid` | Primary key, default `uuid_generate_v4()` |
+| `id` | `uuid` | Primary key, default `gen_random_uuid()` |
 | `merchant_id` | `text` | Not null, references `merchants.id` |
 | `subscription_id` | `text` | Not null, references `subscriptions.id` |
 | `idempotency_key` | `text` | Not null. Unique constraint per (subscription, key) |

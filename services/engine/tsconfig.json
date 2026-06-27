@@ -9,7 +9,7 @@
     "strict": true,
     "outDir": "dist",
     "rootDir": "src",
-    "skipLibCheck": false
+    "skipLibCheck": true
   },
   "include": ["src/**/*"]
 }

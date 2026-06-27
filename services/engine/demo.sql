@@ -11,10 +11,11 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO plans (id, merchant_id, amount, currency, interval, interval_count)
+INSERT INTO plans (id, merchant_id, name, amount, currency, interval, interval_count)
 VALUES (
   'plan_demo12345',
   'mer_demo12345',
+  'demo_plan',
   5000,
   'NGN',
   'month',
@@ -44,7 +45,8 @@ INSERT INTO subscriptions (
   current_period_start,
   current_period_end,
   created_at,
-  updated_at
+  updated_at, 
+  next_billing_at
 )
 VALUES (
   'sub_demo12345',
@@ -58,6 +60,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP + INTERVAL '30 days',
   CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP, 
   CURRENT_TIMESTAMP
 )
 ON CONFLICT (id) DO NOTHING;
@@ -67,6 +70,7 @@ INSERT INTO payment_methods (
   customer_id,
   nomba_token,
   merchant_id,
+  type,
   last4,
   brand,
   exp_month,
@@ -78,6 +82,7 @@ VALUES (
   'cus_demo12345',
   'tok_demo12345',
   'mer_demo12345',
+  'card',
   '4242',
   'visa',
   '12',
