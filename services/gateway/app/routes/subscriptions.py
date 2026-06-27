@@ -4,6 +4,7 @@ from app.engine_client import (
     CreateSubscriptionRequest,
     EngineClient,
     get_engine_client,
+    UpdateSubscriptionRequest,
 )
 from app.envelope import Envelope
 
@@ -40,6 +41,16 @@ async def get_subscriptions(
 ) -> Envelope:
     subscription = await engine.get_subscription(subscription_id)
     return Envelope(data=subscription.model_dump())
+
+
+@router.patch("/{subscription_id}")
+async def update_subscription(
+    subscription_id: str,
+    payload: UpdateSubscriptionRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    sub = await engine.update_subscription(subscription_id, payload)
+    return Envelope(data=sub.model_dump())
 
 
 @router.post("/{subscription_id}/pause")
