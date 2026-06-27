@@ -1,6 +1,6 @@
 {
-  "id": "39782f71-e653-40bf-8101-47fcd2c13c21",
-  "prevId": "c80562e6-dcef-4711-976f-5492b08a4a11",
+  "id": "b99eb776-87b3-4736-8842-9d811007e98c",
+  "prevId": "22edf912-b61e-4039-8ffb-0de811107d62",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -51,28 +51,39 @@
         "api_keys_merchant_id_merchants_id_fk": {
           "name": "api_keys_merchant_id_merchants_id_fk",
           "tableFrom": "api_keys",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "api_keys_key_hash_unique": {
           "name": "api_keys_key_hash_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "key_hash"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -85,7 +96,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v4()"
+          "default": "gen_random_uuid()"
         },
         "merchant_id": {
           "name": "merchant_id",
@@ -158,37 +169,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "audit_log_merchant_id_merchants_id_fk": {
           "name": "audit_log_merchant_id_merchants_id_fk",
           "tableFrom": "audit_log",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "audit_log_subscription_id_subscriptions_id_fk": {
           "name": "audit_log_subscription_id_subscriptions_id_fk",
           "tableFrom": "audit_log",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -200,7 +211,8 @@
           "for": "DELETE",
           "to": [
             "public"
-          ]
+          ],
+          "using": "false"
         },
         "audit_log_no_update_policy": {
           "name": "audit_log_no_update_policy",
@@ -208,7 +220,18 @@
           "for": "UPDATE",
           "to": [
             "public"
-          ]
+          ],
+          "using": "false"
+        },
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
         }
       },
       "checkConstraints": {},
@@ -226,6 +249,12 @@
         },
         "invoice_id": {
           "name": "invoice_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -256,20 +285,44 @@
         "charge_attempts_invoice_id_invoices_id_fk": {
           "name": "charge_attempts_invoice_id_invoices_id_fk",
           "tableFrom": "charge_attempts",
+          "tableTo": "invoices",
           "columnsFrom": [
             "invoice_id"
           ],
-          "tableTo": "invoices",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "charge_attempts_merchant_id_merchants_id_fk": {
+          "name": "charge_attempts_merchant_id_merchants_id_fk",
+          "tableFrom": "charge_attempts",
+          "tableTo": "merchants",
+          "columnsFrom": [
+            "merchant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -295,6 +348,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "phone": {
           "name": "phone",
           "type": "text",
@@ -313,6 +372,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -320,20 +386,31 @@
         "customers_merchant_id_merchants_id_fk": {
           "name": "customers_merchant_id_merchants_id_fk",
           "tableFrom": "customers",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -349,6 +426,12 @@
         },
         "subscription_id": {
           "name": "subscription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -374,11 +457,43 @@
           "notNull": true,
           "default": "'0'"
         },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NGN'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
         "due_date": {
           "name": "due_date",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -393,20 +508,44 @@
         "invoices_subscription_id_subscriptions_id_fk": {
           "name": "invoices_subscription_id_subscriptions_id_fk",
           "tableFrom": "invoices",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoices_merchant_id_merchants_id_fk": {
+          "name": "invoices_merchant_id_merchants_id_fk",
+          "tableFrom": "invoices",
+          "tableTo": "merchants",
+          "columnsFrom": [
+            "merchant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -428,13 +567,13 @@
         },
         "email": {
           "name": "email",
-          "type": "varchar",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
         "company": {
           "name": "company",
-          "type": "varchar",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -452,13 +591,24 @@
       "uniqueConstraints": {
         "merchants_email_unique": {
           "name": "merchants_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -478,8 +628,21 @@
           "primaryKey": false,
           "notNull": true
         },
+        "type": {
+          "name": "type",
+          "type": "payment_method_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
         "nomba_token": {
           "name": "nomba_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -507,6 +670,33 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -514,20 +704,44 @@
         "payment_methods_customer_id_customers_id_fk": {
           "name": "payment_methods_customer_id_customers_id_fk",
           "tableFrom": "payment_methods",
+          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
-          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payment_methods_merchant_id_merchants_id_fk": {
+          "name": "payment_methods_merchant_id_merchants_id_fk",
+          "tableFrom": "payment_methods",
+          "tableTo": "merchants",
+          "columnsFrom": [
+            "merchant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -546,6 +760,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "amount": {
           "name": "amount",
@@ -571,6 +797,34 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -578,20 +832,31 @@
         "plans_merchant_id_merchants_id_fk": {
           "name": "plans_merchant_id_merchants_id_fk",
           "tableFrom": "plans",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -604,7 +869,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v4()"
+          "default": "gen_random_uuid()"
         },
         "merchant_id": {
           "name": "merchant_id",
@@ -669,51 +934,62 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "processed_events_merchant_id_merchants_id_fk": {
           "name": "processed_events_merchant_id_merchants_id_fk",
           "tableFrom": "processed_events",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "processed_events_subscription_id_subscriptions_id_fk": {
           "name": "processed_events_subscription_id_subscriptions_id_fk",
           "tableFrom": "processed_events",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "processed_events_subscription_id_idempotency_key_unique": {
           "name": "processed_events_subscription_id_idempotency_key_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "subscription_id",
             "idempotency_key"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -804,6 +1080,20 @@
           "primaryKey": false,
           "notNull": false
         },
+        "cancel_at_period_end": {
+          "name": "cancel_at_period_end",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -817,6 +1107,42 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "next_billing_at": {
+          "name": "next_billing_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trial_ends_at": {
+          "name": "trial_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_period_start": {
+          "name": "current_period_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_period_end": {
+          "name": "current_period_end",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -837,9 +1163,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "subscriptions_merchant_id_current_invoice_id_idx": {
           "name": "subscriptions_merchant_id_current_invoice_id_idx",
@@ -858,70 +1184,102 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
+        },
+        "subscriptoin_merchant_id_next_billing_at_idx": {
+          "name": "subscriptoin_merchant_id_next_billing_at_idx",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_billing_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "subscriptions_merchant_id_merchants_id_fk": {
           "name": "subscriptions_merchant_id_merchants_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "merchants",
           "columnsFrom": [
             "merchant_id"
           ],
-          "tableTo": "merchants",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_customer_id_customers_id_fk": {
           "name": "subscriptions_customer_id_customers_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "customers",
           "columnsFrom": [
             "customer_id"
           ],
-          "tableTo": "customers",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_plan_id_plans_id_fk": {
           "name": "subscriptions_plan_id_plans_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "plans",
           "columnsFrom": [
             "plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_current_invoice_id_invoices_id_fk": {
           "name": "subscriptions_current_invoice_id_invoices_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "invoices",
           "columnsFrom": [
             "current_invoice_id"
           ],
-          "tableTo": "invoices",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "merchant_isolation": {
+          "name": "merchant_isolation",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "merchant_id = current_setting('app.current_merchant_id')::text",
+          "withCheck": "merchant_id = current_setting('app.current_merchant_id')::text"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": true
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -957,7 +1315,18 @@
         "open",
         "paid",
         "void",
-        "uncollectible"
+        "uncollectible",
+        "pending_retry",
+        "recovered"
+      ]
+    },
+    "public.payment_method_type": {
+      "name": "payment_method_type",
+      "schema": "public",
+      "values": [
+        "card",
+        "virtual_account",
+        "ussd"
       ]
     },
     "public.subscription_state": {
@@ -974,15 +1343,16 @@
         "whatsapp_fallback",
         "paused",
         "past_due",
-        "cancelled"
+        "cancelled",
+        "refunded"
       ]
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

@@ -23,4 +23,3 @@ export const InvoicesTable = pgTable("invoices", {
 }, (_t) => [
     merchantIsolationPolicy()
 ]);
-

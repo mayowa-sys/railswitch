@@ -25,7 +25,7 @@ export const AuditLog = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .default(sql`uuid_generate_v4()`),
+      .default(sql`gen_random_uuid()`),
     merchant_id: text("merchant_id")
       .notNull()
       .references(() => MerchantsTable.id),
