@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { api, isMockMode } from "./api-client";
 
 // ---------- types ----------
 
@@ -53,41 +54,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, _password: string): Promise<AuthUser> => {
-      void _password;
-      // Mock mode — swap to POST /v1/auth/login when gateway auth is live.
-      await new Promise((r) => setTimeout(r, 700));
+    async (email: string, password: string): Promise<AuthUser> => {
+      if (isMockMode()) {
+        await new Promise((r) => setTimeout(r, 700));
+        const mockUser: AuthUser = {
+          id: `mer_${email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "_")}`,
+          name: email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+          email: email.toLowerCase(),
+          company: `${email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} Ltd`,
+          apiKey: MOCK_API_KEY,
+        };
+        persist(mockUser);
+        return mockUser;
+      }
 
-      const mockUser: AuthUser = {
-        id: `mer_${email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "_")}`,
-        name: email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-        email: email.toLowerCase(),
-        company: `${email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} Ltd`,
-        apiKey: MOCK_API_KEY,
+      const data = await api.auth.login(email, password);
+      const user: AuthUser = {
+        id: data.merchant.id,
+        name: data.merchant.name,
+        email: data.merchant.email,
+        company: data.merchant.company ?? data.merchant.name,
+        apiKey: "", // login doesn't return full API key, only prefix
       };
-
-      persist(mockUser);
-      return mockUser;
+      persist(user);
+      return user;
     },
     [persist],
   );
 
   const signup = useCallback(
-    async (name: string, email: string, _password: string): Promise<AuthUser> => {
-      void _password;
-      // Mock mode — swap to POST /v1/auth/register when gateway auth is live.
-      await new Promise((r) => setTimeout(r, 900));
+    async (name: string, email: string, password: string): Promise<AuthUser> => {
+      if (isMockMode()) {
+        await new Promise((r) => setTimeout(r, 900));
+        const mockUser: AuthUser = {
+          id: `mer_${Math.random().toString(36).slice(2, 10)}`,
+          name,
+          email: email.toLowerCase(),
+          company: name,
+          apiKey: MOCK_API_KEY,
+        };
+        persist(mockUser);
+        return mockUser;
+      }
 
-      const mockUser: AuthUser = {
-        id: `mer_${Math.random().toString(36).slice(2, 10)}`,
-        name,
-        email: email.toLowerCase(),
-        company: name,
-        apiKey: MOCK_API_KEY,
+      const data = await api.auth.register(name, email, password);
+      const user: AuthUser = {
+        id: data.merchant.id,
+        name: data.merchant.name,
+        email: data.merchant.email,
+        company: data.merchant.company ?? name,
+        apiKey: data.api_key,
       };
-
-      persist(mockUser);
-      return mockUser;
+      persist(user);
+      return user;
     },
     [persist],
   );
@@ -98,8 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (_email: string): Promise<void> => {
-    // Mock mode — always succeeds. Real mode calls POST /v1/auth/reset-password
-    // with the email parameter. Until gateway auth is live, we simulate success.
     void _email;
     await new Promise((r) => setTimeout(r, 800));
   }, []);
