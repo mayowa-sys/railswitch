@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 
-from services.gateway.app.engine_client import (
-    CreateInvoice,
+from app.engine_client import (
     EngineClient,
     get_engine_client,
 )
-from services.gateway.app.envelope import Envelope
+from app.envelope import Envelope
 
 router = APIRouter(prefix="/v1/invoice", tags=["invoices"])
 

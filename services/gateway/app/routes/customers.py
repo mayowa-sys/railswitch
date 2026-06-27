@@ -1,4 +1,4 @@
-from fastapi import Depends, Query, APIRouter
+from fastapi import Depends, APIRouter
 
 from app.engine_client import (
     CreateCustomerRequest,

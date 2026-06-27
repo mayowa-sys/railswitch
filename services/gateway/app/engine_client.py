@@ -1,4 +1,4 @@
-import decimal
+from decimal import Decimal
 from datetime import datetime
 from http.client import HTTPException
 
@@ -44,7 +44,7 @@ class SubscriptionResponse(BaseModel):
 class CreatePlanRequest(BaseModel):
     name: str
     description: str
-    amount: decimal
+    amount: Decimal
     currency: str
     interval: str  # "monthly" | "annual" | "custom"
     interval_count: int  # number of intervals
@@ -54,7 +54,7 @@ class CreatePlanRequest(BaseModel):
 class UpdatePlanRequest(BaseModel):
     name: str | None = None
     description: str | None = None
-    amount: decimal | None = None
+    amount: Decimal | None = None
     currency: str | None = None
     interval: str | None = None  # "monthly" | "annual" | "custom"
     interval_count: int | None = None  # number of intervals
@@ -66,7 +66,7 @@ class Plan(BaseModel):
     merchant_id: str
     name: str
     description: str
-    amount: decimal
+    amount: Decimal
     currency: str
     interval: str
     interval_count: int
@@ -85,7 +85,7 @@ class AllPlans(BaseModel):
 
 class CreateInvoice(BaseModel):
     subscription_id: str
-    amount: decimal
+    amount: Decimal
     currency: str
     description: str
     due_date: datetime
@@ -96,7 +96,7 @@ class Invoice(BaseModel):
     id: str
     subscription_id: str
     merchant_id: str
-    amount: decimal
+    amount: Decimal
     currency: str
     status: str
     description: str
