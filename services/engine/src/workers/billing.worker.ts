@@ -91,7 +91,7 @@ class BillingService {
       subscriptionId: sub.id,
       customerId: sub.customer_id,
       planId: sub.plan_id,
-      idemKey: "idemKey",
+      idemKey: `billing:${sub.id}:${Date.now()}`,
       merchantId: sub.merchant_id,
     };
   }
@@ -210,7 +210,7 @@ export const BillingWorker = new Worker(
         case "poll_subscriptions":
           await billingService.pollForPendingSubscriptions();
           break;
-        case "process_charge": {
+        case "charge": {
           const merchantId = (job.data as ChargeSubscriptionData).merchantId;
           const billingHandler = createBillingHandler(merchantId);
           await billingService.processCharge(job.data, billingHandler);
