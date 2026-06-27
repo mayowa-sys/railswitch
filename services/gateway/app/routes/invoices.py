@@ -19,7 +19,7 @@ async def list_invoices(
     invoices, has_more = await engine.list_invoices(
         starting_after, ending_before, limit
     )
-    return Envelope(data=[i.model_dump for i in invoices], meta={"has_more": has_more})
+    return Envelope(data=[i.model_dump() for i in invoices], meta={"has_more": has_more})
 
 
 @router.get("/{invoice_id}")

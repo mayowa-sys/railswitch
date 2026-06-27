@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import datetime
-from http.client import HTTPException
+from fastapi import HTTPException
 
 import httpx
 from pydantic import BaseModel
@@ -163,7 +163,7 @@ class EngineClient:
         ending_before: str | None,
         limit: int,
     ) -> tuple[list[dict], bool]:
-        params = dict[str, str | int] = {"limit": limit}
+        params: dict[str, str | int] = {"limit": limit}
         if starting_after:
             params["starting_after"] = starting_after
         if ending_before:
@@ -186,7 +186,7 @@ class EngineClient:
     async def list_subscriptions(
         self, starting_after: str | None, ending_before: str | None, limit: int
     ) -> tuple[list[SubscriptionResponse], bool]:
-        rows, has_more = self._paginated_get(
+        rows, has_more = await self._paginated_get(
             "/internal/v1/subscriptions",
             starting_after=starting_after,
             ending_before=ending_before,
@@ -264,7 +264,7 @@ class EngineClient:
     # =========== INVOICES ==================
 
     async def list_invoices(
-        self, starting_after: str, ending_before: str, limit: int
+        self, starting_after: str | None, ending_before: str | None, limit: int
     ) -> tuple[list[Invoice], bool]:
         rows, has_more = await self._paginated_get(
             "/internal/v1/invoices",

@@ -35,5 +35,5 @@ async def handle_http_validation_errors(
 
 
 def register_envelope_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(HTTPException, handle_http_exceptions)
-    app.add_exception_handler(RequestValidationError, handle_http_validation_errors)
+    app.add_exception_handler(HTTPException, handle_http_exceptions)  # type: ignore[arg-type]
+    app.add_exception_handler(RequestValidationError, handle_http_validation_errors)  # type: ignore[arg-type]
