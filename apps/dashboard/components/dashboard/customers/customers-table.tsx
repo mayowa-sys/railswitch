@@ -100,13 +100,13 @@ const COLUMNS: Column<Customer>[] = [
   },
 ];
 
-export function CustomersTable() {
+export function CustomersTable({ externalCustomers }: { externalCustomers?: typeof CUSTOMERS }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(
     () =>
-      CUSTOMERS.filter((c) => {
+      (externalCustomers ?? CUSTOMERS).filter((c) => {
         if (!search) return true;
         const q = search.toLowerCase();
         return (
