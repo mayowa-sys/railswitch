@@ -144,6 +144,36 @@ invoicesRouter.post('/:id/retry', async (req: Request, res: Response) => {
   }
 });
 
+invoicesRouter.post('/:id/refund', async (req: Request, res: Response) => {
+  try {
+    const [invoice] = await db
+      .select()
+      .from(InvoicesTable)
+      .where(
+        and(
+          eq(InvoicesTable.id, req.params.id),
+          eq(InvoicesTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!invoice) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Invoice not found' } });
+      return;
+    }
+
+    await db
+      .update(InvoicesTable)
+      .set({ status: 'void' })
+      .where(eq(InvoicesTable.id, req.params.id));
+
+    res.json({ invoice_id: req.params.id, status: 'refunded' });
+  } catch (err) {
+    console.error('[invoices] refund error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to refund invoice' } });
+  }
+});
+
 invoicesRouter.post('/:id/fallback', async (req: Request, res: Response) => {
   try {
     const [invoice] = await db

@@ -128,3 +128,38 @@ plansRouter.patch('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update plan' } });
   }
 });
+
+plansRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const [plan] = await db
+      .select()
+      .from(PlansTable)
+      .where(
+        and(
+          eq(PlansTable.id, req.params.id),
+          eq(PlansTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!plan) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Plan not found' } });
+      return;
+    }
+
+    await db
+      .update(PlansTable)
+      .set({ is_active: false })
+      .where(
+        and(
+          eq(PlansTable.id, req.params.id),
+          eq(PlansTable.merchant_id, req.merchantId),
+        ),
+      );
+
+    res.json({ id: req.params.id, deleted: true });
+  } catch (err) {
+    console.error('[plans] delete error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete plan' } });
+  }
+});
