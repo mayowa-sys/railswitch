@@ -69,12 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await api.auth.login(email, password);
+      const existingUser = loadUserFromStorage();
       const user: AuthUser = {
         id: data.merchant.id,
         name: data.merchant.name,
         email: data.merchant.email,
         company: data.merchant.company ?? data.merchant.name,
-        apiKey: "", // login doesn't return full API key, only prefix
+        apiKey: (data as Record<string, unknown>).api_key as string || existingUser?.apiKey || "",
       };
       persist(user);
       return user;
