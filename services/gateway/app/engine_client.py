@@ -28,7 +28,7 @@ class SubscriptionResponse(BaseModel):
     merchant_id: str
     customer_id: str
     plan_id: str
-    status: str
+    state: str = ""
     current_period_start: datetime
     current_period_end: datetime
     trial_end: str | None = None
@@ -176,7 +176,7 @@ class EngineClient:
         if ending_before:
             params["ending_before"] = ending_before
         body = await self._request("GET", path, params=params)
-        return body["data"], body["has_more"]
+        return body.get("data", []), body.get("has_more", False)
 
     # =========== SUBSCRIPTIONS ============
 
