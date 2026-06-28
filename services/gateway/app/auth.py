@@ -5,8 +5,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 bearer_scheme = HTTPBearer()
 
-# Format: sk_(live|test)_<merchant_id>_<random>
-_KEY_FORMAT = re.compile(r"^sk_(live|test)_([A-Za-z0-9_-]+?)_[A-Za-z0-9_-]{8,}$")
+# Format: sk_(live|test)_<merchant_id>_<random_chars>
+_KEY_FORMAT = re.compile(r"^sk_(live|test)_([A-Za-z0-9_-]+)_[A-Za-z0-9_-]{8,}$")
 
 
 @dataclass(frozen=True)
