@@ -1,0 +1,1 @@
+ALTER TABLE "api_keys" ADD COLUMN "created_at" timestamp with time zone DEFAULT now();

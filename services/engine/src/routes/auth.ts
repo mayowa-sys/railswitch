@@ -103,7 +103,10 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     const [apiKey] = await db
       .select()
       .from(ApiKeysTable)
-      .where(eq(ApiKeysTable.merchant_id, merchant.id))
+      .where(
+        eq(ApiKeysTable.merchant_id, merchant.id),
+      )
+      .orderBy(ApiKeysTable.created_at)
       .limit(1);
 
     if (!apiKey || apiKey.revoked_at) {
