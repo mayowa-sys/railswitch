@@ -1,12 +1,12 @@
 import re
-
 from dataclasses import dataclass
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 bearer_scheme = HTTPBearer()
 
-_KEY_FORMAT = re.compile(r"^sk_(live|test)_[A-Za-z0-9]{8,}$")
+# Format: sk_(live|test)_<merchant_id>_<random_chars>
+_KEY_FORMAT = re.compile(r"^sk_(live|test)_([A-Za-z0-9_-]+)_[A-Za-z0-9_-]{8,}$")
 
 
 @dataclass(frozen=True)
@@ -26,11 +26,14 @@ async def get_current_merchant(
 ) -> ApiKeyRecord:
     token = credentials.credentials
 
-    if not _KEY_FORMAT.match(token):
+    record = MOCK_KEYS.get(token)
+    if record is not None:
+        return record
+
+    m = _KEY_FORMAT.match(token)
+    if not m:
         raise HTTPException(status_code=401, detail="Malformed API Key")
 
-    record = MOCK_KEYS.get(token)
-    if record is None:
-        raise HTTPException(status_code=401, detail="Unknown or revoked API key")
-
-    return record
+    mode = m.group(1)
+    merchant_id = m.group(2)
+    return ApiKeyRecord(merchant_id=merchant_id, mode=mode)

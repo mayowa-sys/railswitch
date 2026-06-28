@@ -54,7 +54,14 @@ subscriptionsRouter.post('/', async (req: Request, res: Response) => {
     const now = new Date();
     const periodStart = start_date ? new Date(start_date) : now;
     const periodEnd = new Date(periodStart);
-    periodEnd.setMonth(periodEnd.getMonth() + (plan.interval_count ?? 1));
+    const interval = plan.interval ?? 'monthly';
+    const count = plan.interval_count ?? 1;
+    switch (interval) {
+      case 'daily': periodEnd.setDate(periodEnd.getDate() + count); break;
+      case 'weekly': periodEnd.setDate(periodEnd.getDate() + 7 * count); break;
+      case 'annual': periodEnd.setFullYear(periodEnd.getFullYear() + count); break;
+      default: periodEnd.setMonth(periodEnd.getMonth() + count); break;
+    }
 
     const [subscription] = await db.insert(SubscriptionsTable).values({
       merchant_id: req.merchantId,
@@ -145,7 +152,7 @@ subscriptionsRouter.patch('/:id', async (req: Request, res: Response) => {
     if (cancel_at_period_end !== undefined) updates.cancel_at_period_end = cancel_at_period_end;
     if (metadata !== undefined) updates.metadata = metadata;
 
-    if (plan_id) {
+    if (plan_id && plan_id.length > 0) {
       const [newPlan] = await db
         .select()
         .from(PlansTable)
@@ -159,6 +166,7 @@ subscriptionsRouter.patch('/:id', async (req: Request, res: Response) => {
     }
 
     if (Object.keys(updates).length > 0) {
+      updates.updated_at = new Date();
       const [updated] = await db
         .update(SubscriptionsTable)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,6 +301,10 @@ subscriptionsRouter.post('/:id/preview', async (req: Request, res: Response) => 
     const effectiveAt = effective_date ? new Date(effective_date) : new Date();
 
     const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / 86_400_000);
+    if (totalDays <= 0) {
+      res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'Billing period must be greater than zero' } });
+      return;
+    }
     const remainingDays = Math.max(0, Math.ceil((periodEnd.getTime() - effectiveAt.getTime()) / 86_400_000));
 
     const creditAmount = (currentPlan.amount / totalDays) * remainingDays;

@@ -14,6 +14,8 @@ import { invoicesRouter } from './routes/invoices.js';
 import { paymentMethodsRouter } from './routes/payment_methods.js';
 import { debugRouter } from './routes/debug.js';
 import { webhooksRouter } from './routes/webhooks.js';
+import { authRouter } from './routes/auth.js';
+import { webhookManagementRouter } from './routes/webhook_management.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -52,3 +54,9 @@ app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, 
 
 // Internal webhook ingress — auth only, no merchant scoping (engine handler resolves merchant from Nomba payload).
 app.use('/internal/v1/webhooks', requireInternalAuth, webhooksRouter);
+
+// Auth — internal auth only, no merchant scoping (login/register create/verify merchants).
+app.use('/internal/v1/auth', requireInternalAuth, authRouter);
+
+// Webhook management — gateway-only, CRUD + delivery logs.
+app.use('/internal/v1/webhooks/management', requireInternalAuth, extractMerchantId, webhookManagementRouter);

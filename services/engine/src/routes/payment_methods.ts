@@ -97,3 +97,38 @@ paymentMethodsRouter.get('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get payment method' } });
   }
 });
+
+paymentMethodsRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const [pm] = await db
+      .select()
+      .from(PaymentMethodsTable)
+      .where(
+        and(
+          eq(PaymentMethodsTable.id, req.params.id),
+          eq(PaymentMethodsTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!pm) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Payment method not found' } });
+      return;
+    }
+
+    await db
+      .update(PaymentMethodsTable)
+      .set({ deleted_at: new Date() })
+      .where(
+        and(
+          eq(PaymentMethodsTable.id, req.params.id),
+          eq(PaymentMethodsTable.merchant_id, req.merchantId),
+        ),
+      );
+
+    res.json({ id: req.params.id, deleted: true });
+  } catch (err) {
+    console.error('[payment-methods] delete error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete payment method' } });
+  }
+});

@@ -8,6 +8,7 @@ export const MerchantsTable = pgTable("merchants", {
     name: text('name').notNull(), 
     email: text('email').unique().notNull(), 
     company: text('company').notNull(),
+    password_hash: text('password_hash').notNull(),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (_t) => [
     pgPolicy("merchant_isolation", {

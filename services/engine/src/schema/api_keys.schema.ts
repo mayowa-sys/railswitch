@@ -12,6 +12,7 @@ export const ApiKeysTable = pgTable('api_keys', {
     key_prefix: text('key_prefix').notNull(),
     type: ApiKeyTypeEnum('type'),
     revoked_at: timestamp('revoked_at'),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (_t) => [
     merchantIsolationPolicy()
 ]);
