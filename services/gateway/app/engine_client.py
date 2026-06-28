@@ -186,7 +186,7 @@ class EngineClient:
         resp = await self._request(
             "POST",
             "/internal/v1/subscriptions",
-            json=payload.model_dump(),
+            json=payload.model_dump(mode="json"),
         )
         return SubscriptionResponse.model_validate(resp)
 
@@ -246,7 +246,7 @@ class EngineClient:
 
     async def create_plan(self, payload: CreatePlanRequest) -> Plan:
         resp = await self._request(
-            "POST", "/internal/v1/plans", json=payload.model_dump()
+            "POST", "/internal/v1/plans", json=payload.model_dump(mode="json")
         )
         return Plan.model_validate(resp)
 
