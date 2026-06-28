@@ -57,21 +57,21 @@ async def update_subscription(
 async def pause_sub(
     subscription_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
-    sub = await engine.pause_subscription(subscription_id)
-    return Envelope(data=sub.model_dump())
+    result = await engine.pause_subscription(subscription_id)
+    return Envelope(data=result)
 
 
 @router.post("/{subscription_id}/resume")
 async def resume_sub(
     subscription_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
-    sub = await engine.resume_subscription(subscription_id)
-    return Envelope(data=sub.model_dump())
+    result = await engine.resume_subscription(subscription_id)
+    return Envelope(data=result)
 
 
 @router.post("/{subscription_id}/cancel")
 async def cancel_sub(
     subscription_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
-    sub = await engine.cancel_subscription(subscription_id)
-    return Envelope(data=sub.model_dump())
+    result = await engine.cancel_subscription(subscription_id)
+    return Envelope(data=result)

@@ -34,13 +34,13 @@ async def get_invoice(
 async def retry_invoice(
     invoice_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
-    invoice = await engine.retry_invoice(invoice_id)
-    return Envelope(data=invoice.model_dump())
+    result = await engine.retry_invoice(invoice_id)
+    return Envelope(data=result)
 
 
 @router.post("/{invoice_id}/refund")
 async def refund_invoice(
     invoice_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
-    invoice = await engine.refund_invoice(invoice_id)
-    return Envelope(data=invoice.model_dump())
+    result = await engine.refund_invoice(invoice_id)
+    return Envelope(data=result)

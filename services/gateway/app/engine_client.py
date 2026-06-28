@@ -31,7 +31,7 @@ class SubscriptionResponse(BaseModel):
     state: str = ""
     current_period_start: datetime
     current_period_end: datetime
-    trial_end: str | None = None
+    trial_ends_at: str | None = None
     cancel_at_period_end: bool
     metadata: dict[str, Any] = {}
     created_at: datetime
@@ -125,8 +125,8 @@ class Customer(BaseModel):
     id: str
     merchant_id: str
     email: str
-    name: str
-    phone: str
+    name: str | None = None
+    phone: str | None = None
     metadata: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
@@ -207,19 +207,18 @@ class EngineClient:
 
     async def _subscription_action(
         self, action: str, sub_id: str
-    ) -> SubscriptionResponse:
-        body = await self._request(
+    ) -> dict:
+        return await self._request(
             "POST", f"/internal/v1/subscriptions/{sub_id}/{action}"
         )
-        return SubscriptionResponse.model_validate(body)
 
-    async def pause_subscription(self, sub_id: str) -> SubscriptionResponse:
+    async def pause_subscription(self, sub_id: str) -> dict:
         return await self._subscription_action(sub_id=sub_id, action="pause")
 
-    async def resume_subscription(self, sub_id: str) -> SubscriptionResponse:
+    async def resume_subscription(self, sub_id: str) -> dict:
         return await self._subscription_action(sub_id=sub_id, action="resume")
 
-    async def cancel_subscription(self, sub_id: str) -> SubscriptionResponse:
+    async def cancel_subscription(self, sub_id: str) -> dict:
         return await self._subscription_action(sub_id=sub_id, action="cancel")
 
     async def preview_subscription(
@@ -309,11 +308,10 @@ class EngineClient:
         resp = await self._request("GET", f"/internal/v1/invoices/{invoice_id}")
         return Invoice.model_validate(resp)
 
-    async def _invoice_action(self, invoice_id: str, action: str) -> Invoice:
-        resp = await self._request(
+    async def _invoice_action(self, invoice_id: str, action: str) -> dict:
+        return await self._request(
             "POST", f"/internal/v1/invoices/{invoice_id}/{action}"
         )
-        return Invoice.model_validate(resp)
 
     async def retry_invoice(self, invoice_id: str):
         return await self._invoice_action(invoice_id, "retry")
