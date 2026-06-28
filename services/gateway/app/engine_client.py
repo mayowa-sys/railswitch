@@ -117,7 +117,7 @@ class Invoice(BaseModel):
 class CreateCustomerRequest(BaseModel):
     email: str
     name: str
-    phone: str
+    phone: str | None = None
     metadata: dict[str, Any] | None = None
 
 
