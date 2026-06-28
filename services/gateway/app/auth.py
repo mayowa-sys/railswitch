@@ -1,11 +1,12 @@
 import re
 from dataclasses import dataclass
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 bearer_scheme = HTTPBearer()
 
-_KEY_FORMAT = re.compile(r"^sk_(live|test)_[A-Za-z0-9_-]{8,}$")
+# Format: sk_(live|test)_<merchant_id>_<random>
+_KEY_FORMAT = re.compile(r"^sk_(live|test)_([A-Za-z0-9_-]+?)_[A-Za-z0-9_-]{8,}$")
 
 
 @dataclass(frozen=True)
@@ -21,33 +22,18 @@ MOCK_KEYS = {
 
 
 async def get_current_merchant(
-    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> ApiKeyRecord:
     token = credentials.credentials
 
-    if not _KEY_FORMAT.match(token):
-        raise HTTPException(status_code=401, detail="Malformed API Key")
-
-    # Check mock keys first (for local dev without DB)
     record = MOCK_KEYS.get(token)
     if record is not None:
         return record
 
-    # Check real keys from database
-    try:
-        pool = request.app.state.db_pool if hasattr(request.app.state, "db_pool") else None
-        if pool is not None:
-            import hashlib
-            key_hash = hashlib.sha256(token.encode()).hexdigest()
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT merchant_id, type FROM api_keys WHERE key_hash = $1 AND revoked_at IS NULL",
-                    key_hash,
-                )
-                if row is not None:
-                    return ApiKeyRecord(merchant_id=row["merchant_id"], mode=row["type"])
-    except Exception:
-        pass  # DB unavailable — allow requests for local dev
+    m = _KEY_FORMAT.match(token)
+    if not m:
+        raise HTTPException(status_code=401, detail="Malformed API Key")
 
-    raise HTTPException(status_code=401, detail="Unknown or revoked API key")
+    mode = m.group(1)
+    merchant_id = m.group(2)
+    return ApiKeyRecord(merchant_id=merchant_id, mode=mode)

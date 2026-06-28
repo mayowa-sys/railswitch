@@ -8,11 +8,11 @@ import { ApiKeysTable } from '../schema/api_keys.schema.js';
 
 export const authRouter = Router();
 
-function generateApiKey(mode: 'live' | 'test'): { raw: string; hash: string; prefix: string } {
-  const random = randomBytes(24).toString('base64url');
-  const raw = `sk_${mode}_${random}`;
+function generateApiKey(merchantId: string, mode: 'live' | 'test'): { raw: string; hash: string; prefix: string } {
+  const random = randomBytes(20).toString('base64url');
+  const raw = `sk_${mode}_${merchantId}_${random}`;
   const hashVal = createHash('sha256').update(raw).digest('hex');
-  const prefix = raw.slice(0, 12);
+  const prefix = raw.slice(0, 20);
   return { raw, hash: hashVal, prefix };
 }
 
@@ -50,7 +50,7 @@ authRouter.post('/register', async (req: Request, res: Response) => {
       password_hash: passwordHash,
     }).returning();
 
-    const apiKey = generateApiKey('test');
+    const apiKey = generateApiKey(merchant.id, 'test');
 
     await db.insert(ApiKeysTable).values({
       merchant_id: merchant.id,
@@ -108,7 +108,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
 
     if (!apiKey || apiKey.revoked_at) {
       // No existing key — generate one on login
-      const newKey = generateApiKey('test');
+      const newKey = generateApiKey(merchant.id, 'test');
       await db.insert(ApiKeysTable).values({
         merchant_id: merchant.id,
         key_hash: newKey.hash,
