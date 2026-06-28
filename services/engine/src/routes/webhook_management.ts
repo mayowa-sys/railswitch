@@ -37,7 +37,14 @@ webhookManagementRouter.post('/endpoints', async (req: Request, res: Response) =
 webhookManagementRouter.get('/endpoints', async (req: Request, res: Response) => {
   try {
     const endpoints = await db
-      .select()
+      .select({
+        id: WebhookEndpointsTable.id,
+        merchant_id: WebhookEndpointsTable.merchant_id,
+        url: WebhookEndpointsTable.url,
+        status: WebhookEndpointsTable.status,
+        last_delivery_at: WebhookEndpointsTable.last_delivery_at,
+        created_at: WebhookEndpointsTable.created_at,
+      })
       .from(WebhookEndpointsTable)
       .where(eq(WebhookEndpointsTable.merchant_id, req.merchantId));
 

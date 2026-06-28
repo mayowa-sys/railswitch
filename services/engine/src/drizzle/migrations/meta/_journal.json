@@ -29,6 +29,13 @@
       "when": 1782607711568,
       "tag": "0003_great_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782609889464,
+      "tag": "0004_short_rick_jones",
+      "breakpoints": true
     }
   ]
 }
