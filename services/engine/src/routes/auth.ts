@@ -107,7 +107,18 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!apiKey || apiKey.revoked_at) {
-      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'No active API key found' } });
+      // No existing key — generate one on login
+      const newKey = generateApiKey('test');
+      await db.insert(ApiKeysTable).values({
+        merchant_id: merchant.id,
+        key_hash: newKey.hash,
+        key_prefix: newKey.prefix,
+        type: 'test',
+      });
+      res.json({
+        merchant: { id: merchant.id, name: merchant.name, email: merchant.email, company: merchant.company },
+        api_key: newKey.raw,
+      });
       return;
     }
 
