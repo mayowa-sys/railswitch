@@ -11,7 +11,15 @@ from app.routes.webhooks import router as webhooks_router
 
 from app.envelope import register_envelope_handlers
 
-from app.routes import plans, customers, invoices, subscriptions, auth, webhook_management
+from app.routes import (
+    plans,
+    customers,
+    invoices,
+    subscriptions,
+    auth,
+    webhook_management,
+    payment_methods,
+)
 
 
 @asynccontextmanager
@@ -55,3 +63,4 @@ app.include_router(customers.router)
 app.include_router(subscriptions.router)
 app.include_router(invoices.router)
 app.include_router(webhook_management.router)
+app.include_router(payment_methods.router)
