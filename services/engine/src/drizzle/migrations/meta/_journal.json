@@ -22,6 +22,13 @@
       "when": 1782515846878,
       "tag": "0002_thick_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782607711568,
+      "tag": "0003_great_tattoo",
+      "breakpoints": true
     }
   ]
 }
