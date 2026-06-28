@@ -1,0 +1,19 @@
+{
+  "name": "@railswitch/node",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for RailSwitch — recurring billing recovery",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format cjs,esm --clean",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": ["railswitch", "subscriptions", "billing", "nomba", "recurring", "nigeria"],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

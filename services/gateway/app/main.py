@@ -11,7 +11,7 @@ from app.routes.webhooks import router as webhooks_router
 
 from app.envelope import register_envelope_handlers
 
-from app.routes import plans, customers, invoices, subscriptions, auth
+from app.routes import plans, customers, invoices, subscriptions, auth, webhook_management
 
 
 @asynccontextmanager
@@ -48,14 +48,10 @@ async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict
     return {"merchant": merchant.merchant_id, "mode": merchant.mode}
 
 
-@app.get("/v1/webhook-events")
-async def list_webhook_events() -> list:
-    return []
-
-
 app.include_router(webhooks_router)
 app.include_router(auth.router)
 app.include_router(plans.router)
 app.include_router(customers.router)
 app.include_router(subscriptions.router)
 app.include_router(invoices.router)
+app.include_router(webhook_management.router)

@@ -329,6 +329,35 @@ class EngineClient:
             "POST", "/internal/v1/auth/login", json=payload
         )
 
+    # =========== WEBHOOKS ===================
+
+    async def create_webhook_endpoint(self, payload: dict) -> dict:
+        return await self._request(
+            "POST", "/internal/v1/webhooks/management/endpoints", json=payload
+        )
+
+    async def list_webhook_endpoints(self) -> list:
+        body = await self._request("GET", "/internal/v1/webhooks/management/endpoints")
+        return body.get("data", body)
+
+    async def delete_webhook_endpoint(self, endpoint_id: str) -> dict:
+        return await self._request(
+            "DELETE", f"/internal/v1/webhooks/management/endpoints/{endpoint_id}"
+        )
+
+    async def list_webhook_events(self) -> list:
+        body = await self._request("GET", "/internal/v1/webhooks/management/events")
+        return body.get("data", body)
+
+    async def list_webhook_deliveries(self) -> list:
+        body = await self._request("GET", "/internal/v1/webhooks/management/deliveries")
+        return body.get("data", body)
+
+    async def replay_webhook_delivery(self, delivery_id: str) -> dict:
+        return await self._request(
+            "POST", f"/internal/v1/webhooks/management/deliveries/{delivery_id}/replay"
+        )
+
 
 async def get_engine_client(
     request: Request,
