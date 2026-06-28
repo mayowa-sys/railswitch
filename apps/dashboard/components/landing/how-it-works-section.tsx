@@ -1,4 +1,4 @@
-import { ArrowRight, CreditCard, Smartphone, MessageCircle, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CreditCard, MessageCircle, CheckCircle2 } from "lucide-react";
 import { FadeIn } from "@/components/ui/fade-in";
 
 const STEPS = [

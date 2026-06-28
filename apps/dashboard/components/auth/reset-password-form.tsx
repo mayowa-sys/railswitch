@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 export function ResetPasswordForm() {
+  const { resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -31,16 +33,25 @@ export function ResetPasswordForm() {
     }
     setError(null);
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsLoading(false);
-    setSent(true);
-    setResendIn(30);
+    try {
+      await resetPassword(email);
+      setSent(true);
+      setResendIn(30);
+    } catch {
+      setError("Failed to send reset link. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleResend() {
     if (resendIn > 0) return;
     setResendIn(30);
-    // Placeholder for real resend call
+    try {
+      await resetPassword(email);
+    } catch {
+      // silently fail on resend
+    }
   }
 
   return (

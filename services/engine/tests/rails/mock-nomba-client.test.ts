@@ -3,6 +3,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MockNombaClient } from '../../src/rails/mock-nomba-client.js';
 import { UnsupportedRailError } from '../../src/rails/nomba-client.js';
+import type { ChargeCardOptions } from '../../src/rails/nomba-client.js';
+
+function chargeOpts(overrides: Partial<ChargeCardOptions> = {}): ChargeCardOptions {
+  return {
+    token: 'tok_test',
+    amount: 5000,
+    currency: 'NGN',
+    customerId: 'cus_test',
+    merchantTxRef: 'sub_1:cycle_1:attempt_1',
+    ...overrides,
+  };
+}
 
 describe('MockNombaClient', () => {
   let client: MockNombaClient;
@@ -12,8 +24,8 @@ describe('MockNombaClient', () => {
   });
 
   describe('chargeCard', () => {
-    it('returns success for a benign idempotency key', async () => {
-      const result = await client.chargeCard('tok_test', 5000, 'sub_1:cycle_1:attempt_1');
+    it('returns success for a benign merchantTxRef', async () => {
+      const result = await client.chargeCard(chargeOpts());
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
         expect(result.amount).toBe(5000);
@@ -22,8 +34,8 @@ describe('MockNombaClient', () => {
       }
     });
 
-    it('returns insufficient_funds (retryable) when key contains "insufficient"', async () => {
-      const result = await client.chargeCard('tok_test', 5000, 'sub_1:insufficient:1');
+    it('returns insufficient_funds (retryable) when merchantTxRef contains "insufficient"', async () => {
+      const result = await client.chargeCard(chargeOpts({ merchantTxRef: 'sub_1:insufficient:1' }));
       expect(result.status).toBe('failed');
       if (result.status === 'failed') {
         expect(result.reason).toBe('insufficient_funds');
@@ -31,8 +43,8 @@ describe('MockNombaClient', () => {
       }
     });
 
-    it('returns card_expired (non-retryable) when key contains "expired"', async () => {
-      const result = await client.chargeCard('tok_test', 5000, 'sub_1:expired:1');
+    it('returns card_expired (non-retryable) when merchantTxRef contains "expired"', async () => {
+      const result = await client.chargeCard(chargeOpts({ merchantTxRef: 'sub_1:expired:1' }));
       expect(result.status).toBe('failed');
       if (result.status === 'failed') {
         expect(result.reason).toBe('card_expired');
@@ -40,8 +52,8 @@ describe('MockNombaClient', () => {
       }
     });
 
-    it('returns card_declined (non-retryable) when key contains "declined"', async () => {
-      const result = await client.chargeCard('tok_test', 5000, 'declined_key');
+    it('returns card_declined (non-retryable) when merchantTxRef contains "declined"', async () => {
+      const result = await client.chargeCard(chargeOpts({ merchantTxRef: 'declined_key' }));
       expect(result.status).toBe('failed');
       if (result.status === 'failed') {
         expect(result.reason).toBe('card_declined');
@@ -49,8 +61,8 @@ describe('MockNombaClient', () => {
       }
     });
 
-    it('returns network_error (retryable) when key contains "network"', async () => {
-      const result = await client.chargeCard('tok_test', 5000, 'network_blip_key');
+    it('returns network_error (retryable) when merchantTxRef contains "network"', async () => {
+      const result = await client.chargeCard(chargeOpts({ merchantTxRef: 'network_blip_key' }));
       expect(result.status).toBe('failed');
       if (result.status === 'failed') {
         expect(result.reason).toBe('network_error');
@@ -58,16 +70,26 @@ describe('MockNombaClient', () => {
       }
     });
 
-    it('is idempotent — same key returns the exact same result', async () => {
-      const first = await client.chargeCard('tok_test', 5000, 'idem_key_xyz');
-      const second = await client.chargeCard('tok_test', 5000, 'idem_key_xyz');
+    it('is idempotent — same merchantTxRef returns the exact same result', async () => {
+      const key = 'idem_key_xyz';
+      const first = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
+      const second = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
       expect(second).toEqual(first);
     });
 
     it('idempotency holds even when the same key would map to a failure', async () => {
-      const first = await client.chargeCard('tok_test', 5000, 'insufficient_key');
-      const second = await client.chargeCard('tok_test', 5000, 'insufficient_key');
+      const key = 'insufficient_key';
+      const first = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
+      const second = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
       expect(second).toEqual(first);
+    });
+
+    it('acknowledges customerId and currency fields', async () => {
+      const result = await client.chargeCard(chargeOpts({
+        customerId: 'cus_9972',
+        currency: 'NGN',
+      }));
+      expect(result.status).toBe('succeeded');
     });
   });
 
@@ -120,16 +142,71 @@ describe('MockNombaClient', () => {
     });
   });
 
+  describe('revokeCardToken', () => {
+    it('records the revoked token', async () => {
+      await client.revokeCardToken('tok_xyz');
+      expect(client.isTokenRevoked('tok_xyz')).toBe(true);
+    });
+
+    it('does not affect unrelated tokens', async () => {
+      await client.revokeCardToken('tok_a');
+      expect(client.isTokenRevoked('tok_b')).toBe(false);
+    });
+  });
+
+  describe('lookupBankAccount', () => {
+    it('returns a mock account holder for unknown accounts', async () => {
+      const result = await client.lookupBankAccount('044', '0123456789');
+      expect(result.accountName).toBe('Mock Account Holder');
+      expect(result.bankCode).toBe('044');
+      expect(result.accountNumber).toBe('0123456789');
+    });
+
+    it('returns predefined lookups when configured', async () => {
+      const c = new MockNombaClient({
+        bankLookups: {
+          '0000000000': {
+            accountName: 'Habiblahi Hamzat',
+            accountNumber: '0000000000',
+            bankCode: '090645',
+            bankName: 'Nombank',
+          },
+        },
+      });
+      const result = await c.lookupBankAccount('090645', '0000000000');
+      expect(result.accountName).toBe('Habiblahi Hamzat');
+      expect(result.bankName).toBe('Nombank');
+    });
+  });
+
+  describe('sendTransfer', () => {
+    it('returns a successful transfer result', async () => {
+      const result = await client.sendTransfer({
+        amount: 5000,
+        currency: 'NGN',
+        bankCode: '044',
+        accountNumber: '0123456789',
+        accountName: 'John Doe',
+        senderName: 'RailSwitch',
+        narration: 'Refund — INV 42',
+        merchantTxRef: 'refund_inv42_001',
+      });
+      expect(result.status).toBe('success');
+      expect(result.transferId).toMatch(/^xfer_mock_/);
+      expect(result.nombaTransferRef).toMatch(/^nomx_mock_/);
+    });
+  });
+
   describe('reset', () => {
     it('clears the idempotency cache', async () => {
-      const r1 = await client.chargeCard('tok', 5000, 'key_a');
+      const key = 'key_a';
+      const r1 = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
       client.reset();
-      const r2 = await client.chargeCard('tok', 5000, 'key_a');
-      // Different chargeId because counter reset and cache cleared
+      const r2 = await client.chargeCard(chargeOpts({ merchantTxRef: key }));
       if (r1.status === 'succeeded' && r2.status === 'succeeded') {
-        expect(r2.chargeId).toBe(r1.chargeId); // counter resets to 1, same id
+        expect(r2.chargeId).toBe(r1.chargeId);
       }
-      expect(client.hasSeenKey('key_a')).toBe(true);
+      expect(client.hasSeenKey(key)).toBe(true);
     });
   });
 });

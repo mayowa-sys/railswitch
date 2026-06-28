@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -87,6 +88,7 @@ function PasswordStrength({ password }: { password: string }) {
 
 export function SignUpForm() {
   const router = useRouter();
+  const { signup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -121,9 +123,14 @@ export function SignUpForm() {
     }
     setErrors({});
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    setIsLoading(false);
-    router.push("/dashboard");
+    try {
+      await signup(form.businessName, form.email, form.password);
+      router.push("/dashboard");
+    } catch {
+      setErrors({ form: "Something went wrong. Please try again." });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

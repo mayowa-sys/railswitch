@@ -37,13 +37,17 @@ Plus:
 ---
 ## What's built
 **Engine — pre-window foundation complete:**
-- XState v5 subscription state machine — 11 states, all transitions guarded, visualizable
+- XState v5 subscription state machine — 11 states (incl. refunded), all transitions guarded, visualizable via `/debug/subscription-machine`
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
 - Mock Nomba client + rail orchestrator scaffold — interface drives implementation
 - Smart retry timing — payday-aware, liquidity-aware, deterministic for tests
+- BillingHandler — bridges orchestrator to state machine (`bill()` + `retry()`), idempotent
+- Internal API routes at `/internal/v1/*` — plans, customers, subscriptions, invoices, payment_methods CRUD
+- Subscription state machine: cancel, pause, resume, preview (proration math), refund
+- Drizzle production repository — FOR UPDATE, version checks, merchant isolation via `set_config()`
 - `/status` endpoint with dependency probes
-- Schema contract — locked column shapes the wrapper depends on
-- 68 tests passing, all green in CI
+- Schema contract — locked column shapes wrapper depends on, migration 0007 adds 15 columns across 5 tables
+- - 91 tests passing, all green in CI
 **Window-phase work (July 1–7) — Nomba integration:**
 - Day 1: Sandbox + Charge API + tokenized cards + webhook callback
 - Days 2–4: Per-cycle VA generation, inbound webhook handlers, WhatsApp Cloud API, USSD (if available)
@@ -93,7 +97,7 @@ uvicorn app.main:app --reload --port 8000
 cd services/engine
 npm test
 ```
-68 tests covering state machine transitions, wrapper guarantees (idempotency, row locking, rollback), retry timing math, mock Nomba behavior, and the /status endpoint.
+91 tests covering state machine transitions (all 11 states, 6 refund scenarios), wrapper guarantees (idempotency, row locking, rollback), retry timing math, mock Nomba + orchestrator cascade (including charge, VA, transfers, revoke), BillingHandler (bill + retry bridge), and internal API routes.
 **Gateway (pytest):**
 ```bash
 cd services/gateway

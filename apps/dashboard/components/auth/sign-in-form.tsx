@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 export function SignInForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -23,10 +25,14 @@ export function SignInForm() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    // Placeholder — wire to real auth later
-    await new Promise((r) => setTimeout(r, 900));
-    setIsLoading(false);
-    router.push("/dashboard");
+    try {
+      await login(email, password);
+      router.push("/dashboard");
+    } catch {
+      setError("Invalid email or password. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

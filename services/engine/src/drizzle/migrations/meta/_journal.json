@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1782515720659,
+      "tag": "0000_uuid-extension",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782515749786,
+      "tag": "0001_big_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782515846878,
+      "tag": "0002_thick_micromax",
+      "breakpoints": true
+    }
+  ]
+}

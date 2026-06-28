@@ -15,6 +15,8 @@ const defaultPolicy: DunningPolicy = {
   maxRetries: 3,
   ussdEnabled: true,
   graceHours: 72,
+  baseDelayMinutes: 60,
+  maxDelayHours: 72,
 };
 
 function makeContext(overrides: Partial<SubscriptionContext> = {}): SubscriptionContext {
@@ -348,6 +350,78 @@ describe('subscription state machine', () => {
       actor.send({ type: 'CHARGE_SUCCEEDED', chargeId: 'chg_1' });
 
       expect(actor.getSnapshot().context.retryCount).toBe(0);
+    });
+  });
+
+  describe('refund during dunning', () => {
+    it('refund from retrying goes to refunded final state', () => {
+      const actor = start(makeContext());
+      actor.send({ type: 'START_BILLING' });
+      actor.send({ type: 'CHARGE_FAILED', reason: 'insufficient_funds', retryable: true });
+      expect(actor.getSnapshot().value).toBe('retrying');
+
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'merchant', reason: 'customer complaint' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+      expect(actor.getSnapshot().status).toBe('done');
+    });
+
+    it('refund from va_fallback goes to refunded', () => {
+      const actor = start(makeContext({ policy: { ...defaultPolicy, maxRetries: 0 } }));
+      actor.send({ type: 'START_BILLING' });
+      actor.send({ type: 'CHARGE_FAILED', reason: 'card_expired', retryable: false });
+      expect(actor.getSnapshot().value).toBe('va_fallback');
+
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'customer' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+    });
+
+    it('refund from ussd_fallback goes to refunded', () => {
+      const actor = start(makeContext({ policy: { ...defaultPolicy, maxRetries: 0 } }));
+      actor.send({ type: 'START_BILLING' });
+      actor.send({ type: 'CHARGE_FAILED', reason: 'card_expired', retryable: false });
+      actor.send({ type: 'VA_EXPIRED' });
+      expect(actor.getSnapshot().value).toBe('ussd_fallback');
+
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'customer' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+    });
+
+    it('refund from whatsapp_fallback goes to refunded', () => {
+      const actor = start(makeContext({ policy: { ...defaultPolicy, maxRetries: 0, ussdEnabled: false } }));
+      actor.send({ type: 'START_BILLING' });
+      actor.send({ type: 'CHARGE_FAILED', reason: 'card_expired', retryable: false });
+      actor.send({ type: 'VA_EXPIRED' });
+      expect(actor.getSnapshot().value).toBe('whatsapp_fallback');
+
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'merchant' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+    });
+
+    it('refund from past_due goes to refunded', () => {
+      const actor = start(makeContext({ policy: { ...defaultPolicy, maxRetries: 0, ussdEnabled: false } }));
+      actor.send({ type: 'START_BILLING' });
+      actor.send({ type: 'CHARGE_FAILED', reason: 'card_expired', retryable: false });
+      actor.send({ type: 'VA_EXPIRED' });
+      actor.send({ type: 'GRACE_EXPIRED' });
+      expect(actor.getSnapshot().value).toBe('past_due');
+
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'customer' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+    });
+
+    it('refunded is a final state — events after refund are ignored', () => {
+      const actor = start(makeContext());
+      actor.send({ type: 'REFUND_REQUESTED', actor: 'customer' });
+      expect(actor.getSnapshot().value).toBe('refunded');
+
+      const originalError = console.error;
+      console.error = () => {};
+      try {
+        actor.send({ type: 'START_BILLING' });
+      } finally {
+        console.error = originalError;
+      }
+      expect(actor.getSnapshot().value).toBe('refunded');
     });
   });
 });

@@ -40,6 +40,7 @@ services:
       DATABASE_URL: postgresql://railswitch:railswitch_dev@postgres:5432/railswitch
       REDIS_URL: redis://redis:6379
       ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
+      INTERNAL_AUTH_SECRET: dev-internal-secret-change-me
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +59,8 @@ services:
     environment:
       ENGINE_INTERNAL_URL: http://engine:3001
       ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
+      INTERNAL_AUTH_SECRET: dev-internal-secret-change-me
+      NOMBA_WEBHOOK_SECRET: change-me-in-production
       DATABASE_URL: postgresql://railswitch:railswitch_dev@postgres:5432/railswitch
     depends_on:
       - engine

@@ -2,26 +2,30 @@
 //
 // Deterministic mock implementation of NombaClient.
 //
-// Failure injection is driven by the idempotencyKey content, NOT by random
+// Failure injection is driven by the merchantTxRef content, NOT by random
 // chance. Tests must be reproducible; demos must be reliable.
 //
 // CONVENTIONS
 // -----------
-// idempotencyKey contains the substring...
-//   "ok"          -> success
-//   "insufficient" -> failed, insufficient_funds, retryable=true
-//   "expired"     -> failed, card_expired, retryable=false
-//   "declined"    -> failed, card_declined, retryable=false
-//   "network"     -> failed, network_error, retryable=true
-//   "limit"       -> failed, limit_exceeded, retryable=true
-// (no match)      -> success (default to happy path)
+// merchantTxRef contains the substring...
+//   "ok"            -> success
+//   "insufficient"  -> failed, insufficient_funds, retryable=true
+//   "expired"       -> failed, card_expired, retryable=false
+//   "declined"      -> failed, card_declined, retryable=false
+//   "network"       -> failed, network_error, retryable=true
+//   "limit"         -> failed, limit_exceeded, retryable=true
+// (no match)        -> success (default to happy path)
 //
 // USSD: throws UnsupportedRailError if constructed with { ussdAvailable: false }.
 
 import type {
+  BankLookupResult,
+  ChargeCardOptions,
   ChargeFailureReason,
   ChargeResult,
   NombaClient,
+  TransferOptions,
+  TransferResult,
   USSDOptions,
   USSDResult,
   VirtualAccountOptions,
@@ -48,29 +52,35 @@ export interface MockNombaClientOptions {
   ussdAvailable?: boolean;
   /** Frozen-clock support for tests. Defaults to Date.now(). */
   now?: () => Date;
+  /** Predefined bank lookup responses keyed by account number. */
+  bankLookups?: Record<string, BankLookupResult>;
 }
 
 export class MockNombaClient implements NombaClient {
   private readonly ussdAvailable: boolean;
   private readonly now: () => Date;
-  private readonly seenIdempotencyKeys = new Map<string, ChargeResult>();
+  private readonly bankLookups: Record<string, BankLookupResult>;
+  private readonly seenCharges = new Map<string, ChargeResult>();
+  private readonly revokedTokens = new Set<string>();
   private counter = 0;
 
   constructor(opts: MockNombaClientOptions = {}) {
     this.ussdAvailable = opts.ussdAvailable ?? true;
     this.now = opts.now ?? (() => new Date());
+    this.bankLookups = opts.bankLookups ?? {};
   }
 
-  async chargeCard(
-    token: string,
-    amount: number,
-    idempotencyKey: string,
-  ): Promise<ChargeResult> {
-    // Idempotency: same key returns the cached result.
-    const cached = this.seenIdempotencyKeys.get(idempotencyKey);
+  async chargeCard(opts: ChargeCardOptions): Promise<ChargeResult> {
+    const { token, amount, currency, customerId, merchantTxRef } = opts;
+    void token;
+    void currency;
+    void customerId;
+
+    // Idempotency: same merchantTxRef returns the cached result.
+    const cached = this.seenCharges.get(merchantTxRef);
     if (cached) return cached;
 
-    const failure = FAILURE_PATTERNS.find((p) => idempotencyKey.includes(p.match));
+    const failure = FAILURE_PATTERNS.find((p) => merchantTxRef.includes(p.match));
     const processedAt = this.now().toISOString();
 
     const result: ChargeResult = failure
@@ -89,14 +99,11 @@ export class MockNombaClient implements NombaClient {
           processedAt,
         };
 
-    this.seenIdempotencyKeys.set(idempotencyKey, result);
+    this.seenCharges.set(merchantTxRef, result);
     return result;
   }
 
   async createVirtualAccount(opts: VirtualAccountOptions): Promise<VirtualAccountResult> {
-    // Mock acknowledges all fields but only uses expiresInDays to compute expiry.
-    // The real client will encode amount, reference, and beneficiaryName into the
-    // Nomba VA creation request.
     const { amount, reference, beneficiaryName, expiresInDays } = opts;
     void amount;
     void reference;
@@ -113,9 +120,6 @@ export class MockNombaClient implements NombaClient {
   }
 
   async triggerUSSD(opts: USSDOptions): Promise<USSDResult> {
-    // Mock acknowledges all fields but only enforces the availability flag.
-    // The real client will encode amount, reference, bank code, and phone
-    // into the Nomba USSD push request.
     const { amount, reference, customerBankCode, customerPhone } = opts;
     void amount;
     void reference;
@@ -133,16 +137,57 @@ export class MockNombaClient implements NombaClient {
     };
   }
 
-  // ---------- test helpers ----------
-
-  /** Returns the number of times a given idempotency key has been seen. */
-  hasSeenKey(key: string): boolean {
-    return this.seenIdempotencyKeys.has(key);
+  async revokeCardToken(tokenId: string): Promise<void> {
+    this.revokedTokens.add(tokenId);
   }
 
-  /** Clears idempotency cache. For tests that want to simulate a fresh client. */
+  async lookupBankAccount(bankCode: string, accountNumber: string): Promise<BankLookupResult> {
+    // Check predefined lookups first (for deterministic tests).
+    const predefined = this.bankLookups[accountNumber];
+    if (predefined) return predefined;
+
+    return {
+      accountName: 'Mock Account Holder',
+      accountNumber,
+      bankCode,
+      bankName: `Mock Bank (${bankCode})`,
+    };
+  }
+
+  async sendTransfer(opts: TransferOptions): Promise<TransferResult> {
+    const { amount, bankCode, accountNumber, accountName, senderName, narration, merchantTxRef } = opts;
+    void amount;
+    void bankCode;
+    void accountNumber;
+    void accountName;
+    void senderName;
+    void narration;
+    void merchantTxRef;
+
+    return {
+      transferId: this.nextId('xfer'),
+      status: 'success',
+      processedAt: this.now().toISOString(),
+      nombaTransferRef: this.nextId('nomx'),
+    };
+  }
+
+  // ---------- test helpers ----------
+
+  /** Returns whether a given merchantTxRef has been seen by chargeCard. */
+  hasSeenKey(key: string): boolean {
+    return this.seenCharges.has(key);
+  }
+
+  /** Returns whether a token has been revoked. */
+  isTokenRevoked(tokenId: string): boolean {
+    return this.revokedTokens.has(tokenId);
+  }
+
+  /** Clears all internal state. For tests that want a fresh client. */
   reset(): void {
-    this.seenIdempotencyKeys.clear();
+    this.seenCharges.clear();
+    this.revokedTokens.clear();
     this.counter = 0;
   }
 
@@ -154,7 +199,6 @@ export class MockNombaClient implements NombaClient {
   }
 
   private fakeAccountNumber(): string {
-    // 10-digit NUBAN-shaped number. Not a real account.
     return Math.floor(1_000_000_000 + Math.random() * 9_000_000_000).toString();
   }
 }
