@@ -285,8 +285,12 @@ class EngineClient:
         return Customer.model_validate(resp)
 
     async def get_customer(self, customer_id: str) -> Customer:
-        resp = self._request("GET", f"/internal/v1/customers/{customer_id}")
+        resp = await self._request("GET", f"/internal/v1/customers/{customer_id}")
         return Customer.model_validate(resp)
+
+    async def list_customers(self) -> list:
+        body = await self._request("GET", "/internal/v1/customers")
+        return body.get("data", body)
 
     # =========== INVOICES ==================
 
