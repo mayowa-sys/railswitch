@@ -10,9 +10,9 @@ export const authRouter = Router();
 
 function generateApiKey(merchantId: string, mode: 'live' | 'test'): { raw: string; hash: string; prefix: string } {
   const random = randomBytes(20).toString('base64url');
-  const raw = `sk_${mode}_${merchantId}_${random}`;
+  const raw = `sk_${mode}_${merchantId}__${random}`;
   const hashVal = createHash('sha256').update(raw).digest('hex');
-  const prefix = raw.slice(0, 20);
+  const prefix = raw.slice(0, 22);
   return { raw, hash: hashVal, prefix };
 }
 
