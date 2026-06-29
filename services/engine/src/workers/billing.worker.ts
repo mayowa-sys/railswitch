@@ -30,7 +30,7 @@ interface TrialConversionData {
 
 type BillingJobData = ChargeSubscriptionData | TrialConversionData;
 
-class BillingHelper {
+export class BillingHelper {
   async getPendingSubscriptions() {
     return db
       .select()
@@ -76,7 +76,7 @@ class BillingHelper {
     return defaultMethod;
   }
 
-  async markInvoiceAsPaid(invoiceId: string, amount: string) {
+  static async markInvoiceAsPaid(invoiceId: string, amount: string) {
     await db
       .update(InvoicesTable)
       .set({
@@ -87,7 +87,7 @@ class BillingHelper {
       .where(eq(InvoicesTable.id, invoiceId));
   }
 
-  async updateSubscriptionNextBillingDate(
+  static async updateSubscriptionNextBillingDate(
     subscriptionId: string,
     nextBillingDate: Date,
   ) {
@@ -96,6 +96,8 @@ class BillingHelper {
       .set({
         next_billing_at: nextBillingDate,
         retry_count: 0,
+        current_period_start: new Date(), 
+        current_period_end: nextBillingDate
       })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
@@ -241,7 +243,7 @@ class BillingService {
 
     // Schedule first billing — same as a regular charge but marks trial end
     const nextDate = getNextBillingDate(now, plan.interval, plan.interval_count);
-    await this.billingHelper.updateSubscriptionNextBillingDate(
+    await BillingHelper.updateSubscriptionNextBillingDate(
       data.subscriptionId,
       nextDate,
     );
@@ -258,14 +260,14 @@ class BillingService {
     invoiceId: string,
     plan: Plan,
   ) {
-    await this.billingHelper.markInvoiceAsPaid(invoiceId, `${plan.amount}`);
+    await BillingHelper.markInvoiceAsPaid(invoiceId, `${plan.amount}`);
 
     const nextBillingDate = getNextBillingDate(
       new Date(),
       plan.interval,
       plan.interval_count,
     );
-    await this.billingHelper.updateSubscriptionNextBillingDate(
+    await BillingHelper.updateSubscriptionNextBillingDate(
       subscriptionId,
       nextBillingDate,
     );
@@ -299,7 +301,7 @@ class BillingService {
 
     await db
       .update(SubscriptionsTable)
-      .set({ next_billing_at: nextAttempt })
+      .set({ next_billing_at: null })
       .where(eq(SubscriptionsTable.id, subId));
   }
 }
