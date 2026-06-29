@@ -2,12 +2,13 @@ BEGIN;
 
 SET LOCAL app.current_merchant_id = 'mer_demo12345';
 
-INSERT INTO merchants (id, name, email, company)
+INSERT INTO merchants (id, name, email, company, password_hash)
 VALUES (
   'mer_demo12345',
-  'Demo Merchant',
-  'demo@example.com',
-  'Demo Company'
+  'Naija Music Pro',
+  'demo@naijamusicpro.ng',
+  'Naija Music Pro Ltd',
+  '$2a$10$placeholder'
 )
 ON CONFLICT (id) DO NOTHING;
 
