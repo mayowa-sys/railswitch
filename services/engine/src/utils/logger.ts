@@ -1,4 +1,4 @@
-import { Logger } from "../wrapper/subscription-wrapper";
+import { Logger } from "../wrapper/subscription-wrapper.js";
 
 type LogLevelName = "debug" | "info" | "warn" | "error" | "silent";
 

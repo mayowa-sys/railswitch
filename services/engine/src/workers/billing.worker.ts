@@ -1,16 +1,16 @@
 import { Job, Worker } from "bullmq";
-import { BillingHandler } from "../rails/billing-handler";
-import { BillingsQueue } from "../queues/billings.queue";
-import { GlobalLogger } from "../utils/logger";
-import { db } from "../db/client";
-import { SubscriptionsTable } from "../schema/subscriptions.schema";
+import { BillingHandler } from "../rails/billing-handler.js";
+import { BillingsQueue } from "../queues/billings.queue.js";
+import { GlobalLogger } from "../utils/logger.js";
+import { db } from "../db/client.js";
+import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
 import { lte, sql, eq, and } from "drizzle-orm";
-import { Plan, PlansTable } from "../schema/plans.schema";
-import { PaymentMethodsTable } from "../schema/payment_methods.schema";
-import { InvoicesTable } from "../schema/invoices.schema";
-import { getNextBillingDate } from "../utils/interval_util";
-import { createBillingHandler } from "../rails/billing-handler-dependencies";
-import { nextRetryAt } from "../rails/retry-timing";
+import { Plan, PlansTable } from "../schema/plans.schema.js";
+import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
+import { InvoicesTable } from "../schema/invoices.schema.js";
+import { getNextBillingDate } from "../utils/interval_util.js";
+import { createBillingHandler } from "../rails/billing-handler-dependencies.js";
+import { nextRetryAt } from "../rails/retry-timing.js";
 import type { DunningPolicy } from "../state-machines/subscription";
 
 interface ChargeSubscriptionData {
@@ -147,7 +147,7 @@ class BillingService {
 
     const jobs = await Promise.allSettled(
       subscriptions.map((sub) =>
-        BillingsQueue.add("charge", buildChargeData(sub), { delay: 2000 }),
+        BillingsQueue!.add("charge", buildChargeData(sub), { delay: 2000 }),
       ),
     );
 
@@ -166,7 +166,7 @@ class BillingService {
 
     const jobs = await Promise.allSettled(
       trials.map((sub) =>
-        BillingsQueue.add("trial_conversion", buildTrialData(sub), {
+        BillingsQueue!.add("trial_conversion", buildTrialData(sub), {
           delay: 1000,
         }),
       ),
@@ -304,9 +304,10 @@ class BillingService {
   }
 }
 
-export const BillingWorker = new Worker(
-  "billings",
-  async (job: Job<BillingJobData>) => {
+export const BillingWorker = process.env.REDIS_URL
+  ? new Worker(
+      "billings",
+      async (job: Job<BillingJobData>) => {
     const logger = new GlobalLogger("Billing Worker");
     const billingService = new BillingService(new BillingHelper(), logger);
 
@@ -339,4 +340,5 @@ export const BillingWorker = new Worker(
     }
   },
   { connection: { url: process.env.REDIS_URL! } },
-);
+)
+  : null;
