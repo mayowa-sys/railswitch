@@ -131,7 +131,9 @@ async def nomba_webhook(
 
     webhook_secret = os.getenv("NOMBA_WEBHOOK_SECRET", "")
     if webhook_secret:
-        if not _verify_signature(payload, nomba_signature, nomba_timestamp, webhook_secret):
+        if not _verify_signature(
+            payload, nomba_signature, nomba_timestamp, webhook_secret
+        ):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
     else:
         logger.warning(

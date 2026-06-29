@@ -132,6 +132,37 @@ class Customer(BaseModel):
     updated_at: datetime
 
 
+# ================ PAYMENT METHODS ==============
+
+
+class CreatePaymentMethodRequest(BaseModel):
+    customer_id: str
+    type: str
+    nomba_token: str
+    last4: str | None = None
+    brand: str | None = None
+    exp_month: str | None = None
+    exp_year: str | None = None
+    is_default: bool = False
+    metadata: dict[str, Any] = {}
+
+
+class PaymentMethod(BaseModel):
+    id: str
+    customer_id: str
+    type: str
+    nomba_token: str
+    merchant_id: str
+    last4: str
+    brand: str
+    exp_month: str
+    exp_year: str
+    is_default: bool
+    metadata: dict[str, Any]
+    created_at: datetime
+    deleted_at: str | None = None
+
+
 class EngineClient:
     def __init__(
         self, client: httpx.AsyncClient, merchant_id: str, idempotency_key: str | None
@@ -205,9 +236,7 @@ class EngineClient:
         resp = await self._request("GET", f"/internal/v1/subscriptions/{sub_id}")
         return SubscriptionResponse.model_validate(resp)
 
-    async def _subscription_action(
-        self, action: str, sub_id: str
-    ) -> dict:
+    async def _subscription_action(self, action: str, sub_id: str) -> dict:
         return await self._request(
             "POST", f"/internal/v1/subscriptions/{sub_id}/{action}"
         )
@@ -319,17 +348,41 @@ class EngineClient:
     async def refund_invoice(self, invoice_id):
         return await self._invoice_action(invoice_id, "refund")
 
+    # =========== PAYMENT METHODS =========
+
+    async def create_payment_method(
+        self, payload: CreatePaymentMethodRequest
+    ) -> PaymentMethod:
+        resp = await self._request(
+            "POST",
+            "/internal/v1/payment-methods",
+            json=payload.model_dump(exclude_none=True),
+        )
+        return PaymentMethod.model_validate(resp)
+
+    async def list_payment_methods(
+        self, customer_id: str | None = None
+    ) -> list[PaymentMethod]:
+        params = {}
+        if customer_id:
+            params["customer_id"] = customer_id
+        body = await self._request("GET", "/internal/v1/payment-methods", params=params)
+        return [PaymentMethod.model_validate(pm) for pm in body.get("data", [])]
+
+    async def get_payment_method(self, pm_id: str) -> PaymentMethod:
+        resp = await self._request("GET", f"/internal/v1/payment-methods/{pm_id}")
+        return PaymentMethod.model_validate(resp)
+
+    async def delete_payment_method(self, pm_id: str) -> dict:
+        return await self._request("DELETE", f"/internal/v1/payment-methods/{pm_id}")
+
     # =========== AUTH ===================
 
     async def register(self, payload: dict) -> dict:
-        return await self._request(
-            "POST", "/internal/v1/auth/register", json=payload
-        )
+        return await self._request("POST", "/internal/v1/auth/register", json=payload)
 
     async def login(self, payload: dict) -> dict:
-        return await self._request(
-            "POST", "/internal/v1/auth/login", json=payload
-        )
+        return await self._request("POST", "/internal/v1/auth/login", json=payload)
 
     # =========== WEBHOOKS ===================
 
