@@ -1,0 +1,7 @@
+{
+  "name": "railswitch-docs",
+  "private": true,
+  "scripts": {
+    "dev": "npx -p node@20 -- mintlify dev --port 3002"
+  }
+}

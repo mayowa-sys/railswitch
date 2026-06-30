@@ -395,6 +395,20 @@ class EngineClient:
         body = await self._request("GET", "/internal/v1/webhooks/management/endpoints")
         return body.get("data", body)
 
+    async def get_webhook_endpoint(self, endpoint_id: str) -> dict:
+        return await self._request(
+            "GET", f"/internal/v1/webhooks/management/endpoints/{endpoint_id}"
+        )
+
+    async def update_webhook_endpoint(
+        self, endpoint_id: str, payload: dict
+    ) -> dict:
+        return await self._request(
+            "PATCH",
+            f"/internal/v1/webhooks/management/endpoints/{endpoint_id}",
+            json=payload,
+        )
+
     async def delete_webhook_endpoint(self, endpoint_id: str) -> dict:
         return await self._request(
             "DELETE", f"/internal/v1/webhooks/management/endpoints/{endpoint_id}"

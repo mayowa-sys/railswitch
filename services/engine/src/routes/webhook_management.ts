@@ -55,6 +55,84 @@ webhookManagementRouter.get('/endpoints', async (req: Request, res: Response) =>
   }
 });
 
+webhookManagementRouter.get('/endpoints/:id', async (req: Request, res: Response) => {
+  try {
+    const [endpoint] = await db
+      .select({
+        id: WebhookEndpointsTable.id,
+        merchant_id: WebhookEndpointsTable.merchant_id,
+        url: WebhookEndpointsTable.url,
+        status: WebhookEndpointsTable.status,
+        last_delivery_at: WebhookEndpointsTable.last_delivery_at,
+        created_at: WebhookEndpointsTable.created_at,
+      })
+      .from(WebhookEndpointsTable)
+      .where(
+        and(
+          eq(WebhookEndpointsTable.id, req.params.id),
+          eq(WebhookEndpointsTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!endpoint) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Endpoint not found' } });
+      return;
+    }
+
+    res.json(endpoint);
+  } catch (err) {
+    console.error('[webhooks] get endpoint error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get endpoint' } });
+  }
+});
+
+webhookManagementRouter.patch('/endpoints/:id', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+
+    const [endpoint] = await db
+      .select()
+      .from(WebhookEndpointsTable)
+      .where(
+        and(
+          eq(WebhookEndpointsTable.id, req.params.id),
+          eq(WebhookEndpointsTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!endpoint) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Endpoint not found' } });
+      return;
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (url !== undefined) updateData.url = url;
+
+    if (Object.keys(updateData).length === 0) {
+      res.json(endpoint);
+      return;
+    }
+
+    const [updated] = await db
+      .update(WebhookEndpointsTable)
+      .set(updateData)
+      .where(
+        and(
+          eq(WebhookEndpointsTable.id, req.params.id),
+          eq(WebhookEndpointsTable.merchant_id, req.merchantId),
+        ),
+      )
+      .returning();
+
+    res.json(updated ?? endpoint);
+  } catch (err) {
+    console.error('[webhooks] update endpoint error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update endpoint' } });
+  }
+});
+
 webhookManagementRouter.delete('/endpoints/:id', async (req: Request, res: Response) => {
   try {
     const [endpoint] = await db

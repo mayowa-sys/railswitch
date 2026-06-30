@@ -60,18 +60,18 @@ Plus:
 
 **Engine — pre-window foundation complete (114 tests):**
 
-- XState v5 subscription state machine — 11 states (incl. refunded), all transitions guarded, visualizable via `/debug/subscription-machine`
+- XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded, visualizable via `/debug/subscription-machine`
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
 - Mock Nomba client + rail orchestrator — interface-driven, 6 interval types (daily, weekly, monthly, annual, day-of-month, day-of-week)
 - Smart retry timing — payday-aware, liquidity-window optimization, exponential backoff with jitter
 - BillingHandler — bridges orchestrator to state machine (`bill()` + `retry()`), idempotent
-- BullMQ billing scheduler with trial-to-paid conversion
+- BullMQ billing scheduler with trial-to-paid conversion (requires Redis, dev-only until production Redis)
 - Internal API routes at `/internal/v1/*` — plans, customers, subscriptions, invoices, payment methods, auth, webhooks CRUD
-- Proration math — verified against brief reference example (₦3,333 credit / ₦10,000 charge / ₦6,667 net)
+- Proration preview endpoint — plan-change proration (upgrade/downgrade), verified against brief example (₦3,333 credit / ₦10,000 charge / ₦6,667 net)
 - Drizzle production repository — FOR UPDATE, version checks, merchant isolation via `set_config()`
 - Immutable audit log with no-delete/no-update Postgres policies
 - Outbound webhook delivery — HMAC-SHA256 signing, 9-step exponential backoff, replay support
-- Inbound Nomba webhook ingress with signature verification
+- Inbound Nomba webhook ingress — signature verification (gateway), engine handler stub (window phase)
 
 **Gateway — 14 tests:**
 
@@ -83,8 +83,8 @@ Plus:
 
 **Frontend:**
 
-- Merchant dashboard — 12 routes, auth context, real API integration
-- Customer portal — 5 pages, recovery banner, proration preview
+- Merchant dashboard — 12 routes, auth context, plans + customers from real API (rest mock)
+- Customer portal — 5 pages, recovery banner, proration preview (mock mode)
 - Both with mock/real dual-mode via `NEXT_PUBLIC_MOCK_API`
 
 **Window-phase work (July 1–7) — Nomba integration:**
@@ -112,7 +112,7 @@ Services boot at:
 |---|---|---|
 | Engine | `http://localhost:3001` | Internal — state machine + business logic |
 | Gateway | `http://localhost:8000` | **Public API** |
-| Postgres | `localhost:5432` | Database (`railswitch`/`railswitch_dev`/`railswitch`) |
+| Postgres | `localhost:5432` | Database (user `railswitch`, password `railswitch_dev`, db `railswitch`) |
 | Redis | `localhost:6379` | BullMQ queue + rate limiting |
 
 Verify:
@@ -147,7 +147,7 @@ cd apps/dashboard && npm install && npm run dev
 **Docs site:**
 
 ```bash
-cd apps/docs && npx -p node@20 -- mintlify dev
+cd apps/docs && npx -p node@20 -- mintlify dev --port 3002
 ```
 
 ---
@@ -199,7 +199,7 @@ The public REST API lives at the gateway. Stripe-style conventions: `Authorizati
 | Subscriptions | `POST`, `GET list`, `GET by id`, `PATCH`, pause, resume, cancel, preview |
 | Invoices | `GET list`, `GET by id`, retry, refund |
 | Payment Methods | `POST`, `GET list`, `GET by id`, `DELETE` |
-| Webhooks | `POST /endpoints`, `GET list`, `DELETE`, events, deliveries, replay |
+| Webhooks | `POST /endpoints`, `GET list`, `GET by id`, `PATCH`, `DELETE`, events, deliveries, replay |
 
 Full contract at [`docs/internal-api.md`](docs/internal-api.md). OpenAPI spec auto-generated at `http://localhost:8000/openapi.json`.
 

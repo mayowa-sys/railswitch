@@ -115,7 +115,7 @@ function buildChargeData(
     subscriptionId: sub.id,
     customerId: sub.customer_id,
     planId: sub.plan_id,
-    idemKey: `billing:${sub.id}:${Date.now()}`,
+    idemKey: `billing:${sub.id}`,
     merchantId: sub.merchant_id,
   };
 }
@@ -296,11 +296,6 @@ class BillingService {
         next_attempt_at: nextAttempt,
       })
       .where(eq(InvoicesTable.id, invoiceId));
-
-    await db
-      .update(SubscriptionsTable)
-      .set({ next_billing_at: nextAttempt })
-      .where(eq(SubscriptionsTable.id, subId));
   }
 }
 
