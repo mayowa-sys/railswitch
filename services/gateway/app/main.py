@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from app.auth import ApiKeyRecord, get_current_merchant
 
 
@@ -65,6 +64,3 @@ app.include_router(subscriptions.router)
 app.include_router(invoices.router)
 app.include_router(webhook_management.router)
 app.include_router(payment_methods.router)
-
-# Serve static Mintlify docs
-app.mount("/docs", StaticFiles(directory="static", html=True), name="docs")
