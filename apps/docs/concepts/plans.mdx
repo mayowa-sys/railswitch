@@ -1,0 +1,47 @@
+---
+title: "Plans"
+description: "Defining pricing plans"
+---
+
+A **plan** defines the pricing model for a subscription. Plans are merchant-scoped and can be soft-deleted.
+
+## Creating a Plan
+
+```python
+plan = client.plans.create(
+    name="Pro Monthly",
+    description="Professional plan with advanced features",
+    amount=15000,          # Amount in your currency's smallest unit
+    currency="NGN",         # ISO 4217 currency code
+    interval="monthly",     # monthly, annual, or custom
+    interval_count=1,       # Bill every N intervals
+    metadata={"features": "unlimited_api_calls"},
+)
+```
+
+| Field | Description |
+|-------|-------------|
+| `name` | Display name for the plan |
+| `description` | Longer description shown to customers |
+| `amount` | Price in the smallest currency unit (e.g., kobo for NGN) |
+| `currency` | ISO 4217 currency code (NGN, USD, etc.) |
+| `interval` | Billing frequency: `monthly`, `annual`, or `custom` |
+| `interval_count` | Number of intervals between charges (e.g., 3 with monthly = quarterly) |
+
+## Plan Operations
+
+```python
+# List all active plans
+plans = client.plans.list()
+
+# Get a single plan
+plan = client.plans.get("plan_001")
+
+# Update a plan
+plan = client.plans.update("plan_001", amount=20000)
+
+# Delete a plan (soft-delete)
+client.plans.delete("plan_001")
+```
+
+Deleting a plan does not affect active subscriptions — they continue billing on the existing terms.

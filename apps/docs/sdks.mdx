@@ -1,0 +1,72 @@
+---
+title: "SDKs"
+description: "Python and Node.js SDKs for RailSwitch"
+---
+
+## Python SDK
+
+**Package:** `railswitch`
+
+```bash
+pip install railswitch
+```
+
+### Usage
+
+```python
+from railswitch import RailSwitch
+
+client = RailSwitch(api_key="sk_test_...")
+
+# Plans
+plan = client.plans.create(name="Pro", amount=15000, interval="monthly")
+plans = client.plans.list()
+
+# Customers
+customer = client.customers.create(email="john@example.com", name="John Doe")
+
+# Subscriptions
+sub = client.subscriptions.create(customer_id=customer.id, plan_id=plan.id)
+subs = client.subscriptions.list()
+sub = client.subscriptions.pause(sub.id)
+sub = client.subscriptions.resume(sub.id)
+sub = client.subscriptions.cancel(sub.id)
+
+# Preview proration
+preview = client.subscriptions.preview(sub.id, new_plan_id="plan_pro")
+
+# Invoices
+invoices = client.invoices.list()
+```
+
+## Node.js SDK
+
+**Package:** `@railswitch/node`
+
+```bash
+npm install @railswitch/node
+```
+
+### Usage
+
+```javascript
+import { RailSwitch } from "@railswitch/node";
+
+const client = new RailSwitch({ apiKey: "sk_test_..." });
+
+// Plans
+const plan = await client.plans.create({ name: "Pro", amount: 15000, interval: "monthly" });
+const plans = await client.plans.list();
+
+// Customers
+const customer = await client.customers.create({ email: "john@example.com", name: "John Doe" });
+
+// Subscriptions
+const sub = await client.subscriptions.create({ customer_id: customer.id, plan_id: plan.id });
+const subs = await client.subscriptions.list();
+const preview = await client.subscriptions.preview(sub.id, "plan_pro");
+```
+
+### API Client Reference
+
+Both SDKs wrap the same REST API and return typed response objects. Each method maps to a corresponding API endpoint documented in the [API Reference](/api-reference).

@@ -1,0 +1,80 @@
+---
+title: "Webhook Events"
+description: "Event types and payload schemas for outbound webhooks"
+---
+
+RailSwitch emits webhook events to your registered endpoints whenever important events occur in your account.
+
+## Event Types
+
+### Subscription Events
+
+| Event | Description |
+|-------|-------------|
+| `subscription.created` | A new subscription was created |
+| `subscription.updated` | Subscription details were changed (plan, metadata) |
+| `subscription.paused` | Billing was paused |
+| `subscription.resumed` | Billing was resumed |
+| `subscription.cancelled` | Subscription was cancelled |
+
+### Invoice Events
+
+| Event | Description |
+|-------|-------------|
+| `invoice.created` | A new invoice was generated |
+| `invoice.paid` | Invoice payment succeeded |
+| `invoice.payment_failed` | Invoice payment failed |
+| `invoice.recovered` | Previously failed invoice was paid via retry |
+| `invoice.refunded` | Invoice was refunded |
+
+### Charge Events
+
+| Event | Description |
+|-------|-------------|
+| `charge.succeeded` | A charge attempt succeeded |
+| `charge.failed` | A charge attempt failed |
+
+### Dunning Events
+
+| Event | Description |
+|-------|-------------|
+| `dunning.cascade_started` | The dunning cascade was triggered |
+| `dunning.fallback_initiated` | A fallback payment method was attempted |
+| `dunning.exhausted` | All retry attempts exhausted |
+
+### Customer Events
+
+| Event | Description |
+|-------|-------------|
+| `customer.created` | A new customer was created |
+| `customer.payment_method_added` | A payment method was attached |
+| `customer.payment_method_removed` | A payment method was removed |
+
+## Event Payload
+
+All webhook events follow this envelope:
+
+```json
+{
+  "id": "evt_001",
+  "event": "subscription.created",
+  "merchant_id": "merchant_a",
+  "data": {
+    "id": "sub_001",
+    "customer_id": "cust_001",
+    "plan_id": "plan_pro",
+    "state": "active",
+    "current_period_start": "2026-07-01T00:00:00Z",
+    "current_period_end": "2026-08-01T00:00:00Z"
+  },
+  "created_at": "2026-07-01T00:00:00Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique event identifier |
+| `event` | Event type string |
+| `merchant_id` | Your merchant ID |
+| `data` | Event-specific payload |
+| `created_at` | ISO 8601 timestamp |

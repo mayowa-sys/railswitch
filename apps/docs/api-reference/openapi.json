@@ -1,0 +1,698 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "RailSwitch API",
+    "version": "0.1.0",
+    "description": "Subscription management and billing API. All requests require authentication via Bearer token using a live or test API key."
+  },
+  "servers": [
+    {
+      "url": "https://railswitch-gateway.fly.dev",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/v1/whoami": {
+      "get": {
+        "summary": "Get current merchant",
+        "description": "Returns the merchant ID and mode (test/live) for the current API key.",
+        "tags": ["Authentication"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Merchant identity",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WhoamiResponse" } } }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "summary": "Register a new merchant",
+        "description": "Creates a new merchant account and returns API credentials.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Registration successful", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "summary": "Login",
+        "description": "Authenticates with email and password, returns a session token.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Login successful", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/customers": {
+      "post": {
+        "summary": "Create a customer",
+        "description": "Creates a new customer record under the authenticated merchant.",
+        "tags": ["Customers"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCustomerRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Customer created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "get": {
+        "summary": "List customers",
+        "description": "Returns all customers for the authenticated merchant.",
+        "tags": ["Customers"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of customers", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/customers/{customer_id}": {
+      "get": {
+        "summary": "Get a customer",
+        "description": "Returns a single customer by ID.",
+        "tags": ["Customers"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "customer_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Customer details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+          "404": { "description": "Customer not found" }
+        }
+      }
+    },
+    "/v1/plans": {
+      "post": {
+        "summary": "Create a plan",
+        "description": "Creates a new subscription plan.",
+        "tags": ["Plans"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePlanRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Plan created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "get": {
+        "summary": "List plans",
+        "description": "Returns all active plans for the merchant.",
+        "tags": ["Plans"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "starting_after", "in": "query", "schema": { "type": "string" } },
+          { "name": "ending_before", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "List of plans", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/plans/{plan_id}": {
+      "get": {
+        "summary": "Get a plan",
+        "description": "Returns a single plan by ID.",
+        "tags": ["Plans"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Plan details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "patch": {
+        "summary": "Update a plan",
+        "description": "Updates an existing plan. Only active plans can be modified.",
+        "tags": ["Plans"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdatePlanRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Plan updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "delete": {
+        "summary": "Delete a plan",
+        "description": "Soft-deletes a plan. Existing subscriptions are unaffected.",
+        "tags": ["Plans"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Plan deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions": {
+      "post": {
+        "summary": "Create a subscription",
+        "description": "Creates a new subscription for a customer on a given plan.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSubscriptionRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Subscription created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "get": {
+        "summary": "List subscriptions",
+        "description": "Returns all subscriptions for the merchant.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "starting_after", "in": "query", "schema": { "type": "string" } },
+          { "name": "ending_before", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "List of subscriptions", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions/{subscription_id}": {
+      "get": {
+        "summary": "Get a subscription",
+        "description": "Returns a single subscription by ID.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Subscription details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "patch": {
+        "summary": "Update a subscription",
+        "description": "Updates a subscription (e.g., change plan, set cancel_at_period_end).",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateSubscriptionRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Subscription updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions/{subscription_id}/pause": {
+      "post": {
+        "summary": "Pause a subscription",
+        "description": "Pauses billing for a subscription. The subscription enters a paused state.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Subscription paused", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions/{subscription_id}/resume": {
+      "post": {
+        "summary": "Resume a subscription",
+        "description": "Resumes billing for a previously paused subscription.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Subscription resumed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions/{subscription_id}/cancel": {
+      "post": {
+        "summary": "Cancel a subscription",
+        "description": "Cancels a subscription at period end.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Subscription cancelled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/subscriptions/{subscription_id}/preview": {
+      "post": {
+        "summary": "Preview proration",
+        "description": "Calculates the prorated credit and charge for switching a subscription to a new plan before applying the change.",
+        "tags": ["Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "subscription_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["new_plan_id"],
+                "properties": {
+                  "new_plan_id": { "type": "string", "description": "The ID of the plan to switch to" },
+                  "effective_date": { "type": "string", "format": "date-time", "description": "When the change takes effect (defaults to now)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Proration preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProrationPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invoices": {
+      "get": {
+        "summary": "List invoices",
+        "description": "Returns all invoices for the merchant, with cursor-based pagination.",
+        "tags": ["Invoices"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "starting_after", "in": "query", "schema": { "type": "string" } },
+          { "name": "ending_before", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "List of invoices", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/invoices/{invoice_id}": {
+      "get": {
+        "summary": "Get an invoice",
+        "description": "Returns a single invoice by ID.",
+        "tags": ["Invoices"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "invoice_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Invoice details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/invoices/{invoice_id}/retry": {
+      "post": {
+        "summary": "Retry invoice payment",
+        "description": "Attempts to retry payment for a failed invoice.",
+        "tags": ["Invoices"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "invoice_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Retry result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/invoices/{invoice_id}/refund": {
+      "post": {
+        "summary": "Refund an invoice",
+        "description": "Refunds a paid invoice.",
+        "tags": ["Invoices"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "invoice_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Refund result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/payment-methods": {
+      "post": {
+        "summary": "Attach a payment method",
+        "description": "Attaches a new payment method (card) to a customer.",
+        "tags": ["Payment Methods"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentMethodRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Payment method created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "get": {
+        "summary": "List payment methods",
+        "description": "Returns all payment methods, optionally filtered by customer.",
+        "tags": ["Payment Methods"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "customer_id", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of payment methods", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/payment-methods/{pm_id}": {
+      "get": {
+        "summary": "Get a payment method",
+        "description": "Returns a single payment method by ID.",
+        "tags": ["Payment Methods"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "pm_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Payment method details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "delete": {
+        "summary": "Detach a payment method",
+        "description": "Soft-deletes a payment method. It will no longer be used for billing.",
+        "tags": ["Payment Methods"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "pm_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Payment method deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/webhooks/endpoints": {
+      "post": {
+        "summary": "Register a webhook endpoint",
+        "description": "Registers a URL to receive webhook events.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                  "url": { "type": "string", "format": "uri", "description": "The URL to receive webhook events" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Endpoint created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      },
+      "get": {
+        "summary": "List webhook endpoints",
+        "description": "Returns all registered webhook endpoints.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of endpoints", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/webhooks/endpoints/{endpoint_id}": {
+      "delete": {
+        "summary": "Delete a webhook endpoint",
+        "description": "Removes a webhook endpoint. No further events will be delivered.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "endpoint_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Endpoint deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/webhooks/events": {
+      "get": {
+        "summary": "List webhook events",
+        "description": "Returns all webhook events for the merchant.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of events", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/webhooks/deliveries": {
+      "get": {
+        "summary": "List delivery attempts",
+        "description": "Returns all webhook delivery attempts.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of deliveries", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    },
+    "/v1/webhooks/deliveries/{delivery_id}/replay": {
+      "post": {
+        "summary": "Replay a delivery",
+        "description": "Resets a failed delivery so it will be retried.",
+        "tags": ["Webhooks"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "delivery_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Delivery queued for replay", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Use your API key (sk_live_... or sk_test_...) as the Bearer token."
+      }
+    },
+    "schemas": {
+      "Envelope": {
+        "type": "object",
+        "properties": {
+          "data": { "description": "Response payload" },
+          "error": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "nullable": true,
+            "description": "Pagination metadata, etc."
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "nullable": true },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "meta": { "nullable": true }
+        }
+      },
+      "WhoamiResponse": {
+        "type": "object",
+        "properties": {
+          "merchant": { "type": "string" },
+          "mode": { "type": "string", "enum": ["test", "live"] }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 },
+          "company": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "CreateCustomerRequest": {
+        "type": "object",
+        "required": ["email", "name"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "name": { "type": "string" },
+          "phone": { "type": "string" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "CreatePlanRequest": {
+        "type": "object",
+        "required": ["name", "description", "amount", "currency", "interval", "interval_count"],
+        "properties": {
+          "name": { "type": "string", "description": "Plan display name" },
+          "description": { "type": "string" },
+          "amount": { "type": "number", "description": "Price in the currency's smallest unit" },
+          "currency": { "type": "string", "example": "NGN" },
+          "interval": { "type": "string", "enum": ["monthly", "annual", "custom"] },
+          "interval_count": { "type": "integer", "description": "Number of intervals between charges" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "UpdatePlanRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "interval": { "type": "string" },
+          "interval_count": { "type": "integer" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "CreateSubscriptionRequest": {
+        "type": "object",
+        "required": ["customer_id", "plan_id", "start_date"],
+        "properties": {
+          "customer_id": { "type": "string" },
+          "plan_id": { "type": "string" },
+          "start_date": { "type": "string", "format": "date-time" },
+          "trial_end": { "type": "string", "format": "date-time" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "UpdateSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "plan_id": { "type": "string" },
+          "cancel_at_period_end": { "type": "boolean" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "CreatePaymentMethodRequest": {
+        "type": "object",
+        "required": ["customer_id", "type", "nomba_token"],
+        "properties": {
+          "customer_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["card", "virtual_account", "ussd"] },
+          "nomba_token": { "type": "string", "description": "Token from Nomba.js or the Nomba API" },
+          "last4": { "type": "string" },
+          "brand": { "type": "string" },
+          "exp_month": { "type": "string" },
+          "exp_year": { "type": "string" },
+          "is_default": { "type": "boolean", "default": false },
+          "metadata": { "type": "object" }
+        }
+      },
+      "ProrationPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "current_plan": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "amount": { "type": "number" },
+              "currency": { "type": "string" },
+              "interval": { "type": "string" }
+            }
+          },
+          "new_plan": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "amount": { "type": "number" },
+              "currency": { "type": "string" },
+              "interval": { "type": "string" }
+            }
+          },
+          "current_period_start": { "type": "string", "format": "date-time" },
+          "current_period_end": { "type": "string", "format": "date-time" },
+          "effective_date": { "type": "string", "format": "date-time" },
+          "remaining_days": { "type": "integer" },
+          "total_days_in_period": { "type": "integer" },
+          "credit": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "description": { "type": "string" }
+            }
+          },
+          "charge": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "description": { "type": "string" }
+            }
+          },
+          "net_amount": { "type": "number" },
+          "currency": { "type": "string" }
+        }
+      }
+    }
+  }
+}

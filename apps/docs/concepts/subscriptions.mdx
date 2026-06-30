@@ -1,0 +1,62 @@
+---
+title: "Subscriptions"
+description: "How subscriptions work in RailSwitch"
+---
+
+A subscription links a **customer** to a **plan** and manages recurring billing.
+
+## Lifecycle
+
+```
+active → paused → active
+active → canceled (at period end)
+active → past_due (payment failed) → unpaid → canceled
+```
+
+### States
+
+| State | Description |
+|-------|-------------|
+| `active` | Subscription is active and billing normally |
+| `paused` | Billing is suspended. No invoices generated |
+| `past_due` | The most recent payment failed. Retries are scheduled |
+| `canceled` | Subscription ended. No further billing |
+| `unpaid` | All retries exhausted. Subscription terminated |
+| `trialing` | In trial period. No billing until trial ends |
+
+## Creating a Subscription
+
+```python
+sub = client.subscriptions.create(
+    customer_id="cust_001",
+    plan_id="plan_pro",
+    start_date="2026-07-01T00:00:00Z",
+    trial_end="2026-07-15T00:00:00Z",  # optional
+)
+```
+
+## Managing Subscriptions
+
+```python
+# Pause billing
+sub = client.subscriptions.pause("sub_001")
+
+# Resume billing
+sub = client.subscriptions.resume("sub_001")
+
+# Cancel at period end
+sub = client.subscriptions.update("sub_001", cancel_at_period_end=True)
+
+# Immediate cancel via
+sub = client.subscriptions.cancel("sub_001")
+```
+
+## Changing Plans
+
+To change a subscription's plan, update the `plan_id`:
+
+```python
+sub = client.subscriptions.update("sub_001", plan_id="plan_enterprise")
+```
+
+RailSwitch will automatically prorate the change. Use the [preview endpoint](/concepts/proration) to calculate charges before applying.
