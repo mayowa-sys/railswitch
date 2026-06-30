@@ -1,94 +1,73 @@
-import { vi, test, expect, beforeEach } from "vitest";
-import * as ProrationHelper from "../../src/proration/proration-helper";
-import { pauseSubscription } from "../../src/proration/pause-subcription";
-import { SubscriptionsTable } from "../../src/schema/subscriptions.schema";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock modules
-vi.mock("../../src/db/client", () => ({
-  db: drizzle.mock(),
-}));
-
-import { db } from "../../src/db/client";
-import { QueryResult } from "pg";
-import { DunningPolicy } from "../../src/state-machines/subscription.js";
-import { GlobalLogger } from "../../src/utils/logger";
-import { DrizzleSubscriptionRepository } from "../../src/db/drizzle-repository.js";
-import { SubscriptionWrapper } from "../../src/wrapper/subscription-wrapper.js";
-
-vi.mock("./ProrationHelper", () => ({
-  ProrationHelper: {
-    getSubscription: vi.fn(),
+vi.mock('../../src/db/client.js', () => ({
+  db: {
+    execute: vi.fn(),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve()),
+      })),
+    })),
   },
 }));
 
-vi.mock("./logger", () => ({
-  pauseLogger: {
-    error: vi.fn(),
-  },
+vi.mock('../../src/proration/proration-helper.js', () => ({
+  getSubscription: vi.fn(),
 }));
-test("pauses an active subscription", async () => {
-  const mockWrapper: SubscriptionWrapper = {
-    processEvent: vi.fn().mockResolvedValue(undefined),
-    logger: new GlobalLogger("Mock Logger"), 
-    now: new Date(), 
-    repo: new DrizzleSubscriptionRepository(db, 'mer_demo')
-  } as SubscriptionWrapper;
 
-  const mockSubscription = {
-    id: "sub_1234567890",
-    merchant_id: "merchant_abc123",
-    customer_id: "customer_xyz789",
-    plan_id: "plan_pro_monthly",
-    policy: {
-      maxRetries: 3,
-      ussdEnabled: true,
-      graceHours: 72,
-      baseDelayMinutes: 60,
-      maxDelayHours: 72,
-    } as DunningPolicy,
-    state: "active" as const,
-    version: 1,
-    retry_count: 0,
-    last_failure_reason: null,
-    last_failure_retryable: null,
-    va_id: "va_2024_001",
-    va_expires_at: new Date("2025-12-31"),
-    current_invoice_id: "invoice_20240115_001",
-    cancel_at_period_end: false,
-    metadata: {
-      source: "web",
-      campaign: "seasonal_promo",
-    },
-    created_at: new Date("2024-01-15T10:30:00Z"),
-    updated_at: new Date("2024-01-15T10:30:00Z"),
-    next_billing_at: new Date("2024-02-15T10:30:00Z"),
-    trial_ends_at: null,
-    current_period_start: new Date("2024-01-15T10:30:00Z"),
-    current_period_end: new Date("2024-02-15T10:30:00Z"),
-    paused_at: null,
-    cancelled_at: null,
-  } as typeof SubscriptionsTable.$inferSelect;
+import { db } from '../../src/db/client.js';
+import * as ProrationHelper from '../../src/proration/proration-helper.js';
+import { pauseSubscription } from '../../src/proration/pause-subcription.js';
+import { SubscriptionsTable } from '../../src/schema/subscriptions.schema.js';
 
-  // Mock database queries
-  vi.mocked(db.execute).mockResolvedValue(
-    {} as QueryResult<Record<string, never>>,
-  );
-  vi.mocked(db.update(SubscriptionsTable).set({}).where).mockResolvedValue(
-    {} as QueryResult<never>,
-  );
+const mockUpdateSet = vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) }));
 
-  // Mock getting subscription in active state
-  vi.mocked(ProrationHelper.getSubscription).mockResolvedValue(mockSubscription);
+describe('pauseSubscription', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  await pauseSubscription("sub_123", "merchant_456", mockWrapper);
+  it('returns immediately when the subscription is already paused', async () => {
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'paused' } as typeof SubscriptionsTable.$inferSelect);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wrapper = { processEvent: vi.fn() } as any;
 
-  // Verify calls
-  expect(db.execute).toHaveBeenCalled();
-  expect(ProrationHelper.getSubscription).toHaveBeenCalledWith("sub_123");
-  expect(mockWrapper.processEvent).toHaveBeenCalledWith({
-    subscriptionId: "sub_123",
-    event: { type: "PAUSE_REQUESTED", actor: "customer" },
-    idempotencyKey: "idem",
+    await pauseSubscription('sub_1', 'mer_1', wrapper);
+
+    expect(db.execute).toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(wrapper.processEvent).not.toHaveBeenCalled();
+  });
+
+  it("throws when the subscription isn't active", async () => {
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'cancelled' } as typeof SubscriptionsTable.$inferSelect);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wrapper = { processEvent: vi.fn() } as any;
+
+    await expect(pauseSubscription('sub_1', 'mer_1', wrapper)).rejects.toThrow(
+      "You can't pause from this state",
+    );
+
+    expect(db.update).not.toHaveBeenCalled();
+    expect(wrapper.processEvent).not.toHaveBeenCalled();
+  });
+
+  it('requests pause for an active subscription', async () => {
+    const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(db.update).mockImplementation(mockUpdate as any);
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'active' } as typeof SubscriptionsTable.$inferSelect);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wrapper = { processEvent: vi.fn(() => Promise.resolve()) } as any;
+
+    await pauseSubscription('sub_1', 'mer_1', wrapper);
+
+    expect(db.execute).toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalled();
+    expect(wrapper.processEvent).toHaveBeenCalledWith({
+      subscriptionId: 'sub_1',
+      event: { type: 'PAUSE_REQUESTED', actor: 'customer' },
+      idempotencyKey: 'idem',
+    });
   });
 });

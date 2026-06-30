@@ -1,7 +1,6 @@
 import Decimal from "decimal.js";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/client";
-import { createBillingHandler } from "../rails/billing-handler-dependencies";
 import { nextRetryAt } from "../rails/retry-timing";
 import { CreditsTable } from "../schema/credits.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
@@ -125,16 +124,6 @@ export async function getSubscription(subId: string) {
     .where(eq(SubscriptionsTable.id, subId));
   if (!sub) throw new Error("Subscription not found");
   return sub;
-}
-
-async function getPlan(id: string) {
-  const [plan] = await db
-    .select()
-    .from(PlansTable)
-    .where(eq(PlansTable.id, id));
-  if (!plan) throw new Error("Plan does not exist");
-
-  return plan;
 }
 
 async function handleFailedPlanChangeCharge(subId: string, invoiceId: string) {
