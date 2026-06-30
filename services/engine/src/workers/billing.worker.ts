@@ -4,7 +4,7 @@ import { BillingsQueue } from "../queues/billings.queue.js";
 import { GlobalLogger } from "../utils/logger.js";
 import { db } from "../db/client.js";
 import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
-import { lte, sql, eq, and } from "drizzle-orm";
+import { lte, sql, eq, and, gte } from "drizzle-orm";
 import { Plan, PlansTable } from "../schema/plans.schema.js";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
 import { InvoicesTable } from "../schema/invoices.schema.js";
