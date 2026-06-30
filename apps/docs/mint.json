@@ -23,7 +23,7 @@
   "tabs": [
     {
       "name": "API Reference",
-      "url": "api-reference"
+      "url": "api-reference/overview"
     }
   ],
   "navigation": [
@@ -57,10 +57,6 @@
         "api-reference/overview"
       ]
     }
-  ],
-  "openapi": [
-    "api-reference/openapi.json"
-  ],
   "footerSocials": {
     "github": "https://github.com/mayowa-sys/railswitch"
   }
