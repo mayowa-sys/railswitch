@@ -3,18 +3,29 @@ import { db } from "../db/client";
 import * as ProrationHelper from "./proration-helper";
 import { GlobalLogger } from "../utils/logger";
 import { PlansTable } from "../schema/plans.schema";
-import { SubscriptionWrapper } from "../wrapper/subscription-wrapper";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
 
 const resumeLogger = new GlobalLogger("Proration-Resume");
 
-export async function resumeSubscription(subId: string, merchantId: string, wrapper: SubscriptionWrapper) {
+/**
+ * After the state machine has transitioned to active (via the wrapper),
+ * extend the next_billing_at by the pause duration so the customer
+ * doesn't lose time they already paid for.
+ * Called from the route handler after the wrapper's processEvent.
+ */
+export async function applyResumeAdjustments(
+  subId: string,
+  merchantId: string,
+): Promise<void> {
   await db.execute(sql`SET LOCAL app.current.merchant_id=${merchantId}`);
 
   try {
     const sub = await ProrationHelper.getSubscription(subId);
+    if (sub.state !== "active") {
+      throw new Error("Subscription must be in active state to apply resume adjustments");
+    }
     if (!sub.paused_at) {
-      resumeLogger.info("Subscription was not paused");
+      resumeLogger.info("Subscription was not paused — no adjustments needed");
       return;
     }
     if (!sub.next_billing_at) {
@@ -25,32 +36,30 @@ export async function resumeSubscription(subId: string, merchantId: string, wrap
       .select()
       .from(PlansTable)
       .where(eq(PlansTable.id, sub.plan_id));
-    if (!plan) throw new Error(`This ${sub.plan_id} plan does not exist`);
+    if (!plan) throw new Error(`Plan ${sub.plan_id} does not exist`);
 
-
-    wrapper.processEvent({
-      subscriptionId: subId,
-      idempotencyKey: "idemKey",
-      event: { type: "RESUME_REQUESTED", actor: "customer" },
-    });
-
-    const pause_duration = new Date().getTime() - sub.paused_at.getTime();
+    const pauseDuration = new Date().getTime() - sub.paused_at.getTime();
     const nextBillingAt = new Date(
-      sub.next_billing_at?.getTime() + pause_duration,
+      sub.next_billing_at.getTime() + pauseDuration,
     );
 
-    // updated the subscription helper
     await db
       .update(SubscriptionsTable)
       .set({
         next_billing_at: nextBillingAt,
         current_period_end: nextBillingAt,
+        paused_at: null,
       })
       .where(eq(SubscriptionsTable.id, subId));
+
+    resumeLogger.info("Resume adjustments applied", {
+      subId,
+      pauseDurationMs: pauseDuration,
+      newNextBilling: nextBillingAt.toISOString(),
+    });
   } catch (err) {
     if (err instanceof Error) {
-      resumeLogger.error("Error while resuming plan", err.message);
-      resumeLogger.error(err);
+      resumeLogger.error("Error while applying resume adjustments", err.message);
     }
     throw err;
   }

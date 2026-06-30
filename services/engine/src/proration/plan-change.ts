@@ -119,7 +119,8 @@ export async function handlePlanChange(
   currentPlanId: string,
   newPlanId: string,
   merchantId: string,
-  billingHandler: BillingHandler
+  billingHandler: BillingHandler,
+  idempotencyKey: string,
 ) {
   if (currentPlanId.trim() === newPlanId.trim()) {
     throw new Error("Current Plan and New Plan cannot be the same");
@@ -192,6 +193,7 @@ export async function handlePlanChange(
     subscriptionId,
     invoice.id,
     amountToCharge,
-    billingHandler
+    billingHandler,
+    idempotencyKey,
   );
 }

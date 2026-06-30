@@ -150,30 +150,25 @@ async function handleFailedPlanChangeCharge(subId: string, invoiceId: string) {
       next_attempt_at: nextAttempt,
     })
     .where(eq(InvoicesTable.id, invoiceId));
-
-  await db
-    .update(SubscriptionsTable)
-    .set({ next_billing_at: null })
-    .where(eq(SubscriptionsTable.id, subId));
 }
 
 export async function handlePayments(
   subId: string,
   invoiceId: string,
   charge: number,
-  billingHandler: BillingHandler
+  billingHandler: BillingHandler,
+  idempotencyKey: string,
 ) {
   const sub = await getSubscription(subId);
   const defaultPaymentMethod = await getDefaultPaymentMethod(sub.customer_id);
   if (!defaultPaymentMethod) throw new Error("Payment method was not found");
 
   const billResult = await billingHandler.bill({
-    // what happens to the state here?
     subscriptionId: subId,
     invoiceId,
     amount: charge,
     paymentMethodToken: defaultPaymentMethod.nomba_token,
-    idempotencyKey: "idemKey",
+    idempotencyKey: `${idempotencyKey}:proration`,
   });
 
   if (billResult.status === "paid") {
