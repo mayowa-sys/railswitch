@@ -10,7 +10,8 @@ import { PlansTable } from "../schema/plans.schema";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
 import { DunningPolicy } from "../state-machines/subscription";
 import { getNextBillingDate } from "../utils/interval_util";
-import { BillingHelper } from "../workers/billing.worker";
+import { BillingHelper} from "../workers/billing.worker";
+import { BillingHandler } from "../rails/billing-handler";
 
 export async function getRemainingCredits(subId: string, planId: string) {
   const [sub] = await db
@@ -28,6 +29,11 @@ export async function getRemainingCredits(subId: string, planId: string) {
     (sub.current_period_end.getTime() - new Date().getTime()) /
       (24 * 60 * 60 * 1000),
   );
+  if(daysRemaining < 1) {
+    throw new Error("Time left for this plan is insignificant");
+  }
+
+
   const duration =
     (getNextBillingDate(
       new Date(),
@@ -36,6 +42,7 @@ export async function getRemainingCredits(subId: string, planId: string) {
     ).getTime() -
       new Date().getTime()) /
     (24 * 60 * 60 * 1000);
+    
   const unusedCredits = daysRemaining * (plan.amount / duration);
   return unusedCredits;
 }
@@ -163,15 +170,14 @@ async function handleFailedPlanChangeCharge(subId: string, invoiceId: string) {
 
 export async function handlePayments(
   subId: string,
-  merchantId: string,
   invoiceId: string,
   charge: number,
+  billingHandler: BillingHandler
 ) {
   const sub = await getSubscription(subId);
   const defaultPaymentMethod = await getDefaultPaymentMethod(sub.customer_id);
   if (!defaultPaymentMethod) throw new Error("Payment method was not found");
 
-  const billingHandler = createBillingHandler(merchantId);
   const billResult = await billingHandler.bill({
     // what happens to the state here?
     subscriptionId: subId,

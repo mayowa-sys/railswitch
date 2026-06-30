@@ -6,13 +6,15 @@ import { sql } from "drizzle-orm";
 import { CreditsTable } from "../schema/credits.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
 import * as ProrationHelper from "./proration-helper";
+import { BillingHandler } from "../rails/billing-handler";
 
 // TODO: add transactions...
-async function handlePlanChange(
+export async function handlePlanChange(
   subscriptionId: string,
   currentPlanId: string,
   newPlanId: string,
   merchantId: string,
+  billingHandler: BillingHandler
 ) {
   if (currentPlanId.trim() === newPlanId.trim()) {
     throw new Error("Current Plan and New Plan cannot be the same");
@@ -61,7 +63,6 @@ async function handlePlanChange(
     await db.update(SubscriptionsTable).set({ plan_id: newPlanId });
     return;
   } else if (totalCharge > 0) {
-    // debit the user
     // check if there's any available credit yet
     const availableCredits = await db
       .select()
@@ -85,6 +86,7 @@ async function handlePlanChange(
       );
       amountToCharge = result.netCharge;
       if (amountToCharge <= 0) {
+        // plan has been paid in full by credits...
         await db.update(SubscriptionsTable).set({
           plan_id: newPlanId,
           retry_count: 0,
@@ -120,11 +122,10 @@ async function handlePlanChange(
     retry_count: 0,
   });
 
-  amountToCharge > 0 &&
-    (await ProrationHelper.handlePayments(
-      subscriptionId,
-      merchantId,
-      invoice.id,
-      amountToCharge,
-    ));
+  await ProrationHelper.handlePayments(
+    subscriptionId,
+    invoice.id,
+    amountToCharge,
+    billingHandler
+  );
 }

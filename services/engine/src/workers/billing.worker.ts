@@ -4,7 +4,7 @@ import { BillingsQueue } from "../queues/billings.queue";
 import { GlobalLogger } from "../utils/logger";
 import { db } from "../db/client";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
-import { lte, sql, eq, and } from "drizzle-orm";
+import { lte, sql, eq, and, gte } from "drizzle-orm";
 import { Plan, PlansTable } from "../schema/plans.schema";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
@@ -12,8 +12,10 @@ import { getNextBillingDate } from "../utils/interval_util";
 import { createBillingHandler } from "../rails/billing-handler-dependencies";
 import { nextRetryAt } from "../rails/retry-timing";
 import type { DunningPolicy } from "../state-machines/subscription";
+import { CreditsTable } from "../schema/credits.schema";
+import * as ProrationHelper from "../proration/proration-helper";
 
-interface ChargeSubscriptionData {
+export interface ChargeSubscriptionData {
   subscriptionId: string;
   customerId: string;
   planId: string;
@@ -96,8 +98,8 @@ export class BillingHelper {
       .set({
         next_billing_at: nextBillingDate,
         retry_count: 0,
-        current_period_start: new Date(), 
-        current_period_end: nextBillingDate
+        current_period_start: new Date(),
+        current_period_end: nextBillingDate,
       })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
@@ -105,7 +107,9 @@ export class BillingHelper {
   async updateSubscriptionState(subscriptionId: string, state: string) {
     await db
       .update(SubscriptionsTable)
-      .set({ state: state as typeof SubscriptionsTable.$inferSelect["state"] })
+      .set({
+        state: state as (typeof SubscriptionsTable.$inferSelect)["state"],
+      })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
 }
@@ -190,13 +194,33 @@ class BillingService {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
+    const credits = await db
+      .select()
+      .from(CreditsTable)
+      .where(
+        and(
+          eq(CreditsTable.subscription_id, data.subscriptionId),
+          gte(CreditsTable.amount, CreditsTable.amount_consumed),
+        ),
+      );
+    const amountToCharge = await ProrationHelper.applyCreditsToCharge(
+      plan.amount,
+      credits.map((credit) => ({
+        id: credit.id,
+        amount: credit.amount,
+        amount_consumed: credit.amount_consumed,
+      })),
+    );
+
+
     const [invoice] = await db
       .insert(InvoicesTable)
       .values({
         subscription_id: data.subscriptionId,
         merchant_id: data.merchantId,
-        amount: `${plan.amount}`,
+        amount: `${amountToCharge.netCharge}`,
         due_date: new Date(),
+        metadata: {creditApplied: amountToCharge.creditApplied}
       })
       .returning();
     if (!invoice)
@@ -242,7 +266,11 @@ class BillingService {
     }
 
     // Schedule first billing — same as a regular charge but marks trial end
-    const nextDate = getNextBillingDate(now, plan.interval, plan.interval_count);
+    const nextDate = getNextBillingDate(
+      now,
+      plan.interval,
+      plan.interval_count,
+    );
     await BillingHelper.updateSubscriptionNextBillingDate(
       data.subscriptionId,
       nextDate,
