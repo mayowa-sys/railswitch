@@ -14,6 +14,7 @@ import { QueryResult } from "pg";
 import { DunningPolicy } from "../../src/state-machines/subscription.js";
 import { GlobalLogger } from "../../src/utils/logger";
 import { DrizzleSubscriptionRepository } from "../../src/db/drizzle-repository.js";
+import { SubscriptionWrapper } from "../../src/wrapper/subscription-wrapper.js";
 
 vi.mock("./ProrationHelper", () => ({
   ProrationHelper: {
@@ -27,9 +28,12 @@ vi.mock("./logger", () => ({
   },
 }));
 test("pauses an active subscription", async () => {
-  const mockWrapper = {
+  const mockWrapper: SubscriptionWrapper = {
     processEvent: vi.fn().mockResolvedValue(undefined),
-  };
+    logger: new GlobalLogger("Mock Logger"), 
+    now: new Date(), 
+    repo: new DrizzleSubscriptionRepository(db, 'mer_demo')
+  } as SubscriptionWrapper;
 
   const mockSubscription = {
     id: "sub_1234567890",
