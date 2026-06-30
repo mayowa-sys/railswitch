@@ -4,7 +4,7 @@ import { MerchantsTable } from "./merchants.schema";
 import { SubscriptionsTable } from "./subscriptions.schema";
 import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy";
 
-export const CreditSourceEnum = pgEnum("credit_source", ["downgrade"]);
+export const CreditSourceEnum = pgEnum("credit_source", ["downgrade", "pause_credit", "trial_credit"]);
 
 export const CreditsTable = pgTable('credits', {
     id: uuid('id').primaryKey().default(sql`gen_random_uuid()`), 

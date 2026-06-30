@@ -18,7 +18,7 @@ vi.mock('../../src/proration/proration-helper.js', () => ({
 
 import { db } from '../../src/db/client.js';
 import * as ProrationHelper from '../../src/proration/proration-helper.js';
-import { resumeSubscription } from '../../src/proration/resume-plan.js';
+import { applyResumeAdjustments } from '../../src/proration/resume-plan.js';
 import { SubscriptionsTable } from '../../src/schema/subscriptions.schema.js';
 
 const mockWhere = vi.fn();
@@ -32,21 +32,32 @@ beforeEach(() => {
   vi.mocked(db.update).mockImplementation(() => ({ set: mockUpdateSet } as any));
 });
 
-describe('resumeSubscription', () => {
+describe('applyResumeAdjustments', () => {
+  it('throws when the subscription is not active', async () => {
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
+      paused_at: new Date(),
+      next_billing_at: new Date(),
+      plan_id: 'plan_1',
+      state: 'paused',
+    } as typeof SubscriptionsTable.$inferSelect);
+
+    await expect(applyResumeAdjustments('sub_1', 'mer_1')).rejects.toThrow(
+      'Subscription must be in active state to apply resume adjustments',
+    );
+  });
+
   it('returns early when the subscription was not paused', async () => {
     vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
       paused_at: null,
       next_billing_at: new Date(),
       plan_id: 'plan_1',
+      state: 'active',
     } as typeof SubscriptionsTable.$inferSelect);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn() } as any;
 
-    await resumeSubscription('sub_1', 'mer_1', wrapper);
+    await applyResumeAdjustments('sub_1', 'mer_1');
 
     expect(db.execute).toHaveBeenCalled();
-    expect(db.select).not.toHaveBeenCalled();
-    expect(wrapper.processEvent).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('throws when the paused subscription has no next_billing_at value', async () => {
@@ -54,16 +65,12 @@ describe('resumeSubscription', () => {
       paused_at: new Date('2026-06-01T00:00:00Z'),
       next_billing_at: null,
       plan_id: 'plan_1',
+      state: 'active',
     } as typeof SubscriptionsTable.$inferSelect);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn() } as any;
 
-    await expect(resumeSubscription('sub_1', 'mer_1', wrapper)).rejects.toThrow(
+    await expect(applyResumeAdjustments('sub_1', 'mer_1')).rejects.toThrow(
       'Subscription does not have next_billing_at property',
     );
-
-    expect(db.select).not.toHaveBeenCalled();
-    expect(wrapper.processEvent).not.toHaveBeenCalled();
   });
 
   it('throws when the plan does not exist', async () => {
@@ -71,44 +78,37 @@ describe('resumeSubscription', () => {
       paused_at: new Date('2026-06-01T00:00:00Z'),
       next_billing_at: new Date('2026-06-05T00:00:00Z'),
       plan_id: 'plan_1',
+      state: 'active',
     } as typeof SubscriptionsTable.$inferSelect);
     mockWhere.mockResolvedValueOnce([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn() } as any;
 
-    await expect(resumeSubscription('sub_1', 'mer_1', wrapper)).rejects.toThrow(
-      'This plan_1 plan does not exist',
+    await expect(applyResumeAdjustments('sub_1', 'mer_1')).rejects.toThrow(
+      'Plan plan_1 does not exist',
     );
 
     expect(db.update).not.toHaveBeenCalled();
-    expect(wrapper.processEvent).not.toHaveBeenCalled();
   });
 
-  it('resumes a paused subscription and updates billing dates', async () => {
+  it('resumes a paused subscription and extends billing dates by pause duration', async () => {
     const pausedAt = new Date('2026-06-01T00:00:00Z');
     const nextBillingAt = new Date('2026-06-05T00:00:00Z');
     vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
       paused_at: pausedAt,
       next_billing_at: nextBillingAt,
       plan_id: 'plan_1',
+      state: 'active',
     } as typeof SubscriptionsTable.$inferSelect);
-    mockWhere.mockResolvedValueOnce([{ id: 'plan_1' }]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn(() => Promise.resolve()) } as any;
+    mockWhere.mockResolvedValueOnce([{ id: 'plan_1', name: 'Test Plan', interval: 'monthly', interval_count: 1, amount: '5000' }]);
 
-    await resumeSubscription('sub_1', 'mer_1', wrapper);
+    await applyResumeAdjustments('sub_1', 'mer_1');
 
     expect(db.execute).toHaveBeenCalled();
-    expect(wrapper.processEvent).toHaveBeenCalledWith({
-      subscriptionId: 'sub_1',
-      idempotencyKey: 'idemKey',
-      event: { type: 'RESUME_REQUESTED', actor: 'customer' },
-    });
     expect(db.update).toHaveBeenCalledTimes(1);
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         next_billing_at: expect.any(Date),
         current_period_end: expect.any(Date),
+        paused_at: null,
       }),
     );
   });

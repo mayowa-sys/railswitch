@@ -8,66 +8,56 @@ vi.mock('../../src/db/client.js', () => ({
         where: vi.fn(() => Promise.resolve()),
       })),
     })),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => []),
+      })),
+    })),
+    insert: vi.fn(() => ({
+      values: vi.fn(() => Promise.resolve()),
+    })),
   },
 }));
 
 vi.mock('../../src/proration/proration-helper.js', () => ({
   getSubscription: vi.fn(),
+  getRemainingCredits: vi.fn(),
 }));
 
 import { db } from '../../src/db/client.js';
 import * as ProrationHelper from '../../src/proration/proration-helper.js';
-import { pauseSubscription } from '../../src/proration/pause-subcription.js';
+import { applyPauseAdjustments } from '../../src/proration/pause-subcription.js';
 import { SubscriptionsTable } from '../../src/schema/subscriptions.schema.js';
 
 const mockUpdateSet = vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) }));
 
-describe('pauseSubscription', () => {
+describe('applyPauseAdjustments', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns immediately when the subscription is already paused', async () => {
-    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'paused' } as typeof SubscriptionsTable.$inferSelect);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn() } as any;
+  it('throws when the subscription is not paused', async () => {
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'active' } as typeof SubscriptionsTable.$inferSelect);
 
-    await pauseSubscription('sub_1', 'mer_1', wrapper);
-
-    expect(db.execute).toHaveBeenCalled();
-    expect(db.update).not.toHaveBeenCalled();
-    expect(wrapper.processEvent).not.toHaveBeenCalled();
-  });
-
-  it("throws when the subscription isn't active", async () => {
-    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'cancelled' } as typeof SubscriptionsTable.$inferSelect);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn() } as any;
-
-    await expect(pauseSubscription('sub_1', 'mer_1', wrapper)).rejects.toThrow(
-      "You can't pause from this state",
+    await expect(applyPauseAdjustments('sub_1', 'mer_1')).rejects.toThrow(
+      'Subscription must be in paused state to apply adjustments',
     );
-
-    expect(db.update).not.toHaveBeenCalled();
-    expect(wrapper.processEvent).not.toHaveBeenCalled();
   });
 
-  it('requests pause for an active subscription', async () => {
+  it('stores paused_at and banks unused credits for a paused subscription', async () => {
     const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.update).mockImplementation(mockUpdate as any);
-    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({ state: 'active' } as typeof SubscriptionsTable.$inferSelect);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrapper = { processEvent: vi.fn(() => Promise.resolve()) } as any;
+    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
+      state: 'paused',
+      plan_id: 'plan_1',
+    } as typeof SubscriptionsTable.$inferSelect);
+    vi.mocked(ProrationHelper.getRemainingCredits).mockResolvedValue(1500);
 
-    await pauseSubscription('sub_1', 'mer_1', wrapper);
+    await applyPauseAdjustments('sub_1', 'mer_1');
 
     expect(db.execute).toHaveBeenCalled();
     expect(mockUpdate).toHaveBeenCalled();
-    expect(wrapper.processEvent).toHaveBeenCalledWith({
-      subscriptionId: 'sub_1',
-      event: { type: 'PAUSE_REQUESTED', actor: 'customer' },
-      idempotencyKey: 'idem',
-    });
+    expect(db.insert).toHaveBeenCalled();
   });
 });
