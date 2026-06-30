@@ -12,6 +12,10 @@ class CreateEndpointRequest(BaseModel):
     url: str
 
 
+class UpdateEndpointRequest(BaseModel):
+    url: str | None = None
+
+
 @router.post("/endpoints")
 async def create_endpoint(
     payload: CreateEndpointRequest,
@@ -27,6 +31,27 @@ async def list_endpoints(
 ) -> Envelope:
     endpoints = await engine.list_webhook_endpoints()
     return Envelope(data=endpoints)
+
+
+@router.get("/endpoints/{endpoint_id}")
+async def get_endpoint(
+    endpoint_id: str,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    endpoint = await engine.get_webhook_endpoint(endpoint_id)
+    return Envelope(data=endpoint)
+
+
+@router.patch("/endpoints/{endpoint_id}")
+async def update_endpoint(
+    endpoint_id: str,
+    payload: UpdateEndpointRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    endpoint = await engine.update_webhook_endpoint(
+        endpoint_id, payload.model_dump(exclude_none=True)
+    )
+    return Envelope(data=endpoint)
 
 
 @router.delete("/endpoints/{endpoint_id}")

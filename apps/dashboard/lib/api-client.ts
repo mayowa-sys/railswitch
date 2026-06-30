@@ -155,6 +155,8 @@ export const api = {
   },
 
   customers: {
+    list: (apiKey: string) =>
+      request<GatewayCustomer[]>("/v1/customers", { apiKey }),
     get: (id: string, apiKey: string) =>
       request<GatewayCustomer>(`/v1/customers/${id}`, { apiKey }),
     create: (data: Record<string, unknown>, apiKey: string) =>

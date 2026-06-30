@@ -1,0 +1,31 @@
+---
+title: "Test Cards"
+description: "Sandbox credit cards for testing in development mode"
+---
+
+When using a test API key (`sk_test_...`), use the following card tokens to simulate different payment outcomes.
+
+> Sandbox test tokens will be provided post-Day 1. This page will be updated with the `nomba_token` values for each test scenario.
+
+| Brand | Last4 | Token | Scenario |
+|-------|-------|-------|----------|
+| Visa | 4242 | `tok_test_visa_4242` | Payment succeeds |
+| Visa | 0002 | `tok_test_visa_0002` | Payment declined |
+| Mastercard | 5100 | `tok_test_mc_5100` | Payment succeeds |
+
+### Usage
+
+```python
+payment_method = client.payment_methods.create(
+    customer_id="cust_...",
+    type="card",
+    nomba_token="tok_test_visa_4242",
+    last4="4242",
+    brand="visa",
+    exp_month="12",
+    exp_year="2028",
+    is_default=True,
+)
+```
+
+> **Note:** These tokens work only in test mode. Use live card tokens obtained via Nomba.js in production.

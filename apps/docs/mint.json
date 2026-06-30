@@ -1,0 +1,65 @@
+{
+  "name": "RailSwitch Docs",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "topbarLinks": [
+    {
+      "name": "Dashboard",
+      "url": "https://railswitch-gateway.fly.dev"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get API Key",
+    "url": "https://railswitch-gateway.fly.dev"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference/overview",
+      "openapi": "/api-reference/openapi.json"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "quickstart",
+        "sdks",
+        "test-cards"
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "concepts/subscriptions",
+        "concepts/plans",
+        "concepts/proration",
+        "concepts/cascade"
+      ]
+    },
+    {
+      "group": "Webhooks",
+      "pages": [
+        "webhooks/events",
+        "webhooks/delivery"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/mayowa-sys/railswitch"
+  }
+}

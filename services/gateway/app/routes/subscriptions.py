@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from fastapi import APIRouter, Depends, Query
 
 from app.engine_client import (
@@ -7,6 +9,12 @@ from app.engine_client import (
     UpdateSubscriptionRequest,
 )
 from app.envelope import Envelope
+
+
+class PreviewSubscriptionRequest(BaseModel):
+    new_plan_id: str
+    effective_date: str | None = None
+
 
 router = APIRouter(prefix="/v1/subscriptions", tags=["subscriptions"])
 
@@ -51,6 +59,18 @@ async def update_subscription(
 ) -> Envelope:
     sub = await engine.update_subscription(subscription_id, payload)
     return Envelope(data=sub.model_dump())
+
+
+@router.post("/{subscription_id}/preview")
+async def preview_subscription(
+    subscription_id: str,
+    payload: PreviewSubscriptionRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.preview_subscription(
+        subscription_id, payload.new_plan_id, payload.effective_date
+    )
+    return Envelope(data=result)
 
 
 @router.post("/{subscription_id}/pause")

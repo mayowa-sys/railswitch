@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth import ApiKeyRecord, get_current_merchant
 
@@ -11,11 +11,21 @@ from app.routes.webhooks import router as webhooks_router
 
 from app.envelope import register_envelope_handlers
 
-from app.routes import plans, customers, invoices, subscriptions, auth, webhook_management
+from app.routes import (
+    plans,
+    customers,
+    invoices,
+    subscriptions,
+    auth,
+    webhook_management,
+    payment_methods,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import datetime
+    app.state.started_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
     app.state.http_client = httpx.AsyncClient(
         base_url=settings.engine_url, timeout=10.0
     )
@@ -43,6 +53,15 @@ async def health() -> dict:
     return {"status": "ok", "service": "gateway"}
 
 
+@app.get("/status")
+async def status(request: Request) -> dict:
+    return {
+        "status": "ok",
+        "service": "gateway",
+        "started_at": getattr(request.app.state, "started_at", None),
+    }
+
+
 @app.get("/v1/whoami")
 async def whoami(merchant: ApiKeyRecord = Depends(get_current_merchant)) -> dict:
     return {"merchant": merchant.merchant_id, "mode": merchant.mode}
@@ -55,3 +74,4 @@ app.include_router(customers.router)
 app.include_router(subscriptions.router)
 app.include_router(invoices.router)
 app.include_router(webhook_management.router)
+app.include_router(payment_methods.router)

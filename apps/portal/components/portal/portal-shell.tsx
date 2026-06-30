@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { loadPortalState, savePortalState, resetPortalState, formatNaira, PLANS, getServerPortalState } from "@/lib/mock-data";
+import { loadPortalState, savePortalState, resetPortalState, formatNaira, PLANS, getServerPortalState, type SubscriptionStatus } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/portal" },
@@ -74,7 +74,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   // Toggle past_due for demo purposes
   const toggleDemoPastDue = () => {
-    const nextStatus = subscription.status === "past_due" ? "active" : "past_due";
+    const nextStatus: SubscriptionStatus = subscription.status === "past_due" ? "active" : "past_due";
     const updatedSub = { ...subscription, status: nextStatus };
 
     // If setting to active, make sure we have at least one default card

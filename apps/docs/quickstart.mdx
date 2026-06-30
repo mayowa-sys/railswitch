@@ -1,0 +1,90 @@
+---
+title: "Quickstart"
+description: "Get up and running with RailSwitch in minutes"
+---
+
+## 1. Get Your API Key
+
+Sign up at the [RailSwitch Dashboard](https://railswitch-gateway.fly.dev) to get your API key. You'll receive a test key (`sk_test_...`) to use during development.
+
+## 2. Install the SDK
+
+**Python:**
+```bash
+pip install railswitch
+```
+
+**Node.js:**
+```bash
+npm install @railswitch/node
+```
+
+## 3. Create a Customer
+
+```python
+from railswitch import RailSwitch
+
+client = RailSwitch(api_key="sk_test_...")
+
+customer = client.customers.create(
+    email="john@example.com",
+    name="John Doe",
+)
+print(customer.id)
+```
+
+```javascript
+import { RailSwitch } from "@railswitch/node";
+
+const client = new RailSwitch({ apiKey: "sk_test_..." });
+
+const customer = await client.customers.create({
+  email: "john@example.com",
+  name: "John Doe",
+});
+console.log(customer.id);
+```
+
+## 4. Create a Plan
+
+```python
+plan = client.plans.create(
+    name="Pro Monthly",
+    amount=15000,
+    interval="monthly",
+    interval_count=1,
+)
+```
+
+```javascript
+const plan = await client.plans.create({
+  name: "Pro Monthly",
+  amount: 15000,
+  interval: "monthly",
+  interval_count: 1,
+});
+```
+
+## 5. Subscribe the Customer
+
+```python
+subscription = client.subscriptions.create(
+    customer_id=customer.id,
+    plan_id=plan.id,
+    start_date="2026-07-01T00:00:00Z",
+)
+```
+
+```javascript
+const subscription = await client.subscriptions.create({
+  customer_id: customer.id,
+  plan_id: plan.id,
+  start_date: "2026-07-01T00:00:00Z",
+});
+```
+
+## Next Steps
+
+- Read about [subscriptions](/concepts/subscriptions), [plans](/concepts/plans), and [proration](/concepts/proration)
+- Explore the [API Reference](/api-reference)
+- Set up [webhooks](/webhooks/events) to receive real-time events

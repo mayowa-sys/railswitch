@@ -1,8 +1,11 @@
 import { Queue } from 'bullmq';
-import { queueOptions } from '../config/queue.config';
+import { queueOptions } from '../config/queue.config.js';
 
-export const BillingsQueue = new Queue('billings', queueOptions);
+let BillingsQueue: Queue | null = null;
 
-// add a job to poll the subscriptions table and get the all the pending subscriptions, and schedule them to be paid
-// run at minute 0 of every hour
-BillingsQueue.add('poll_subscriptions', {}, { repeat: { pattern: '0 * * * *' } });
+if (process.env.REDIS_URL) {
+  BillingsQueue = new Queue('billings', queueOptions);
+  BillingsQueue.add('poll_subscriptions', {}, { repeat: { pattern: '0 * * * *' } });
+}
+
+export { BillingsQueue };

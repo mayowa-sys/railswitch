@@ -48,9 +48,38 @@ export async function probePostgres(connectionString?: string): Promise<ProbeRes
 }
 
 /**
- * Redis client is not yet wired into the engine — BullMQ + Redis integration
- * is a hackathon-window task. Until then this returns not_configured.
+ * Pings Redis with a short timeout. Returns ok + latency on PONG,
+ * degraded on error, not_configured if REDIS_URL isn't set.
  */
-export async function probeRedis(): Promise<ProbeResult> {
-  return { status: 'not_configured' };
+export async function probeRedis(connectionString?: string): Promise<ProbeResult> {
+  if (!connectionString) {
+    return { status: 'not_configured' };
+  }
+  try {
+    const { Redis } = await import('ioredis');
+    const redis = new Redis(connectionString, {
+      connectTimeout: 2000,
+      maxRetriesPerRequest: 1,
+      lazyConnect: true,
+    });
+    const start = Date.now();
+    try {
+      await redis.connect();
+      const result = await redis.ping();
+      if (result !== 'PONG') {
+        await redis.quit();
+        return { status: 'degraded', details: `Unexpected ping response: ${result}` };
+      }
+      await redis.quit();
+      return { status: 'ok', latencyMs: Date.now() - start };
+    } catch (err) {
+      try { await redis.quit(); } catch { /* already failed */ }
+      return {
+        status: 'degraded',
+        details: err instanceof Error ? err.message : 'unknown error',
+      };
+    }
+  } catch {
+    return { status: 'not_configured', details: 'ioredis not available' };
+  }
 }

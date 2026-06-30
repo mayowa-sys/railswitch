@@ -15,8 +15,8 @@ const INTERVAL_LABEL: Record<string, string> = {
   annually: "/ yr",
 };
 
-export function PlansTable() {
-  const [plans, setPlans] = useState<Plan[]>(PLANS);
+export function PlansTable({ externalPlans }: { externalPlans?: Plan[] }) {
+  const [plans, setPlans] = useState<Plan[]>(externalPlans ?? PLANS);
   const [editTarget, setEditTarget] = useState<Plan | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Plan | null>(null);
   const [archiving, setArchiving] = useState(false);
