@@ -54,7 +54,7 @@
     {
       "group": "API Reference",
       "pages": [
-        "api-reference/openapi.json"
+        "api-reference/overview"
       ]
     }
   ],

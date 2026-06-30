@@ -1,0 +1,82 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "RailSwitch Docs",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "quickstart",
+              "sdks",
+              "test-cards"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "concepts/subscriptions",
+              "concepts/plans",
+              "concepts/proration",
+              "concepts/cascade"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/events",
+              "webhooks/delivery"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/openapi.json"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "api": {
+    "openapi": [
+      "api-reference/openapi.json"
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Dashboard",
+        "href": "https://railswitch-gateway.fly.dev"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get API Key",
+      "href": "https://railswitch-gateway.fly.dev"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/mayowa-sys/railswitch"
+    }
+  }
+}

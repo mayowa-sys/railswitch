@@ -1,0 +1,27 @@
+---
+title: "API Reference"
+description: "Complete REST API reference for RailSwitch"
+---
+
+RailSwitch follows Stripe-style REST conventions:
+
+- Base URL: `https://railswitch-gateway.fly.dev` (v1)
+- Authentication: `Authorization: Bearer sk_test_...` or `sk_live_...`
+- Content-Type: `application/json`
+- Idempotency: `Idempotency-Key` header on writes
+- Response envelope: `{ "data": ..., "error": ..., "meta": ... }`
+- Cursor pagination: `starting_after`, `ending_before`
+
+## Endpoints
+
+| Resource | Methods |
+|---|---|
+| Auth | `POST /v1/auth/register`, `POST /v1/auth/login` |
+| Plans | `POST`, `GET list`, `GET by id`, `PATCH`, `DELETE` |
+| Customers | `POST`, `GET list`, `GET by id` |
+| Subscriptions | `POST`, `GET list`, `GET by id`, `PATCH`, pause, resume, cancel, preview |
+| Invoices | `GET list`, `GET by id`, retry, refund |
+| Payment Methods | `POST`, `GET list`, `GET by id`, `DELETE` |
+| Webhooks | `POST /endpoints`, `GET list`, `DELETE`, `GET /events`, `GET /deliveries`, `/deliveries/:id/replay` |
+
+See the full OpenAPI specification at `/api-reference/openapi.json` for complete request/response schemas.
