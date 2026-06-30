@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth import ApiKeyRecord, get_current_merchant
 
@@ -24,6 +24,8 @@ from app.routes import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import datetime
+    app.state.started_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
     app.state.http_client = httpx.AsyncClient(
         base_url=settings.engine_url, timeout=10.0
     )
@@ -49,6 +51,15 @@ app.add_middleware(
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": "gateway"}
+
+
+@app.get("/status")
+async def status(request: Request) -> dict:
+    return {
+        "status": "ok",
+        "service": "gateway",
+        "started_at": getattr(request.app.state, "started_at", None),
+    }
 
 
 @app.get("/v1/whoami")
