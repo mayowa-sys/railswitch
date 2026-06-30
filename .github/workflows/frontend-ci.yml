@@ -38,5 +38,5 @@ jobs:
           cache: 'npm'
           cache-dependency-path: apps/portal/package-lock.json
       - run: npm ci
-      - run: npx next lint --max-warnings 0 || true
+      - run: npx next lint --max-warnings 0 2>&1 || echo "Lint warnings (non-blocking)"
       - run: npm run build
