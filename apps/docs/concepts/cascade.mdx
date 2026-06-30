@@ -1,0 +1,43 @@
+---
+title: "Dunning Cascade"
+description: "Automatic payment recovery with escalating retry strategies"
+---
+
+When a payment fails, RailSwitch activates the **dunning cascade** — an escalating sequence of retry strategies designed to maximize payment recovery.
+
+## Cascade Stages
+
+| Stage | Strategy | Timing |
+|-------|----------|--------|
+| 1 | Retry existing card | Immediate |
+| 2 | Retry existing card + notify | 30 minutes |
+| 3 | Retry existing card + notify | 2 hours |
+| 4 | Retry existing card + notify | 6 hours |
+| 5 | Email customer (card expired?) | 12 hours |
+| 6 | SMS customer | 24 hours |
+| 7 | Fallback to Virtual Account if available | 48 hours |
+| 8 | Final notice | 72 hours |
+| 9 | Mark as exhausted | 96 hours |
+
+## How It Works
+
+1. A charge attempt fails (insufficient funds, expired card, etc.)
+2. The invoice enters `past_due` status
+3. The dunning cascade begins at stage 1
+4. Each stage triggers the configured action
+5. If a payment succeeds at any stage, the cascade stops and the invoice is marked `paid`
+6. If all stages are exhausted, the subscription enters `unpaid` status
+
+## Webhook Events
+
+The cascade emits these events:
+
+| Event | When |
+|-------|------|
+| `dunning.cascade_started` | First failure triggers the cascade |
+| `dunning.fallback_initiated` | Fallback payment method is attempted |
+| `dunning.exhausted` | All retry attempts failed |
+
+## Configuring the Cascade
+
+Cascade settings can be configured in the [Dashboard](https://railswitch-gateway.fly.dev) under Settings → Dunning.

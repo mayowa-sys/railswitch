@@ -1,0 +1,57 @@
+---
+title: "Proration"
+description: "Fair billing when customers change plans mid-cycle"
+---
+
+When a customer switches plans mid-billing-cycle, RailSwitch calculates a fair adjustment: a **credit** for the unused portion of the current plan and a **charge** for the remaining days on the new plan.
+
+## How It Works
+
+```
+Credit   = (Current Plan Amount / Total Days) × Remaining Days
+Charge   = (New Plan Amount / Total Days) × Remaining Days
+Net      = Charge - Credit
+```
+
+### Example
+
+A customer on **Starter ($50/mo)** switches to **Pro ($150/mo)** with 5 days left in the billing period:
+
+- Credit: $50 / 30 days × 5 remaining days = **$8.33** (unused Starter)
+- Charge: $150 / 30 days × 5 remaining days = **$25.00** (prorated Pro)
+- Net charge: **$16.67**
+
+## Previewing a Proration
+
+Before changing a plan, call the preview endpoint to see the breakdown:
+
+```python
+preview = client.subscriptions.preview(
+    sub_id="sub_001",
+    new_plan_id="plan_pro",
+)
+print(preview.net_amount)  # 1666.67
+```
+
+```javascript
+const preview = await client.subscriptions.preview(
+  "sub_001",
+  "plan_pro",
+);
+console.log(preview.net_amount); // 1666.67
+```
+
+### Preview Response
+
+```json
+{
+  "current_plan": { "id": "plan_starter", "name": "Starter", "amount": 5000, "currency": "NGN" },
+  "new_plan": { "id": "plan_pro", "name": "Pro", "amount": 15000, "currency": "NGN" },
+  "remaining_days": 5,
+  "total_days_in_period": 30,
+  "credit": { "amount": 833.33, "description": "Unused portion of Starter" },
+  "charge": { "amount": 2500.00, "description": "Prorated charge for Pro for 5 days" },
+  "net_amount": 1666.67,
+  "currency": "NGN"
+}
+```
