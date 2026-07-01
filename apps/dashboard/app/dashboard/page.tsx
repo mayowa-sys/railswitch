@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Activity, TrendingDown, Zap } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatsCard } from "@/components/dashboard/overview/stats-card";
@@ -7,6 +8,8 @@ import { RevenueChart } from "@/components/dashboard/overview/revenue-chart";
 import { FailedPaymentsTable } from "@/components/dashboard/overview/failed-payments-table";
 import { WebhookFeed } from "@/components/dashboard/overview/webhook-feed";
 import { formatNaira, OVERVIEW_STATS } from "@/lib/mock-data";
+import { useApiData } from "@/lib/use-api-data";
+import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
 
 const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
   emerald: {
@@ -24,8 +27,44 @@ const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
 };
 
 export default function OverviewPage() {
-  const { mrr, arr, activeSubscribers, churnRate, recoveryRate } =
-    OVERVIEW_STATS;
+  const apiKey = "";
+
+  const { data: rawSubs, isLoading: subsLoading } = useApiData({
+    fetcher: (key) => api.subscriptions.list(key),
+    mockData: [] as GatewaySubscription[],
+    apiKey,
+  });
+
+  const { data: rawPlans, isLoading: plansLoading } = useApiData({
+    fetcher: (key) => api.plans.list(key),
+    mockData: [] as GatewayPlan[],
+    apiKey,
+  });
+
+  const isLoading = subsLoading || plansLoading;
+
+  const computedStats = useMemo(() => {
+    if (rawSubs.length === 0) return null;
+
+    const plansMap = new Map(rawPlans.map((p) => [p.id, p.amount]));
+    const activeSubs = rawSubs.filter((s) => s.status === "active");
+    const mrr = activeSubs.reduce((sum, s) => sum + (plansMap.get(s.plan_id) ?? 0), 0);
+
+    return {
+      mrr,
+      activeSubscribers: activeSubs.length,
+    };
+  }, [rawSubs, rawPlans]);
+
+  const { mrr, arr, activeSubscribers, churnRate, recoveryRate } = computedStats
+    ? {
+        mrr: computedStats.mrr,
+        arr: computedStats.mrr * 12,
+        activeSubscribers: computedStats.activeSubscribers,
+        churnRate: OVERVIEW_STATS.churnRate,
+        recoveryRate: OVERVIEW_STATS.recoveryRate,
+      }
+    : OVERVIEW_STATS;
 
   return (
     <div className="space-y-8">
@@ -42,7 +81,11 @@ export default function OverviewPage() {
             Monthly Recurring Revenue
           </p>
           <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-white">
-            {formatNaira(mrr)}
+            {isLoading ? (
+              <span className="opacity-50">—</span>
+            ) : (
+              formatNaira(mrr)
+            )}
           </h2>
           <p className="mt-1 text-sm text-indigo-200">
             ARR:{" "}
@@ -55,7 +98,7 @@ export default function OverviewPage() {
 
         <StatsCard
           label="Active Subscribers"
-          value={activeSubscribers.toLocaleString()}
+          value={isLoading ? "—" : activeSubscribers.toLocaleString()}
           change="+18.1%"
           trend="up"
           icon={Zap}

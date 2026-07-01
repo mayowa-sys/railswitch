@@ -1,41 +1,96 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCards } from "@/components/portal/overview/kpi-cards";
 import { SubscriptionDetails } from "@/components/portal/overview/subscription-details";
-import { loadPortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
-import { AlertOctagon, ArrowRight } from "lucide-react";
+import { loadPortalState, PLANS, getServerPortalState, formatNaira } from "@/lib/mock-data";
+import { isMockMode, api, type GatewaySubscription, type GatewayPlan, type GatewayInvoice } from "@/lib/api-client";
+import { useApiData } from "@/lib/use-api-data";
+import { AlertOctagon } from "lucide-react";
 import Link from "next/link";
+
+const API_KEY = "";
 
 export default function OverviewPage() {
   const [state, setState] = useState(() => getServerPortalState());
+  const mock = isMockMode();
+
+  const { data: rawSubs, isLoading: subsLoading } = useApiData({
+    fetcher: (key) => api.subscriptions.list(key),
+    mockData: [] as GatewaySubscription[],
+    apiKey: API_KEY,
+  });
+
+  const { data: rawPlans, isLoading: plansLoading } = useApiData({
+    fetcher: (key) => api.plans.list(key),
+    mockData: [] as GatewayPlan[],
+    apiKey: API_KEY,
+  });
+
+  const { data: rawInvoices, isLoading: invLoading } = useApiData({
+    fetcher: (key) => api.invoices.list(key),
+    mockData: [] as GatewayInvoice[],
+    apiKey: API_KEY,
+  });
+
+  const loading = !mock && (subsLoading || plansLoading || invLoading);
 
   useEffect(() => {
-    // Hydrate state from localStorage on mount
+    if (!mock) return;
     setState(loadPortalState());
-
-    const handleStorageChange = () => {
-      setState(loadPortalState());
-    };
+    const handleStorageChange = () => { setState(loadPortalState()); };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [mock]);
 
-  const subscription = state?.subscription || getServerPortalState().subscription;
-  const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
+  const realSubscription = useMemo(() => {
+    if (mock || rawSubs.length === 0) return null;
+    const sub = rawSubs[0];
+    const plan = rawPlans.find((p) => p.id === sub.plan_id);
+    return {
+      id: sub.id,
+      planId: sub.plan_id,
+      status: sub.status as string,
+      nextBillingDate: new Date(sub.current_period_end).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }),
+      paymentMethodId: "",
+      planName: plan?.name ?? "Unknown",
+      planDescription: plan?.description ?? "",
+      planPrice: plan?.amount ?? 0,
+      planInterval: plan?.interval ?? "month",
+    };
+  }, [mock, rawSubs, rawPlans]);
+
+  const realInvoices = useMemo(() => {
+    if (mock || rawInvoices.length === 0) return [];
+    return rawInvoices.map((inv) => ({
+      id: inv.id,
+      planName: inv.description ?? "Subscription",
+      amount: inv.amount,
+      status: inv.status as "paid" | "failed" | "pending",
+      date: new Date(inv.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }),
+      method: "Gateway",
+    }));
+  }, [mock, rawInvoices]);
+
+  const subscription = realSubscription || state.subscription;
+  const currentPlan = realSubscription
+    ? { id: subscription.planId, name: realSubscription.planName, description: realSubscription.planDescription, price: realSubscription.planPrice, interval: realSubscription.planInterval as "monthly" | "annually" }
+    : PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
+
   const activePaymentMethod = (state?.paymentMethods || getServerPortalState().paymentMethods).find((pm) => pm.id === subscription.paymentMethodId) || (state?.paymentMethods || getServerPortalState().paymentMethods)[0];
 
-  // Calculate stats
-  const totalSpentKobo = state.invoices
-    .filter((inv) => inv.status === "paid")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+  const totalSpentKobo = mock
+    ? state.invoices.filter((inv) => inv.status === "paid").reduce((sum, inv) => sum + inv.amount, 0)
+    : realInvoices.filter((inv) => inv.status === "paid").reduce((sum, inv) => sum + inv.amount, 0);
 
   const activeServices = subscription.status === "cancelled" ? 0 : 1;
 
-  const defaultPaymentMethodName = activePaymentMethod.type === "card"
-    ? `${activePaymentMethod.brand} •••• ${activePaymentMethod.last4}`
-    : `${activePaymentMethod.bankName} Account •••• ${activePaymentMethod.last4}`;
+  const defaultPaymentMethodName = activePaymentMethod
+    ? (activePaymentMethod.type === "card"
+      ? `${activePaymentMethod.brand || "Card"} •••• ${activePaymentMethod.last4}`
+      : `${activePaymentMethod.bankName || "Bank"} Account •••• ${activePaymentMethod.last4}`)
+    : "No payment method";
 
   return (
     <div className="space-y-8">
@@ -44,7 +99,6 @@ export default function OverviewPage() {
         description="Manage your subscription, default payment cards, and review recent activity."
       />
 
-      {/* Warning Banner if past_due */}
       {subscription.status === "past_due" && (
         <div className="p-4 rounded-xl border border-red-205 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/40 flex items-start gap-3">
           <AlertOctagon className="size-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0 animate-pulse" />
@@ -57,7 +111,6 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {/* KPI Cards Row */}
       <KpiCards
         totalSpentKobo={totalSpentKobo}
         activeServices={activeServices}
@@ -65,10 +118,7 @@ export default function OverviewPage() {
         defaultPaymentMethodName={defaultPaymentMethodName}
       />
 
-      {/* Main Overview Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-
-        {/* Subscription Plan details */}
         <SubscriptionDetails
           subscriptionStatus={subscription.status}
           currentPlan={currentPlan}
@@ -76,7 +126,6 @@ export default function OverviewPage() {
           paymentMethodName={defaultPaymentMethodName}
         />
 
-        {/* Quick Self Service Portal Links */}
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-6 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Quick Actions</h3>
@@ -117,7 +166,6 @@ export default function OverviewPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

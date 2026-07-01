@@ -1,34 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
 import { loadPortalState, formatNaira, type Invoice, getServerPortalState } from "@/lib/mock-data";
+import { isMockMode, api, type GatewayInvoice } from "@/lib/api-client";
+import { useApiData } from "@/lib/use-api-data";
 import { Search } from "lucide-react";
+
+const API_KEY = "";
 
 export default function InvoicesPage() {
   const [state, setState] = useState(() => getServerPortalState());
   const [searchQuery, setSearchQuery] = useState("");
+  const mock = isMockMode();
+
+  const { data: rawInvoices, isLoading } = useApiData({
+    fetcher: (key) => api.invoices.list(key),
+    mockData: [] as GatewayInvoice[],
+    apiKey: API_KEY,
+  });
 
   useEffect(() => {
-    // Hydrate state from localStorage on mount
+    if (!mock) return;
     setState(loadPortalState());
-
-    const handleStorageChange = () => {
-      setState(loadPortalState());
-    };
+    const handleStorageChange = () => { setState(loadPortalState()); };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [mock]);
 
-  const invoices = state?.invoices || getServerPortalState().invoices;
-  const filteredInvoices = invoices.filter((inv) =>
+  const realInvoices = useMemo(() => {
+    if (mock || rawInvoices.length === 0) return [];
+    return rawInvoices.map((inv) => ({
+      id: inv.id,
+      planName: inv.description ?? "Subscription",
+      amount: inv.amount,
+      status: inv.status as "paid" | "failed" | "pending",
+      date: new Date(inv.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }),
+      method: "Gateway",
+    }));
+  }, [mock, rawInvoices]);
+
+  const invoices = mock ? (state?.invoices || getServerPortalState().invoices) : realInvoices;
+  const filteredInvoices = invoices.filter((inv: Invoice) =>
     inv.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     inv.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     inv.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Download Receipt helper
   const handleDownloadReceipt = (invoice: Invoice) => {
     const receiptText = `=========================================================
                     RAILSWITCH RECEIPT
@@ -51,7 +70,7 @@ Transaction ID: tx_${Math.random().toString(36).slice(2, 11)}
 Orchestrated by: RailSwitch smart recovery engine
 =========================================================
          Thank you for choosing NaijaMusicPro!
-=========================================================`;
+========================================================`;
 
     const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -70,7 +89,6 @@ Orchestrated by: RailSwitch smart recovery engine
         description="View past charges, transaction channels, and download invoice receipts."
       />
 
-      {/* Search Bar */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400 dark:text-zinc-500" />
         <input
@@ -82,7 +100,6 @@ Orchestrated by: RailSwitch smart recovery engine
         />
       </div>
 
-      {/* Invoices List Table */}
       <InvoicesTable
         invoices={filteredInvoices}
         onDownloadReceipt={handleDownloadReceipt}
