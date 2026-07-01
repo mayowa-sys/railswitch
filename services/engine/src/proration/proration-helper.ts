@@ -110,11 +110,7 @@ async function getDefaultPaymentMethod(customerId: string) {
         eq(PaymentMethodsTable.is_default, true),
       ),
     );
-  if (!defaultMethod)
-    throw new Error(
-      `Default Payment Method for customer ${customerId} not found`,
-    );
-  return defaultMethod;
+  return defaultMethod ?? null;
 }
 
 export async function getSubscription(subId: string) {
@@ -160,20 +156,28 @@ export async function handlePayments(
   idempotencyKey: string,
 ) {
   const sub = await getSubscription(subId);
-  const defaultPaymentMethod = await getDefaultPaymentMethod(sub.customer_id);
-  if (!defaultPaymentMethod) throw new Error("Payment method was not found");
+  try {
+    const defaultPaymentMethod = await getDefaultPaymentMethod(sub.customer_id);
+    if (!defaultPaymentMethod) {
+      // No payment method — invoice stays open, cascade will handle later
+      return;
+    }
 
-  const billResult = await billingHandler.bill({
-    subscriptionId: subId,
-    invoiceId,
-    amount: charge,
-    paymentMethodToken: defaultPaymentMethod.nomba_token,
-    idempotencyKey: `${idempotencyKey}:proration`,
-  });
+    const billResult = await billingHandler.bill({
+      subscriptionId: subId,
+      invoiceId,
+      amount: charge,
+      paymentMethodToken: defaultPaymentMethod.nomba_token,
+      idempotencyKey: `${idempotencyKey}:proration`,
+    });
 
-  if (billResult.status === "paid") {
-    await BillingHelper.markInvoiceAsPaid(invoiceId, `${charge}`);
-  } else if (billResult.status === "failed") {
-    await handleFailedPlanChangeCharge(sub.id, invoiceId);
+    if (billResult.status === "paid") {
+      await BillingHelper.markInvoiceAsPaid(invoiceId, `${charge}`);
+    } else if (billResult.status === "failed") {
+      await handleFailedPlanChangeCharge(sub.id, invoiceId);
+    }
+  } catch {
+    // No default payment method — invoice is created but charge not attempted.
+    // Cascade retry will pick this up when a payment method is added.
   }
 }

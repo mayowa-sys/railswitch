@@ -43,6 +43,13 @@
       "when": 1782856782343,
       "tag": "0005_busy_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1751352960000,
+      "tag": "0006_add_credit_sources",
+      "breakpoints": true
     }
   ]
 }
