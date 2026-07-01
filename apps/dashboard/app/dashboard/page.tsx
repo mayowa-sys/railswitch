@@ -9,8 +9,7 @@ import { FailedPaymentsTable } from "@/components/dashboard/overview/failed-paym
 import { WebhookFeed } from "@/components/dashboard/overview/webhook-feed";
 import { OVERVIEW_STATS } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
-import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
-import { isMockMode } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
   emerald: { bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
@@ -23,7 +22,7 @@ export default function OverviewPage() {
   const [liveData, setLiveData] = useState<{ mrr: number; activeSubscribers: number } | null>(null);
 
   useEffect(() => {
-    if (isMockMode() || !user?.apiKey) return;
+    if (!user?.apiKey) return;
     (async () => {
       try {
         const [subs, plans] = await Promise.all([
@@ -34,7 +33,9 @@ export default function OverviewPage() {
         const active = subs.filter((s) => s.state === "active" || s.status === "active");
         const mrr = active.reduce((sum, s) => sum + (planMap.get(s.plan_id) ?? 0), 0);
         setLiveData({ mrr, activeSubscribers: active.length });
-      } catch { /* keep mock data */ }
+      } catch (e) {
+        console.error("Failed to fetch live data:", e);
+      }
     })();
   }, [user]);
 
