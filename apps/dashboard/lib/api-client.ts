@@ -84,11 +84,13 @@ export interface GatewaySubscription {
   merchant_id: string;
   customer_id: string;
   plan_id: string;
+  state: string;
   status: string;
   current_period_start: string;
   current_period_end: string;
-  trial_end?: string;
+  trial_ends_at?: string;
   cancel_at_period_end: boolean;
+  next_billing_at?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
