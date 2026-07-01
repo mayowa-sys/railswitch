@@ -35,6 +35,23 @@ export function SignInForm() {
     }
   }
 
+  async function handleDemoLogin() {
+    setEmail("demo@railswitch.dev");
+    setPassword("demo123456");
+    setTimeout(async () => {
+      setError(null);
+      setIsLoading(true);
+      try {
+        await login("demo@railswitch.dev", "demo123456");
+        router.push("/dashboard");
+      } catch {
+        setError("Demo account not found. Please sign up first.");
+      } finally {
+        setIsLoading(false);
+      }
+    }, 100);
+  }
+
   return (
       <div className="w-full max-w-md mx-auto rs-fade-up">
         {/* Logo */}
@@ -134,6 +151,16 @@ export function SignInForm() {
                       <ArrowRight className="size-4" />
                     </>
                 )}
+              </Button>
+
+              <Button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="w-full h-10 mt-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+              >
+                Use Demo Account
               </Button>
             </form>
           </CardContent>
