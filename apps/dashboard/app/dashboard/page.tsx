@@ -25,8 +25,7 @@ export default function OverviewPage() {
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    const key = user?.apiKey;
-    if (!key || key === "sk_test_mockmerchanta") { setFetching(false); return; }
+    const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
     setFetching(true);
     api.subscriptions.list(key).then((subs) => {
       api.plans.list(key).then((plans) => {
@@ -37,9 +36,9 @@ export default function OverviewPage() {
         setArr(m * 12);
         setActiveSubscribers(active.length);
         setFetching(false);
-      }).catch(() => setFetching(false));
-    }).catch(() => setFetching(false));
-  }, [user?.apiKey]);
+      }).catch((e) => { console.error("plans error:", e); setFetching(false); });
+    }).catch((e) => { console.error("subs error:", e); setFetching(false); });
+  }, []);
 
   return (
     <div className="space-y-8">
