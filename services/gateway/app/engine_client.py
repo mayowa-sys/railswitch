@@ -427,6 +427,16 @@ class EngineClient:
             "POST", f"/internal/v1/webhooks/management/deliveries/{delivery_id}/replay"
         )
 
+    # =========== AUDIT LOGS ===================
+
+    async def list_audit_logs(self, limit: int = 100) -> list:
+        body = await self._request("GET", "/internal/v1/audit-logs", params={"limit": limit})
+        return body.get("data", body)
+
+    async def get_subscription_audit_logs(self, subscription_id: str) -> list:
+        body = await self._request("GET", f"/internal/v1/audit-logs/subscription/{subscription_id}")
+        return body.get("data", body)
+
 
 async def get_engine_client(
     request: Request,
@@ -446,3 +456,4 @@ async def get_engine_client_no_auth(request: Request) -> EngineClient:
         merchant_id="",
         idempotency_key=None,
     )
+

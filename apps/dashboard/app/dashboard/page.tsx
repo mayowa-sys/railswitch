@@ -38,14 +38,14 @@ export default function OverviewPage() {
           const plan = planMap.get(s.plan_id);
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
         }) as { name: string; amount: number; status: string }[];
-        const active = allSubs.filter((s) => s.status === "active");
+        const active = allSubs.filter((s) => s.status === "active" || s.status === "charging");
         const cancelled = allSubs.filter((s) => s.status === "cancelled");
         const m = active.reduce((sum, s) => sum + s.amount, 0);
         const grouped: Record<string, number> = {};
         for (const s of active) { grouped[s.name] = (grouped[s.name] || 0) + s.amount; }
-        const bars = Object.entries(grouped).map(([name, amount]) => ({ name, amount }));
-        setMrr(m);
-        setArr(m * 12);
+        const bars = Object.entries(grouped).map(([name, amount]) => ({ name, amount: amount / 100 }));
+        setMrr(m / 100);
+        setArr((m * 12) / 100);
         setActiveSubscribers(active.length);
         setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
         setSubscriptionBars(bars);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { api, type GatewayWebhookEndpoint, type GatewayWebhookDelivery } from "@/lib/api-client";
+import { api, type GatewayWebhookEndpoint, type GatewayWebhookDelivery, type GatewayWebhookEvent } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff, Copy, Check, Trash2, Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { DataTable, type Column } from "@/components/shared/data-table";
@@ -45,6 +45,7 @@ export function WebhooksTab() {
   const API_KEY = user?.apiKey ?? "";
   const [endpoints, setEndpoints] = useState<GatewayWebhookEndpoint[]>([]);
   const [deliveries, setDeliveries] = useState<GatewayWebhookDelivery[]>([]);
+  const [events, setEvents] = useState<GatewayWebhookEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
@@ -57,9 +58,12 @@ export function WebhooksTab() {
     Promise.all([
       api.webhooks.endpoints.list(API_KEY),
       api.webhooks.deliveries.list(API_KEY),
-    ]).then(([eps, dels]) => {
+      api.webhooks.events.list(API_KEY),
+    ]).then(([eps, dels, evts]) => {
       setEndpoints(eps);
       setDeliveries(dels.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      setDeliveries(dels.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      setEvents(evts);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [API_KEY]);
@@ -96,7 +100,7 @@ export function WebhooksTab() {
   const visible = deliveries.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const columns: Column<GatewayWebhookDelivery>[] = [
-    { key: "event", header: "Event", cell: (row) => <code className="text-[11px] font-mono truncate max-w-[160px] block">{row.event_id?.slice(0, 10) || "—"}</code> },
+    { key: "event", header: "Event", cell: (row) => { const evt = events.find(e => e.id === row.event_id); return <code className="text-[11px] font-mono truncate max-w-[160px] block">{evt?.event || row.event_id?.slice(0, 12) || "—"}</code>; } },
     { key: "endpoint", header: "Endpoint", cell: (row) => <span className="text-[11px] text-zinc-500 font-mono truncate max-w-[140px] block">{endpoints.find(e => e.id === row.endpoint_id)?.url?.replace("https://", "")?.slice(0, 30) || row.endpoint_id}</span> },
     { key: "status", header: "Status", cell: (row) => <DeliveryStatusCell status={row.status} /> },
     { key: "code", header: "Code", cell: (row) => <span className={cn("text-[11px] font-mono font-bold", row.status_code && row.status_code < 300 ? "text-emerald-600" : "text-red-600")}>{row.status_code ?? "—"}</span> },

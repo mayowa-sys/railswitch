@@ -43,7 +43,7 @@ export default function SubscriptionsPage() {
         planId: s.plan_id,
         status: (s.state as LiveSubscription["status"]) ?? "active",
         state: s.state,
-        amount: Number(planMap.get(s.plan_id)?.amount ?? 0),
+        amount: Number(planMap.get(s.plan_id)?.amount ?? 0) / 100,
         nextBillingDate: s.current_period_end ?? new Date().toISOString(),
         cascadeHistory: [],
       })) as LiveSubscription[]);
@@ -51,7 +51,7 @@ export default function SubscriptionsPage() {
     }).catch(() => setLoading(false));
   }, [user?.apiKey]);
 
-  const activeCount = subs.filter((s) => s.status === "active").length;
+  const activeCount = subs.filter((s) => s.state === "active").length;
 
   return (
     <div className="space-y-6">

@@ -30,7 +30,7 @@ const MOCK_API_KEY = "sk_test_mockmerchanta";
 
 // Hardcoded demo API key — the real key for demo@railswitch.dev
 // This account has 3 plans, 4 customers, 4 subscriptions pre-seeded.
-const DEMO_API_KEY = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+const DEMO_API_KEY = "sk_test_mer_HfDzRi_p6G___5GjJ2qsjwpi1eRVU0Hw-2GvTEc";
 
 function loadUserFromStorage(): AuthUser | null {
   if (typeof localStorage === "undefined") return null;
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Demo account: use hardcoded real API key so dashboard shows live data
       if (email === "demo@railswitch.dev" && password === "demo123456") {
         const demoUser: AuthUser = {
-          id: "mer_p37g-Bwaww",
+          id: "mer_HfDzRi_p6G",
           name: "Demo User",
           email: "demo@railswitch.dev",
           company: "Demo User",

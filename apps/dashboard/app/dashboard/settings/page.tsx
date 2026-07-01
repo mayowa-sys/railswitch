@@ -6,6 +6,7 @@ import { WebhooksTab } from "@/components/dashboard/settings/webhooks-tab";
 import { DevelopersTab } from "@/components/dashboard/settings/developers-tab";
 import { Shield, Webhook, Code2 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -17,13 +18,14 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("dunning");
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Settings"
-        description="Configure dunning policies, webhook endpoints, and API credentials for NaijaMusicPro."
+        description={`Configure dunning policies, webhook endpoints, and API credentials for ${user?.company ?? "your account"}.`}
       />
 
       {/* ── Custom tab bar ── */}

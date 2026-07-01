@@ -17,7 +17,7 @@ function computePlans(rawPlans: GatewayPlan[], rawSubs: { plan_id: string; state
     id: p.id,
     name: p.name,
     description: p.description ?? "",
-    price: typeof p.amount === "string" ? parseInt(p.amount) * 100 : p.amount * 100,
+    price: Number(p.amount),
     interval: p.interval as MockPlan["interval"],
     trialDays: 0,
     status: p.is_active ? "active" : "archived",
