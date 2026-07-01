@@ -1,17 +1,17 @@
-# @railswitch/node
+# railswitch
 
 Official TypeScript SDK for [RailSwitch](https://railswitch-gateway.fly.dev) — recurring billing recovery for Nigeria.
 
 ## Install
 
 ```bash
-npm install @railswitch/node
+npm install railswitch
 ```
 
 ## Quickstart
 
 ```typescript
-import { RailSwitch } from "@railswitch/node";
+import { RailSwitch } from "railswitch";
 
 const rs = new RailSwitch({ apiKey: "sk_test_..." });
 
