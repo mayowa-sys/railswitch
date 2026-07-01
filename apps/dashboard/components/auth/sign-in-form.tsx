@@ -36,17 +36,13 @@ export function SignInForm() {
   }
 
   async function handleDemoLogin() {
-    setEmail("demo@railswitch.dev");
-    setPassword("demo123456");
     setError(null);
     setIsLoading(true);
     try {
-      // Try signup first (returns full API key). Falls through to login if account exists.
-      try { await signup("Demo User", "demo@railswitch.dev", "demo123456"); } catch { /* exists */ }
       await login("demo@railswitch.dev", "demo123456");
       router.push("/dashboard");
     } catch {
-      setError("Demo account setup failed. Try again.");
+      setError("Demo setup failed. Is the API running?");
     } finally {
       setIsLoading(false);
     }
