@@ -5,10 +5,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { PlansTable } from "@/components/dashboard/plans/plans-table";
 import { NewPlanModal } from "@/components/dashboard/plans/new-plan-modal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { api, type GatewayPlan } from "@/lib/api-client";
-import { PLANS, type Plan as MockPlan } from "@/lib/mock-data";
+import { type Plan as MockPlan } from "@/lib/mock-data";
 
 function toMockPlan(p: GatewayPlan): MockPlan {
   return {
@@ -27,14 +27,14 @@ function toMockPlan(p: GatewayPlan): MockPlan {
 export default function PlansPage() {
   const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
-  const [plans, setPlans] = useState<MockPlan[]>([]);
+  const [plans, setPlans] = useState<MockPlan[] | null>(null);
 
   useEffect(() => {
     const key = user?.apiKey;
     if (!key) return;
     api.plans.list(key).then((rawPlans) => {
       setPlans(rawPlans.map(toMockPlan));
-    }).catch(() => {});
+    }).catch(() => setPlans([]));
   }, [user?.apiKey]);
 
   const handleCreated = () => {
@@ -62,7 +62,13 @@ export default function PlansPage() {
         }
       />
 
-      <PlansTable externalPlans={plans.length > 0 ? plans : PLANS} />
+      {plans === null ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-5 animate-spin text-zinc-400" />
+        </div>
+      ) : (
+        <PlansTable externalPlans={plans} />
+      )}
 
       <NewPlanModal
         open={modalOpen}
