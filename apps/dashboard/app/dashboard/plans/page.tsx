@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { PlansTable } from "@/components/dashboard/plans/plans-table";
 import { NewPlanModal } from "@/components/dashboard/plans/new-plan-modal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useApiData } from "@/lib/use-api-data";
 import { api, type GatewayPlan } from "@/lib/api-client";
 import { PLANS, type Plan as MockPlan } from "@/lib/mock-data";
 
@@ -28,16 +27,23 @@ function toMockPlan(p: GatewayPlan): MockPlan {
 export default function PlansPage() {
   const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
+  const [plans, setPlans] = useState<MockPlan[]>([]);
 
-  const { data: apiPlans, refetch } = useApiData({
-    fetcher: async () => {
-      const KEY = user?.apiKey ?? "";
-      const plans = await api.plans.list(KEY);
-      return plans.map(toMockPlan);
-    },
-    mockData: PLANS,
-    apiKey: "hardcoded",
-  });
+  useEffect(() => {
+    const key = user?.apiKey;
+    if (!key) return;
+    api.plans.list(key).then((rawPlans) => {
+      setPlans(rawPlans.map(toMockPlan));
+    }).catch(() => {});
+  }, [user?.apiKey]);
+
+  const handleCreated = () => {
+    if (user?.apiKey) {
+      api.plans.list(user.apiKey).then((rawPlans) => {
+        setPlans(rawPlans.map(toMockPlan));
+      }).catch(() => {});
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -56,12 +62,12 @@ export default function PlansPage() {
         }
       />
 
-      <PlansTable externalPlans={apiPlans} />
+      <PlansTable externalPlans={plans.length > 0 ? plans : PLANS} />
 
       <NewPlanModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        onCreate={refetch}
+        onCreate={handleCreated}
       />
     </div>
   );
