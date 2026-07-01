@@ -50,7 +50,7 @@ export class RealNombaClient implements NombaClient {
     this.clientId = opts.clientId;
     this.clientSecret = opts.clientSecret;
     this.accountId = opts.accountId;
-    this.baseUrl = opts.baseUrl ?? 'https://sandbox.api.nomba.com';
+    this.baseUrl = opts.baseUrl ?? 'https://sandbox.nomba.com';
     this.logger = new GlobalLogger('RealNombaClient');
   }
 
@@ -108,8 +108,8 @@ export class RealNombaClient implements NombaClient {
     const va = nombaData(json);
 
     return {
-      vaId: va.id ?? va.accountId ?? opts.reference,
-      accountNumber: va.accountNumber,
+      vaId: va.id ?? va.accountRef ?? opts.reference,
+      accountNumber: va.bankAccountNumber ?? va.accountNumber,
       bankName: va.bankName ?? 'Nomba',
       expiresAt: va.expiryDate ?? '',
     };

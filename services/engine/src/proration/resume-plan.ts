@@ -17,7 +17,7 @@ export async function applyResumeAdjustments(
   subId: string,
   merchantId: string,
 ): Promise<void> {
-  await db.execute(sql`SET LOCAL app.current.merchant_id=${merchantId}`);
+  await db.execute(`SET LOCAL app.current_merchant_id = '${merchantId}'`);
 
   try {
     const sub = await ProrationHelper.getSubscription(subId);
