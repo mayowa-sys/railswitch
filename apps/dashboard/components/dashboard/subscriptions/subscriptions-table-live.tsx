@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SearchFilterBar } from "@/components/shared/search-filter-bar";
@@ -48,6 +48,8 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");
   const [selected, setSelected] = useState<LiveSubscription | null>(null);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
 
   const formatNaira = (n: number) => `₦${n.toLocaleString()}`;
 
@@ -63,6 +65,12 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
       return matchSearch && matchStatus && matchPlan;
     });
   }, [subscriptions, customers, search, statusFilter, planFilter]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const pagedData = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [search, statusFilter, planFilter]);
 
   const hasFilters = !!search || !!statusFilter || !!planFilter;
 
@@ -139,8 +147,31 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
         onClearAll={() => { setSearch(""); setStatusFilter(""); setPlanFilter(""); }}
       />
       <div className="mt-4">
-        <DataTable columns={columns} data={filtered} rowKey={(row) => row.id} onRowClick={setSelected}
+        <DataTable columns={columns}         data={pagedData} rowKey={(row) => row.id} onRowClick={setSelected}
           emptyTitle="No subscriptions found" emptyDescription="Try a different search term or clear your filters." />
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <p className="text-xs text-zinc-400">
+              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+                className="h-7 px-2.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button key={i} onClick={() => setPage(i)}
+                  className={`h-7 w-7 rounded text-xs font-medium transition-colors ${page === i ? 'bg-indigo-600 text-white' : 'border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                  {i + 1}
+                </button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+                className="h-7 px-2.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
