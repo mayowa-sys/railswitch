@@ -8,11 +8,11 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  CUSTOMERS,
-  PLANS,
   formatNaira,
   type Subscription,
   type CascadeAttempt,
+  type Customer,
+  type Plan,
 } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/shared/status-badge";
 import {
@@ -84,11 +84,13 @@ function CascadeTimeline({ history }: { history: CascadeAttempt[] }) {
 interface SubscriptionDetailDrawerProps {
   subscription: Subscription | null;
   onClose: () => void;
+  customers: Customer[];
+  plans: Plan[];
 }
 
-export function SubscriptionDetailDrawer({ subscription, onClose }: SubscriptionDetailDrawerProps) {
-  const customer = subscription ? CUSTOMERS.find((c) => c.id === subscription.customerId) : null;
-  const plan = subscription ? PLANS.find((p) => p.id === subscription.planId) : null;
+export function SubscriptionDetailDrawer({ subscription, onClose, customers, plans }: SubscriptionDetailDrawerProps) {
+  const customer = subscription ? customers.find((c) => c.id === subscription.customerId) : null;
+  const plan = subscription ? plans.find((p) => p.id === subscription.planId) : null;
 
   return (
     <Sheet open={!!subscription} onOpenChange={(o) => !o && onClose()}>

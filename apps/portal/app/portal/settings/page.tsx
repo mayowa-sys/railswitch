@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusManagement } from "@/components/portal/settings/status-management";
 import { CancelModal } from "@/components/portal/settings/cancel-modal";
 import { loadPortalState, savePortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
+import { isMockMode, api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
+import { useApiData } from "@/lib/use-api-data";
 import { CheckCircle } from "lucide-react";
+
+const API_KEY = "";
 
 export default function SettingsPage() {
   const [state, setState] = useState(() => getServerPortalState());
@@ -14,31 +18,63 @@ export default function SettingsPage() {
   const [selectedReason, setSelectedReason] = useState("");
   const [otherDetails, setOtherDetails] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const mock = isMockMode();
+
+  const { data: rawSubs, isLoading: subsLoading } = useApiData({
+    fetcher: (key) => api.subscriptions.list(key),
+    mockData: [] as GatewaySubscription[],
+    apiKey: API_KEY,
+  });
+
+  const { data: rawPlans, isLoading: plansLoading } = useApiData({
+    fetcher: (key) => api.plans.list(key),
+    mockData: [] as GatewayPlan[],
+    apiKey: API_KEY,
+  });
+
+  const loading = !mock && (subsLoading || plansLoading);
 
   useEffect(() => {
-    // Hydrate state from localStorage on mount
+    if (!mock) return;
     setState(loadPortalState());
-
-    const handleStorageChange = () => {
-      setState(loadPortalState());
-    };
+    const handleStorageChange = () => { setState(loadPortalState()); };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [mock]);
 
-  const subscription = state?.subscription || getServerPortalState().subscription;
-  const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
+  const realData = useMemo(() => {
+    if (mock || rawSubs.length === 0) return null;
+    const sub = rawSubs[0];
+    const plan = rawPlans.find((p) => p.id === sub.plan_id);
+    return {
+      subscription: {
+        id: sub.id,
+        planId: sub.plan_id,
+        status: sub.status as string,
+        nextBillingDate: new Date(sub.current_period_end).toLocaleDateString("en-NG", {
+          day: "numeric", month: "long", year: "numeric",
+        }),
+        paymentMethodId: "",
+      },
+      currentPlan: plan ? {
+        id: plan.id,
+        name: plan.name,
+        description: plan.description ?? "",
+        price: plan.amount,
+        interval: (plan.interval === "year" ? "annually" : "monthly") as "monthly" | "annually",
+      } : PLANS[0],
+    };
+  }, [mock, rawSubs, rawPlans]);
+
+  const subscription = realData?.subscription ?? (state?.subscription || getServerPortalState().subscription);
+  const currentPlan = realData?.currentPlan ?? (PLANS.find((p: any) => p.id === subscription.planId) || PLANS[0]);
 
   const handlePause = () => {
     setActionLoading("pause");
     setTimeout(() => {
-      const updatedSub = {
-        ...subscription,
-        status: "paused" as const,
-      };
-
+      const updatedSub = { ...subscription, status: "paused" as const };
       savePortalState({ subscription: updatedSub });
-      setState((s) => ({ ...s, subscription: updatedSub }));
+      setState((s: any) => ({ ...s, subscription: updatedSub }));
       setActionLoading(null);
       setSuccessMsg("Subscription paused successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -48,13 +84,9 @@ export default function SettingsPage() {
   const handleResume = () => {
     setActionLoading("resume");
     setTimeout(() => {
-      const updatedSub = {
-        ...subscription,
-        status: "active" as const,
-      };
-
+      const updatedSub = { ...subscription, status: "active" as const };
       savePortalState({ subscription: updatedSub });
-      setState((s) => ({ ...s, subscription: updatedSub }));
+      setState((s: any) => ({ ...s, subscription: updatedSub }));
       setActionLoading(null);
       setSuccessMsg("Subscription resumed successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -62,9 +94,7 @@ export default function SettingsPage() {
   };
 
   const handleCancelClick = () => {
-    setSelectedReason("");
-    setOtherDetails("");
-    setCancelModalOpen(true);
+    setSelectedReason(""); setOtherDetails(""); setCancelModalOpen(true);
   };
 
   const handleConfirmCancel = () => {
@@ -78,9 +108,8 @@ export default function SettingsPage() {
         status: "cancelled" as const,
         reason: selectedReason === "Other" ? `Other: ${otherDetails}` : selectedReason,
       };
-
       savePortalState({ subscription: updatedSub });
-      setState((s) => ({ ...s, subscription: updatedSub }));
+      setState((s: any) => ({ ...s, subscription: updatedSub }));
       setActionLoading(null);
       setSuccessMsg("Subscription cancelled.");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -101,7 +130,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Subscription Status Management */}
       <StatusManagement
         subscriptionStatus={subscription.status}
         currentPlan={currentPlan}
@@ -112,7 +140,6 @@ export default function SettingsPage() {
         onCancelClick={handleCancelClick}
       />
 
-      {/* Cancellation Reason Modal */}
       <CancelModal
         open={cancelModalOpen}
         onOpenChange={setCancelModalOpen}

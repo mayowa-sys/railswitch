@@ -12,7 +12,64 @@ async function request<T>(path: string, apiKey: string, opts: RequestInit = {}):
   return (json.data ?? json) as T;
 }
 
+export interface GatewaySubscription {
+  id: string;
+  merchant_id: string;
+  customer_id: string;
+  plan_id: string;
+  status: string;
+  current_period_start: string;
+  current_period_end: string;
+  trial_end?: string;
+  cancel_at_period_end: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GatewayPlan {
+  id: string;
+  merchant_id: string;
+  name: string;
+  description?: string;
+  amount: number;
+  currency: string;
+  interval: string;
+  interval_count: number;
+  is_active: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GatewayInvoice {
+  id: string;
+  subscription_id: string;
+  merchant_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description?: string;
+  due_date: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 export const api = {
+  subscriptions: {
+    list: (apiKey: string) =>
+      request<GatewaySubscription[]>("/v1/subscriptions", apiKey),
+    get: (id: string, apiKey: string) =>
+      request<GatewaySubscription>(`/v1/subscriptions/${id}`, apiKey),
+  },
+  plans: {
+    list: (apiKey: string) =>
+      request<GatewayPlan[]>("/v1/plans", apiKey),
+  },
+  invoices: {
+    list: (apiKey: string) =>
+      request<GatewayInvoice[]>("/v1/invoices", apiKey),
+  },
   preview: (subId: string, newPlanId: string, apiKey: string) =>
     request<Record<string, unknown>>(`/v1/subscriptions/${subId}/preview`, apiKey, {
       method: "POST",
