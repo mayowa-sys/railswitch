@@ -24,17 +24,24 @@ export default function OverviewPage() {
   const [activeSubscribers, setActiveSubscribers] = useState(OVERVIEW_STATS.activeSubscribers);
   const [fetching, setFetching] = useState(true);
 
+  const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number; color: string}[]>([]);
+
   useEffect(() => {
     const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
     setFetching(true);
     api.subscriptions.list(key).then((subs) => {
       api.plans.list(key).then((plans) => {
-        const planMap = new Map(plans.map((p) => [p.id, Number(p.amount)]));
-        const active = subs.filter((s) => s.state === "active");
-        const m = active.reduce((sum, s) => sum + (planMap.get(s.plan_id) ?? 0), 0);
+        const planMap = new Map(plans.map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
+        const allSubs = subs.map((s) => {
+          const plan = planMap.get(s.plan_id);
+          return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
+        });
+        const active = allSubs.filter((s) => s.status === "active");
+        const m = active.reduce((sum, s) => sum + s.amount, 0);
         setMrr(m);
         setArr(m * 12);
         setActiveSubscribers(active.length);
+        setSubscriptionBars(active);
         setFetching(false);
       }).catch((e) => { console.error("plans error:", e); setFetching(false); });
     }).catch((e) => { console.error("subs error:", e); setFetching(false); });
@@ -61,7 +68,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-7">
-        <div className="lg:col-span-4"><RevenueChart /></div>
+        <div className="lg:col-span-4">          <RevenueChart subscriptions={subscriptionBars} totalMrr={mrr} /></div>
         <div className="lg:col-span-3"><WebhookFeed /></div>
       </div>
 
