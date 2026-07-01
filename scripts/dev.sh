@@ -24,6 +24,16 @@ echo -e "${CYAN}║  RailSwitch — Full Stack Dev Mode            ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
+# 0. Kill any stale processes on our ports
+echo -e "${YELLOW}[0/5] Cleaning up stale processes...${NC}"
+lsof -ti :3001 | xargs kill -9 2>/dev/null; true
+lsof -ti :8000 | xargs kill -9 2>/dev/null; true
+lsof -ti :3000 | xargs kill -9 2>/dev/null; true
+lsof -ti :3100 | xargs kill -9 2>/dev/null; true
+lsof -ti :3200 | xargs kill -9 2>/dev/null; true
+sleep 1
+echo -e "  ${GREEN}✓${NC} Ports cleared"
+
 # 1. Infrastructure
 echo -e "${YELLOW}[1/5] Starting PostgreSQL + Redis...${NC}"
 docker compose -f infra/docker-compose.yml up -d postgres redis 2>&1 | tail -1
@@ -36,7 +46,7 @@ echo -e "${YELLOW}[2/5] Starting Engine (Node.js)...${NC}"
 cd "$ROOT/services/engine"
 npx tsx src/index.ts > /tmp/railswitch-engine.log 2>&1 &
 ENGINE_PID=$!
-sleep 3
+sleep 6
 if kill -0 $ENGINE_PID 2>/dev/null; then
   echo -e "  ${GREEN}✓${NC} Engine → http://localhost:3001"
 else
@@ -50,7 +60,7 @@ cd "$ROOT/services/gateway"
 source .venv/bin/activate 2>/dev/null
 uvicorn app.main:app --reload --port 8000 > /tmp/railswitch-gateway.log 2>&1 &
 GATEWAY_PID=$!
-sleep 3
+sleep 4
 if kill -0 $GATEWAY_PID 2>/dev/null; then
   echo -e "  ${GREEN}✓${NC} Gateway → http://localhost:8000"
 else
