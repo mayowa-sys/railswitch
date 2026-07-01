@@ -38,10 +38,14 @@ export default function OverviewPage() {
         }) as { name: string; amount: number; status: string }[];
         const active = allSubs.filter((s) => s.status === "active");
         const m = active.reduce((sum, s) => sum + s.amount, 0);
+        // Group active subs by plan name for the chart
+        const grouped: Record<string, number> = {};
+        for (const s of active) { grouped[s.name] = (grouped[s.name] || 0) + s.amount; }
+        const bars = Object.entries(grouped).map(([name, amount]) => ({ name, amount }));
         setMrr(m);
         setArr(m * 12);
         setActiveSubscribers(active.length);
-        setSubscriptionBars(active);
+        setSubscriptionBars(bars);
         setFetching(false);
       }).catch((e) => { console.error("plans error:", e); setFetching(false); });
     }).catch((e) => { console.error("subs error:", e); setFetching(false); });
