@@ -5,10 +5,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { PlansTable } from "@/components/dashboard/plans/plans-table";
 import { NewPlanModal } from "@/components/dashboard/plans/new-plan-modal";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useApiData } from "@/lib/use-api-data";
-import { api, isMockMode, type GatewayPlan } from "@/lib/api-client";
+import { api, type GatewayPlan } from "@/lib/api-client";
 import { PLANS, type Plan as MockPlan } from "@/lib/mock-data";
 
 function toMockPlan(p: GatewayPlan): MockPlan {
@@ -28,11 +28,10 @@ function toMockPlan(p: GatewayPlan): MockPlan {
 export default function PlansPage() {
   const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data: apiPlans, isLoading } = useApiData({
+  const { data: apiPlans, refetch } = useApiData({
     fetcher: async () => {
-      const KEY = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+      const KEY = user?.apiKey ?? "";
       const plans = await api.plans.list(KEY);
       return plans.map(toMockPlan);
     },
@@ -40,36 +39,20 @@ export default function PlansPage() {
     apiKey: "hardcoded",
   });
 
-  const handleRefresh = () => setRefreshKey((k) => k + 1);
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Plans"
         description="Manage subscription plans available to your customers."
         action={
-          <div className="flex gap-2">
-            {!isMockMode() && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="gap-1.5"
-              >
-                {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                Refresh
-              </Button>
-            )}
-            <Button
-              size="sm"
-              onClick={() => setModalOpen(true)}
-              className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0 shadow-sm shadow-indigo-500/20"
-            >
-              <Plus className="size-3.5" />
-              Create plan
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => setModalOpen(true)}
+            className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0 shadow-sm shadow-indigo-500/20"
+          >
+            <Plus className="size-3.5" />
+            Create plan
+          </Button>
         }
       />
 
@@ -78,7 +61,7 @@ export default function PlansPage() {
       <NewPlanModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        onCreate={handleRefresh}
+        onCreate={refetch}
       />
     </div>
   );

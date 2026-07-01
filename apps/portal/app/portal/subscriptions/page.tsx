@@ -10,7 +10,7 @@ import { isMockMode, api, type GatewaySubscription, type GatewayPlan } from "@/l
 import { useApiData } from "@/lib/use-api-data";
 import { CreditCard, Zap } from "lucide-react";
 
-const API_KEY = "";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function SubscriptionsPage() {
   const [state, setState] = useState(() => getServerPortalState());

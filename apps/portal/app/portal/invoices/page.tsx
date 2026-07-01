@@ -8,7 +8,7 @@ import { isMockMode, api, type GatewayInvoice } from "@/lib/api-client";
 import { useApiData } from "@/lib/use-api-data";
 import { Search } from "lucide-react";
 
-const API_KEY = "";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function InvoicesPage() {
   const [state, setState] = useState(() => getServerPortalState());

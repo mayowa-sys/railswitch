@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/shared/page-header";
+import { useAuth } from "@/lib/auth-context";
 import { CreditCard, AlertTriangle, Landmark, CheckCircle2, XCircle, Clock, Zap } from "lucide-react";
 
 const TEST_CARDS = [
@@ -20,6 +21,7 @@ interface StateEvent {
 }
 
 export default function PlaygroundPage() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<StateEvent[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
@@ -36,7 +38,7 @@ export default function PlaygroundPage() {
   const handleSimulateCharge = async (outcome: string) => {
     setLoading(outcome);
     setLastResponse("");
-    const apiKey = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+    const apiKey = user?.apiKey ?? "";
 
     try {
       // First create a test customer + subscription + plan to charge against

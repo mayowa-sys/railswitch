@@ -27,7 +27,7 @@ export default function OverviewPage() {
   const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
 
   useEffect(() => {
-    const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+    const key = user?.apiKey ?? "";
     setFetching(true);
     api.subscriptions.list(key).then((subs) => {
       api.plans.list(key).then((plans) => {
@@ -49,7 +49,7 @@ export default function OverviewPage() {
         setFetching(false);
       }).catch((e) => { console.error("plans error:", e); setFetching(false); });
     }).catch((e) => { console.error("subs error:", e); setFetching(false); });
-  }, []);
+  }, [user?.apiKey]);
 
   return (
     <div className="space-y-8">

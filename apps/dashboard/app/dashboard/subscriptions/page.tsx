@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
+import { useAuth } from "@/lib/auth-context";
 import { SubscriptionsTable } from "@/components/dashboard/subscriptions/subscriptions-table-live";
 import { api } from "@/lib/api-client";
 
@@ -20,13 +21,14 @@ interface LivePlan { id: string; name: string; amount: number; }
 interface LiveCustomer { id: string; name: string; email: string; }
 
 export default function SubscriptionsPage() {
+  const { user } = useAuth();
   const [subs, setSubs] = useState<LiveSubscription[]>([]);
   const [plans, setPlans] = useState<LivePlan[]>([]);
   const [customers, setCustomers] = useState<LiveCustomer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+    const key = user?.apiKey ?? "";
     Promise.all([
       api.subscriptions.list(key),
       api.plans.list(key),
@@ -47,7 +49,7 @@ export default function SubscriptionsPage() {
       })) as LiveSubscription[]);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [user?.apiKey]);
 
   const activeCount = subs.filter((s) => s.status === "active").length;
 

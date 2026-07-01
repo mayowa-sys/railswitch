@@ -9,7 +9,7 @@ import { isMockMode, api, type GatewaySubscription, type GatewayPlan } from "@/l
 import { useApiData } from "@/lib/use-api-data";
 import { CheckCircle } from "lucide-react";
 
-const API_KEY = "";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function SettingsPage() {
   const [state, setState] = useState(() => getServerPortalState());

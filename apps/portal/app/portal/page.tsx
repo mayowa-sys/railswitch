@@ -10,7 +10,7 @@ import { useApiData } from "@/lib/use-api-data";
 import { AlertOctagon } from "lucide-react";
 import Link from "next/link";
 
-const API_KEY = "";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function OverviewPage() {
   const [state, setState] = useState(() => getServerPortalState());
