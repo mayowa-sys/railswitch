@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 interface SubBar {
   name: string;
   amount: number;
-  color: string;
 }
 
 interface Props {

@@ -24,7 +24,7 @@ export default function OverviewPage() {
   const [activeSubscribers, setActiveSubscribers] = useState(OVERVIEW_STATS.activeSubscribers);
   const [fetching, setFetching] = useState(true);
 
-  const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number; color: string}[]>([]);
+  const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
 
   useEffect(() => {
     const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
@@ -35,7 +35,7 @@ export default function OverviewPage() {
         const allSubs = subs.map((s) => {
           const plan = planMap.get(s.plan_id);
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
-        });
+        }) as { name: string; amount: number; status: string }[];
         const active = allSubs.filter((s) => s.status === "active");
         const m = active.reduce((sum, s) => sum + s.amount, 0);
         setMrr(m);
