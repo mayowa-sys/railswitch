@@ -38,60 +38,58 @@ export default function PlaygroundPage() {
   const handleSimulateCharge = async (outcome: string) => {
     setLoading(outcome);
     setLastResponse("");
-    const apiKey = user?.apiKey ?? "";
-
     try {
-      // First create a test customer + subscription + plan to charge against
+      // Use a throwaway merchant so we don't pollute the demo data
       const API = "http://localhost:8000";
+      const ts = Date.now();
+      const regRes = await fetch(`${API}/v1/auth/register`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Playground", email: `pg-${ts}@test.dev`, password: "pgtest12345" }),
+      });
+      const reg = await regRes.json();
+      const key = reg.data?.api_key;
+      if (!key) throw new Error("Failed to create test merchant");
 
-      // Create a subscription to test against
       const planRes = await fetch(`${API}/v1/plans`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ name: "Playground Test", description: "Temp", amount: 5000, currency: "NGN", interval: "monthly", interval_count: 1 }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ name: "Test Plan", description: "Temp", amount: 5000, currency: "NGN", interval: "monthly", interval_count: 1 }),
       });
       const plan = await planRes.json();
-      const planId = plan.data?.id;
 
       const custRes = await fetch(`${API}/v1/customers`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ name: "Playground Customer", email: `pg-${Date.now()}@demo.dev` }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ name: "Test Customer", email: `cust-${ts}@test.dev` }),
       });
       const cust = await custRes.json();
-      const custId = cust.data?.id;
 
-      if (!planId || !custId) throw new Error("Failed to create test resources");
-
-      // Create subscription
       const subRes = await fetch(`${API}/v1/subscriptions`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ customer_id: custId, plan_id: planId, start_date: new Date().toISOString() }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ customer_id: cust.data?.id, plan_id: plan.data?.id, start_date: new Date().toISOString() }),
       });
       const sub = await subRes.json();
-      const subId = sub.data?.id;
 
-      // Create payment method
       const pmRes = await fetch(`${API}/v1/payment-methods`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ customer_id: custId, type: "card", nomba_token: `tok_${Date.now()}`, last4: "6666", brand: "visa" }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ customer_id: cust.data?.id, type: "card", nomba_token: `tok_${ts}`, last4: "6666", brand: "visa" }),
       });
 
-      // Try to invoke the cascade by pausing and resuming (this triggers state machine)
-      await fetch(`${API}/v1/subscriptions/${subId}/pause`, {
-        method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: "{}",
+      // Pause + resume to trigger state machine
+      await fetch(`${API}/v1/subscriptions/${sub.data?.id}/pause`, {
+        method: "POST", headers: { Authorization: `Bearer ${key}` }, body: "{}",
       });
-      await fetch(`${API}/v1/subscriptions/${subId}/resume`, {
-        method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: "{}",
+      await fetch(`${API}/v1/subscriptions/${sub.data?.id}/resume`, {
+        method: "POST", headers: { Authorization: `Bearer ${key}` }, body: "{}",
       });
 
       // Get final state
-      const finalSub = await fetch(`${API}/v1/subscriptions/${subId}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+      const finalRes = await fetch(`${API}/v1/subscriptions/${sub.data?.id}`, {
+        headers: { Authorization: `Bearer ${key}` },
       });
-      const finalData = await finalSub.json();
+      const finalData = await finalRes.json();
       const state = finalData.state || finalData.data?.state || "active";
 
-      setLastResponse(JSON.stringify({ subscription_id: subId, state, outcome, plan: planId, customer: custId }, null, 2));
-      addEvent("subscription.test", `Created sub ${subId?.slice(0,12)}... (${state})`, "success");
+      setLastResponse(JSON.stringify({ merchant: reg.data?.merchant?.id, subscription: sub.data?.id, state, outcome }, null, 2));
+      addEvent("subscription.test", `Created sub (${state}) — outcome: ${outcome}`, "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setLastResponse(msg);
