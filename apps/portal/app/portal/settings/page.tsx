@@ -4,152 +4,66 @@ import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusManagement } from "@/components/portal/settings/status-management";
 import { CancelModal } from "@/components/portal/settings/cancel-modal";
-import { loadPortalState, savePortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
-import { isMockMode, api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
-import { useApiData } from "@/lib/use-api-data";
-import { CheckCircle } from "lucide-react";
-
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
+import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
+import { CheckCircle, Loader2 } from "lucide-react";
+import { PORTAL_API_KEY as API_KEY, PORTAL_SUBSCRIPTION_ID } from "@/lib/config";
 
 export default function SettingsPage() {
-  const [state, setState] = useState(() => getServerPortalState());
+  const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
+  const [plans, setPlans] = useState<GatewayPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<"pause" | "resume" | "cancel" | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedReason, setSelectedReason] = useState("");
   const [otherDetails, setOtherDetails] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const mock = isMockMode();
 
-  const { data: rawSubs, isLoading: subsLoading } = useApiData({
-    fetcher: (key) => api.subscriptions.list(key),
-    mockData: [] as GatewaySubscription[],
-    apiKey: API_KEY,
-  });
+  const fetchSub = () => {
+    Promise.all([api.subscriptions.get(PORTAL_SUBSCRIPTION_ID, API_KEY), api.plans.list(API_KEY)])
+      .then(([sub, plansData]) => { setSubscription(sub); setPlans(plansData); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
 
-  const { data: rawPlans, isLoading: plansLoading } = useApiData({
-    fetcher: (key) => api.plans.list(key),
-    mockData: [] as GatewayPlan[],
-    apiKey: API_KEY,
-  });
+  useEffect(() => { fetchSub(); }, []);
 
-  const loading = !mock && (subsLoading || plansLoading);
-
-  useEffect(() => {
-    if (!mock) return;
-    setState(loadPortalState());
-    const handleStorageChange = () => { setState(loadPortalState()); };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [mock]);
-
-  const realData = useMemo(() => {
-    if (mock || rawSubs.length === 0) return null;
-    const sub = rawSubs[0];
-    const plan = rawPlans.find((p) => p.id === sub.plan_id);
-    return {
-      subscription: {
-        id: sub.id,
-        planId: sub.plan_id,
-        status: sub.status as string,
-        nextBillingDate: new Date(sub.current_period_end).toLocaleDateString("en-NG", {
-          day: "numeric", month: "long", year: "numeric",
-        }),
-        paymentMethodId: "",
-      },
-      currentPlan: plan ? {
-        id: plan.id,
-        name: plan.name,
-        description: plan.description ?? "",
-        price: plan.amount,
-        interval: (plan.interval === "year" ? "annually" : "monthly") as "monthly" | "annually",
-      } : PLANS[0],
-    };
-  }, [mock, rawSubs, rawPlans]);
-
-  const subscription = realData?.subscription ?? (state?.subscription || getServerPortalState().subscription);
-  const currentPlan = realData?.currentPlan ?? (PLANS.find((p: any) => p.id === subscription.planId) || PLANS[0]);
-
-  const handlePause = () => {
+  const handlePause = async () => {
     setActionLoading("pause");
-    setTimeout(() => {
-      const updatedSub = { ...subscription, status: "paused" as const };
-      savePortalState({ subscription: updatedSub });
-      setState((s: any) => ({ ...s, subscription: updatedSub }));
-      setActionLoading(null);
-      setSuccessMsg("Subscription paused successfully.");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    }, 600);
+    try { await api.subscriptions.pause(PORTAL_SUBSCRIPTION_ID, API_KEY); setSuccessMsg("Subscription paused."); fetchSub(); }
+    catch { setSuccessMsg("Failed to pause."); }
+    setActionLoading(null);
+    setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  const handleResume = () => {
+  const handleResume = async () => {
     setActionLoading("resume");
-    setTimeout(() => {
-      const updatedSub = { ...subscription, status: "active" as const };
-      savePortalState({ subscription: updatedSub });
-      setState((s: any) => ({ ...s, subscription: updatedSub }));
-      setActionLoading(null);
-      setSuccessMsg("Subscription resumed successfully.");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    }, 600);
+    try { await api.subscriptions.resume(PORTAL_SUBSCRIPTION_ID, API_KEY); setSuccessMsg("Subscription resumed."); fetchSub(); }
+    catch { setSuccessMsg("Failed to resume."); }
+    setActionLoading(null);
+    setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  const handleCancelClick = () => {
-    setSelectedReason(""); setOtherDetails(""); setCancelModalOpen(true);
-  };
-
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!selectedReason) return;
     setActionLoading("cancel");
     setCancelModalOpen(false);
-
-    setTimeout(() => {
-      const updatedSub = {
-        ...subscription,
-        status: "cancelled" as const,
-        reason: selectedReason === "Other" ? `Other: ${otherDetails}` : selectedReason,
-      };
-      savePortalState({ subscription: updatedSub });
-      setState((s: any) => ({ ...s, subscription: updatedSub }));
-      setActionLoading(null);
-      setSuccessMsg("Subscription cancelled.");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    }, 800);
+    try { await api.subscriptions.cancel(PORTAL_SUBSCRIPTION_ID, API_KEY); setSuccessMsg("Subscription cancelled."); fetchSub(); }
+    catch { setSuccessMsg("Failed to cancel."); }
+    setActionLoading(null);
+    setTimeout(() => setSuccessMsg(""), 3000);
   };
+
+  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;
+  if (!subscription) return <div className="py-12 text-center"><p className="text-sm text-zinc-500">No subscription found</p></div>;
+
+  const plan = plans.find((p) => p.id === subscription.plan_id);
+  const nextBilling = new Date(subscription.current_period_end).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Portal Settings"
-        description="Manage the operational lifecycle of your active subscription services."
-      />
-
-      {successMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-          <CheckCircle className="size-4" />
-          {successMsg}
-        </div>
-      )}
-
-      <StatusManagement
-        subscriptionStatus={subscription.status}
-        currentPlan={currentPlan}
-        nextBillingDate={subscription.nextBillingDate}
-        actionLoading={actionLoading}
-        onPause={handlePause}
-        onResume={handleResume}
-        onCancelClick={handleCancelClick}
-      />
-
-      <CancelModal
-        open={cancelModalOpen}
-        onOpenChange={setCancelModalOpen}
-        selectedReason={selectedReason}
-        onSelectReason={setSelectedReason}
-        otherDetails={otherDetails}
-        onOtherDetailsChange={setOtherDetails}
-        onConfirm={handleConfirmCancel}
-        applying={actionLoading === "cancel"}
-      />
+      <PageHeader title="Portal Settings" description="Manage your subscription lifecycle." />
+      {successMsg && <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2"><CheckCircle className="size-4" />{successMsg}</div>}
+      <StatusManagement subscriptionStatus={subscription.state} currentPlan={{ name: plan?.name ?? "Unknown", price: Number(plan?.amount ?? 0), interval: (plan?.interval === "annual" ? "annually" : "monthly") as "monthly" | "annually", description: plan?.description ?? "" }} nextBillingDate={nextBilling} actionLoading={actionLoading} onPause={handlePause} onResume={handleResume} onCancelClick={() => { setSelectedReason(""); setOtherDetails(""); setCancelModalOpen(true); }} />
+      <CancelModal open={cancelModalOpen} onOpenChange={setCancelModalOpen} selectedReason={selectedReason} onSelectReason={setSelectedReason} otherDetails={otherDetails} onOtherDetailsChange={setOtherDetails} onConfirm={handleConfirmCancel} applying={actionLoading === "cancel"} />
     </div>
   );
 }

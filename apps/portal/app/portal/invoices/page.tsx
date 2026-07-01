@@ -3,107 +3,52 @@
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
-import { loadPortalState, formatNaira, type Invoice, getServerPortalState } from "@/lib/mock-data";
-import { isMockMode, api, type GatewayInvoice } from "@/lib/api-client";
-import { useApiData } from "@/lib/use-api-data";
-import { Search } from "lucide-react";
-
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
+import { api, type GatewayInvoice } from "@/lib/api-client";
+import { Search, Loader2 } from "lucide-react";
+import { PORTAL_API_KEY as API_KEY, PORTAL_SUBSCRIPTION_ID } from "@/lib/config";
 
 export default function InvoicesPage() {
-  const [state, setState] = useState(() => getServerPortalState());
+  const [invoices, setInvoices] = useState<GatewayInvoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const mock = isMockMode();
-
-  const { data: rawInvoices, isLoading } = useApiData({
-    fetcher: (key) => api.invoices.list(key),
-    mockData: [] as GatewayInvoice[],
-    apiKey: API_KEY,
-  });
 
   useEffect(() => {
-    if (!mock) return;
-    setState(loadPortalState());
-    const handleStorageChange = () => { setState(loadPortalState()); };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [mock]);
+    api.invoices.list(API_KEY).then((data) => {
+      setInvoices(data.filter((i) => i.subscription_id === PORTAL_SUBSCRIPTION_ID));
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
-  const realInvoices = useMemo(() => {
-    if (mock || rawInvoices.length === 0) return [];
-    return rawInvoices.map((inv) => ({
-      id: inv.id,
-      planName: inv.description ?? "Subscription",
-      amount: inv.amount,
-      status: inv.status as "paid" | "failed" | "pending",
-      date: new Date(inv.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }),
-      method: "Gateway",
-    }));
-  }, [mock, rawInvoices]);
+  const filtered = invoices.filter((inv) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (inv.status || "").toLowerCase().includes(q) || (inv.description || "").toLowerCase().includes(q) || inv.id.toLowerCase().includes(q);
+  });
 
-  const invoices = mock ? (state?.invoices || getServerPortalState().invoices) : realInvoices;
-  const filteredInvoices = invoices.filter((inv: Invoice) =>
-    inv.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    inv.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    inv.status.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;
 
-  const handleDownloadReceipt = (invoice: Invoice) => {
-    const receiptText = `=========================================================
-                    RAILSWITCH RECEIPT
-=========================================================
-Merchant:       NaijaMusicPro (Naija Music Pro Ltd)
-Customer:       John Doe (john.doe@acme.corp)
-Invoice ID:     ${invoice.id}
-Billing Date:   ${invoice.date}
-Payment Method: ${invoice.method}
----------------------------------------------------------
-Description                           Amount
----------------------------------------------------------
-${invoice.planName}                   ${formatNaira(invoice.amount)}
----------------------------------------------------------
-SUBTOTAL                              ${formatNaira(invoice.amount)}
-TOTAL PAID                            ${formatNaira(invoice.amount)}
----------------------------------------------------------
-Status:         ${invoice.status.toUpperCase()}
-Transaction ID: tx_${Math.random().toString(36).slice(2, 11)}
-Orchestrated by: RailSwitch smart recovery engine
-=========================================================
-         Thank you for choosing NaijaMusicPro!
-========================================================`;
-
-    const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `${invoice.id}_receipt.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const mapped = filtered.map((inv) => ({
+    id: inv.id,
+    planName: inv.description ?? "Subscription",
+    amount: Number(inv.amount),
+    status: inv.status as "paid" | "failed" | "pending",
+    date: new Date(inv.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }),
+    method: "Gateway",
+  }));
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Invoice History"
-        description="View past charges, transaction channels, and download invoice receipts."
-      />
-
+      <PageHeader title="Invoice History" description="View past charges and download receipts." />
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400 dark:text-zinc-500" />
-        <input
-          type="text"
-          placeholder="Filter invoices..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-9 pl-9 pr-4 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 border border-transparent focus:border-zinc-200 dark:focus:border-zinc-800 focus:bg-white dark:focus:bg-[#0c0c0e] text-sm transition-all outline-none"
-        />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
+        <input type="text" placeholder="Filter invoices..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-9 pl-9 pr-4 rounded-lg bg-zinc-100 border border-transparent focus:border-zinc-200 focus:bg-white text-sm transition-all outline-none" />
       </div>
-
-      <InvoicesTable
-        invoices={filteredInvoices}
-        onDownloadReceipt={handleDownloadReceipt}
-      />
+      <InvoicesTable invoices={mapped} onDownloadReceipt={(inv) => {
+        const text = `RailSwitch Receipt\nInvoice: ${inv.id}\nDate: ${inv.date}\nAmount: N${(inv.amount / 100).toLocaleString()}\nStatus: ${inv.status.toUpperCase()}`;
+        const blob = new Blob([text], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `${inv.id}_receipt.txt`; a.click();
+      }} />
     </div>
   );
 }
