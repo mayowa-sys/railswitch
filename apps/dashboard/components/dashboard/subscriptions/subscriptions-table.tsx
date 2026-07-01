@@ -2,14 +2,15 @@
 
 import { useState, useMemo } from "react";
 import {
+  SUBSCRIPTIONS,
+  CUSTOMERS,
+  PLANS,
   formatNaira,
   type Subscription,
-  type Plan,
-  type Customer,
 } from "@/lib/mock-data";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { SearchFilterBar, type FilterOption } from "@/components/shared/search-filter-bar";
+import { SearchFilterBar } from "@/components/shared/search-filter-bar";
 import { SubscriptionDetailDrawer } from "@/components/dashboard/subscriptions/subscription-detail-drawer";
 import { CreditCard, RefreshCcw, Landmark, Hash, MessageCircle } from "lucide-react";
 
@@ -29,29 +30,17 @@ const STATUS_OPTIONS = [
   { value: "trialing", label: "Trialing" },
 ];
 
-interface SubscriptionsTableProps {
-  subscriptions: Subscription[];
-  plans: Plan[];
-  customers: Customer[];
-  planOptions: FilterOption[];
-  loading?: boolean;
-}
+const PLAN_OPTIONS = PLANS.map((p) => ({ value: p.id, label: p.name }));
 
-export function SubscriptionsTable({
-  subscriptions,
-  plans,
-  customers,
-  planOptions,
-  loading = false,
-}: SubscriptionsTableProps) {
+export function SubscriptionsTable() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");
   const [selected, setSelected] = useState<Subscription | null>(null);
 
   const filtered = useMemo(() => {
-    return subscriptions.filter((sub) => {
-      const customer = customers.find((c) => c.id === sub.customerId);
+    return SUBSCRIPTIONS.filter((sub) => {
+      const customer = CUSTOMERS.find((c) => c.id === sub.customerId);
       const matchSearch =
         !search ||
         customer?.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,7 +49,7 @@ export function SubscriptionsTable({
       const matchPlan = !planFilter || sub.planId === planFilter;
       return matchSearch && matchStatus && matchPlan;
     });
-  }, [subscriptions, customers, search, statusFilter, planFilter]);
+  }, [search, statusFilter, planFilter]);
 
   const hasFilters = !!search || !!statusFilter || !!planFilter;
 
@@ -69,7 +58,7 @@ export function SubscriptionsTable({
       key: "customer",
       header: "Customer",
       cell: (row) => {
-        const customer = customers.find((c) => c.id === row.customerId);
+        const customer = CUSTOMERS.find((c) => c.id === row.customerId);
         return (
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-100 to-violet-100 dark:from-indigo-950/60 dark:to-violet-950/60 flex items-center justify-center text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
@@ -91,7 +80,7 @@ export function SubscriptionsTable({
       key: "plan",
       header: "Plan",
       cell: (row) => {
-        const plan = plans.find((p) => p.id === row.planId);
+        const plan = PLANS.find((p) => p.id === row.planId);
         return (
           <span className="text-xs text-zinc-700 dark:text-zinc-300">{plan?.name ?? "—"}</span>
         );
@@ -173,7 +162,7 @@ export function SubscriptionsTable({
           {
             key: "plan",
             placeholder: "All plans",
-            options: planOptions,
+            options: PLAN_OPTIONS,
             value: planFilter,
             onChange: setPlanFilter,
           },
@@ -188,7 +177,6 @@ export function SubscriptionsTable({
           data={filtered}
           rowKey={(row) => row.id}
           onRowClick={setSelected}
-          loading={loading}
           emptyTitle="No subscriptions found"
           emptyDescription="Try a different search term or clear your filters."
         />
@@ -197,8 +185,6 @@ export function SubscriptionsTable({
       <SubscriptionDetailDrawer
         subscription={selected}
         onClose={() => setSelected(null)}
-        customers={customers}
-        plans={plans}
       />
     </>
   );
