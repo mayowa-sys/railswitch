@@ -18,9 +18,9 @@ const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
 
 export default function OverviewPage() {
   const { user } = useAuth();
-  const [mrr, setMrr] = useState(OVERVIEW_STATS.mrr);
-  const [arr, setArr] = useState(OVERVIEW_STATS.arr);
-  const [activeSubscribers, setActiveSubscribers] = useState(OVERVIEW_STATS.activeSubscribers);
+  const [mrr, setMrr] = useState(0);
+  const [arr, setArr] = useState(0);
+  const [activeSubscribers, setActiveSubscribers] = useState(0);
   const [fetching, setFetching] = useState(true);
 
   const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
