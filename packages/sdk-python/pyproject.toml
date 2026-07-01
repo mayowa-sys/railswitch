@@ -1,9 +1,19 @@
 [project]
 name = "railswitch"
 version = "0.1.0"
-description = "Official Python SDK for RailSwitch — recurring billing recovery"
+description = "Official Python SDK for RailSwitch — recurring billing recovery for Nigeria"
 requires-python = ">=3.12"
-dependencies = ["httpx>=0.26.0", "pydantic>=2.5.0"]
+dependencies = ["httpx>=0.26.0"]
+authors = [{ name = "RailSwitch", email = "mabdurrahman.balogun@gmail.com" }]
+license = { text = "MIT" }
+keywords = ["railswitch", "subscriptions", "billing", "nomba", "recurring", "nigeria", "dunning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 
 [build-system]
 requires = ["hatchling"]
