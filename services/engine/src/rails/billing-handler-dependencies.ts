@@ -6,6 +6,7 @@ import { BillingHandler } from "./billing-handler.js";
 import { MockNombaClient } from "./mock-nomba-client.js";
 import { RealNombaClient } from "./real-nomba-client.js";
 import { RailOrchestrator } from "./orchestrator.js";
+import { CascadeCoordinator } from "./cascade-coordinator.js";
 import type { NombaClient } from "./nomba-client.js";
 
 const logger = createLogger("billing-handler");
@@ -32,4 +33,16 @@ export function createBillingHandler(merchantId: string) {
   const wrapper = new SubscriptionWrapper({ repo, logger });
 
   return new BillingHandler(wrapper, orchestrator);
+}
+
+export function createCascadeCoordinator(merchantId: string) {
+  const repo = new DrizzleSubscriptionRepository(db, merchantId);
+  const wrapper = new SubscriptionWrapper({ repo, logger });
+  const billingHandler = new BillingHandler(wrapper, orchestrator);
+
+  return new CascadeCoordinator({
+    billingHandler,
+    orchestrator,
+    logger,
+  });
 }

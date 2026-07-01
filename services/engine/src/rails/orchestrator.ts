@@ -22,6 +22,12 @@
 
 import type { NombaClient } from './nomba-client.js';
 import type { SubscriptionContext } from '../state-machines/subscription.js';
+import { getWhatsAppService } from './whatsapp-service.js';
+import { db } from '../db/client.js';
+import { CustomersTable } from '../schema/customers.schema.js';
+import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
+import { InvoicesTable } from '../schema/invoices.schema.js';
+import { eq } from 'drizzle-orm';
 
 export interface OrchestratorLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
@@ -146,9 +152,47 @@ export class RailOrchestrator {
    * Real implementation lands in the window phase (WhatsApp Cloud API).
    */
   async sendWhatsAppRecovery(input: { context: SubscriptionContext; invoiceId: string }) {
-    this.logger.warn('sendWhatsAppRecovery is a stub — WhatsApp integration is a window-phase task', {
+    this.logger.info('sendWhatsAppRecovery', {
       subscriptionId: input.context.subscriptionId,
       invoiceId: input.invoiceId,
+    });
+
+    const wa = getWhatsAppService();
+    if (!wa) {
+      this.logger.warn('WhatsApp not configured — skipping recovery message', {
+        subscriptionId: input.context.subscriptionId,
+      });
+      return;
+    }
+
+    const [subscription] = await db
+      .select()
+      .from(SubscriptionsTable)
+      .where(eq(SubscriptionsTable.id, input.context.subscriptionId))
+      .limit(1);
+
+    const [customer] = await db
+      .select()
+      .from(CustomersTable)
+      .where(eq(CustomersTable.id, input.context.customerId))
+      .limit(1);
+
+    const [invoice] = await db
+      .select()
+      .from(InvoicesTable)
+      .where(eq(InvoicesTable.id, input.invoiceId))
+      .limit(1);
+
+    const sent = await wa.sendRecoveryMessage({
+      to: customer?.phone ?? '2348000000000',
+      accountNumber: subscription?.va_id ?? undefined,
+      bankName: 'Nomba',
+      amount: invoice ? Number(invoice.amount) : undefined,
+      reference: input.invoiceId,
+    });
+
+    this.logger.info(sent ? 'WhatsApp recovery sent' : 'WhatsApp recovery failed to send', {
+      subscriptionId: input.context.subscriptionId,
     });
   }
 
