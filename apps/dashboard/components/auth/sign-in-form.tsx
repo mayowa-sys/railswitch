@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export function SignInForm() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -38,18 +38,18 @@ export function SignInForm() {
   async function handleDemoLogin() {
     setEmail("demo@railswitch.dev");
     setPassword("demo123456");
-    setTimeout(async () => {
-      setError(null);
-      setIsLoading(true);
-      try {
-        await login("demo@railswitch.dev", "demo123456");
-        router.push("/dashboard");
-      } catch {
-        setError("Demo account not found. Please sign up first.");
-      } finally {
-        setIsLoading(false);
-      }
-    }, 100);
+    setError(null);
+    setIsLoading(true);
+    try {
+      // Try signup first (returns full API key). Falls through to login if account exists.
+      try { await signup("Demo User", "demo@railswitch.dev", "demo123456"); } catch { /* exists */ }
+      await login("demo@railswitch.dev", "demo123456");
+      router.push("/dashboard");
+    } catch {
+      setError("Demo account setup failed. Try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
