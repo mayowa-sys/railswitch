@@ -103,18 +103,65 @@ export default function StorefrontPage() {
 
   const handleSubscribe = async (planId: string) => {
     setSubscribing(planId);
+    const plan = PLANS.find((p) => p.id === planId);
     try {
-      await fetch("http://localhost:8000/v1/checkout", {
+      // Create a customer + subscription via the RailSwitch gateway
+      const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const email = `demo-${Date.now()}@naijamusic.pro`;
+      const name = "Naija Music Pro User";
+
+      // 1. Register merchant (demo key)
+      const regRes = await fetch(`${API}/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, success_url: window.location.origin + "?checkout=success" }),
+        body: JSON.stringify({ name, email, password: "demo123!" }),
       });
-    } catch {}
-    setTimeout(() => {
-      setSubscribing(null);
-      setSuccess(`Redirecting to checkout for ${PLANS.find((p) => p.id === planId)?.name}...`);
-      setTimeout(() => setSuccess(""), 3000);
-    }, 1000);
+      const reg = await regRes.json();
+      if (!reg.data?.api_key) throw new Error("Registration failed");
+
+      // 2. Create plan
+      const planRes = await fetch(`${API}/v1/plans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
+        body: JSON.stringify({
+          name: plan?.name ?? planId,
+          description: plan?.name ?? planId,
+          amount: Math.round((plan?.amount ?? 0) / 100),
+          currency: "NGN",
+          interval: "monthly",
+          interval_count: 1,
+        }),
+      });
+      const p = await planRes.json();
+      if (!p.data?.id) throw new Error("Plan creation failed");
+
+      // 3. Create customer
+      const custRes = await fetch(`${API}/v1/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
+        body: JSON.stringify({ name: "Demo Customer", email }),
+      });
+      const c = await custRes.json();
+      if (!c.data?.id) throw new Error("Customer creation failed");
+
+      // 4. Create subscription
+      const subRes = await fetch(`${API}/v1/subscriptions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
+        body: JSON.stringify({
+          customer_id: c.data.id,
+          plan_id: p.data.id,
+          start_date: new Date().toISOString(),
+        }),
+      });
+      const s = await subRes.json();
+      if (!s.data?.id) throw new Error("Subscription creation failed");
+
+      setSuccess(`Subscribed to ${plan?.name}! Subscription active.`);
+    } catch (err) {
+      setSuccess(`Demo mode: ${plan?.name} subscription simulated. (API not available)`);
+    }
+    setTimeout(() => { setSubscribing(null); setTimeout(() => setSuccess(""), 3000); }, 1500);
   };
 
   return (
