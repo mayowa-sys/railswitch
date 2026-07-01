@@ -15,7 +15,7 @@ function toMockPlan(p: GatewayPlan): MockPlan {
     id: p.id,
     name: p.name,
     description: p.description ?? "",
-    price: typeof p.amount === "string" ? parseInt(p.amount) : p.amount,
+    price: typeof p.amount === "string" ? parseInt(p.amount) * 100 : p.amount * 100,
     interval: p.interval as MockPlan["interval"],
     trialDays: 0,
     status: p.is_active ? "active" : "archived",

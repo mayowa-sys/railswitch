@@ -35,7 +35,7 @@ export default function SubscriptionsPage() {
       api.customers.list(key),
     ]).then(([rawSubs, rawPlans, rawCusts]) => {
       const planMap = new Map(rawPlans.map((p) => [p.id, p]));
-      setPlans(rawPlans);
+      setPlans(rawPlans.map((p) => ({ id: p.id, name: p.name, amount: Number(p.amount) })));
       setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
       setSubs(rawSubs.map((s) => ({
         id: s.id,
@@ -43,7 +43,7 @@ export default function SubscriptionsPage() {
         planId: s.plan_id,
         status: (s.state as LiveSubscription["status"]) ?? "active",
         state: s.state,
-        amount: planMap.get(s.plan_id)?.amount ?? 0,
+        amount: Number(planMap.get(s.plan_id)?.amount ?? 0),
         nextBillingDate: s.current_period_end ?? new Date().toISOString(),
         cascadeHistory: [],
       })) as LiveSubscription[]);
