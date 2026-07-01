@@ -21,12 +21,15 @@ export default function OverviewPage() {
   const [mrr, setMrr] = useState(0);
   const [arr, setArr] = useState(0);
   const [activeSubscribers, setActiveSubscribers] = useState(0);
+  const [churnRate, setChurnRate] = useState("—");
+  const [recoveryRate] = useState("~74%");
   const [fetching, setFetching] = useState(true);
 
   const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
 
   useEffect(() => {
     const key = user?.apiKey ?? "";
+    if (!key) { setFetching(false); return; }
     setFetching(true);
     api.subscriptions.list(key).then((subs) => {
       api.plans.list(key).then((plans) => {
@@ -36,14 +39,15 @@ export default function OverviewPage() {
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
         }) as { name: string; amount: number; status: string }[];
         const active = allSubs.filter((s) => s.status === "active");
+        const cancelled = allSubs.filter((s) => s.status === "cancelled");
         const m = active.reduce((sum, s) => sum + s.amount, 0);
-        // Group active subs by plan name for the chart
         const grouped: Record<string, number> = {};
         for (const s of active) { grouped[s.name] = (grouped[s.name] || 0) + s.amount; }
         const bars = Object.entries(grouped).map(([name, amount]) => ({ name, amount }));
         setMrr(m);
         setArr(m * 12);
         setActiveSubscribers(active.length);
+        setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
         setSubscriptionBars(bars);
         setFetching(false);
       }).catch((e) => { console.error("plans error:", e); setFetching(false); });
