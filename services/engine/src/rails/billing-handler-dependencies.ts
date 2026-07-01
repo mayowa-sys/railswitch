@@ -17,7 +17,7 @@ function createNombaClient(): NombaClient {
       clientId: process.env.NOMBA_CLIENT_ID,
       clientSecret: process.env.NOMBA_CLIENT_SECRET,
       accountId: process.env.NOMBA_ACCOUNT_ID,
-      baseUrl: process.env.NOMBA_BASE_URL ?? "https://sandbox.api.nomba.com",
+      baseUrl: process.env.NOMBA_BASE_URL ?? "https://sandbox.nomba.com",
     });
   }
   logger.info("Using MockNombaClient (no Nomba credentials in env)");
