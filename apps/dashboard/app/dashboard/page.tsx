@@ -29,7 +29,7 @@ export default function OverviewPage() {
     setFetching(true);
     api.subscriptions.list(key).then((subs) => {
       api.plans.list(key).then((plans) => {
-        const planMap = new Map(plans.map((p) => [p.id, p.amount]));
+        const planMap = new Map(plans.map((p) => [p.id, Number(p.amount)]));
         const active = subs.filter((s) => s.state === "active");
         const m = active.reduce((sum, s) => sum + (planMap.get(s.plan_id) ?? 0), 0);
         setMrr(m);
