@@ -49,7 +49,7 @@ class UpdateSubscriptionRequest(BaseModel):
 
 class CreatePlanRequest(BaseModel):
     name: str
-    description: str
+    description: str | None = None
     amount: Decimal
     currency: str
     interval: str  # "monthly" | "annual" | "custom"
@@ -71,7 +71,7 @@ class Plan(BaseModel):
     id: str
     merchant_id: str
     name: str
-    description: str
+    description: str | None = None
     amount: Decimal
     currency: str
     interval: str
@@ -93,7 +93,7 @@ class CreateInvoice(BaseModel):
     subscription_id: str
     amount: Decimal
     currency: str
-    description: str
+    description: str | None = None
     due_date: datetime
     metadata: dict[str, Any] | None = None
 
@@ -105,7 +105,7 @@ class Invoice(BaseModel):
     amount: Decimal
     currency: str
     status: str
-    description: str
+    description: str | None = None
     due_date: datetime
     metadata: dict[str, Any]
     created_at: datetime
