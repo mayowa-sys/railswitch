@@ -2,257 +2,160 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/shared/page-header";
-import { useAuth } from "@/lib/auth-context";
-import { CreditCard, AlertTriangle, Landmark, CheckCircle2, XCircle, Clock, Zap } from "lucide-react";
+import {
+  CreditCard, Landmark, MessageCircle, RefreshCw, Zap,
+  CheckCircle2, XCircle, Clock, ArrowRight, Loader2,
+} from "lucide-react";
 
-const TEST_CARDS = [
-  { label: "Success (5060...6666)", number: "5060 6666 6666 6666 666", outcome: "success" as const },
-  { label: "Insufficient Funds", number: "5060 6666 6666 6666 674", outcome: "insufficient" as const },
-  { label: "Expired Card", number: "4000 0000 0000 0069", outcome: "expired" as const },
-  { label: "Generic Decline", number: "4000 0000 0000 0002", outcome: "decline" as const },
-];
-
-interface StateEvent {
+interface LogEntry {
   id: string;
   event: string;
   detail: string;
-  status: "success" | "error" | "pending";
+  status: "success" | "error";
   time: string;
 }
 
+const EVENT_ICONS: Record<string, React.ReactNode> = {
+  "payment_success": <CreditCard className="size-3.5" />,
+  "virtual_account.funded": <Landmark className="size-3.5" />,
+  "charge.failed": <XCircle className="size-3.5" />,
+  "webhook": <Zap className="size-3.5" />,
+};
+
+const TEST_CARDS = [
+  { label: "Success", number: "5060 6666 6666 6666 666", key: "success" },
+  { label: "Insufficient", number: "5060 6666 6666 6666 674", key: "insufficient" },
+];
+
 export default function PlaygroundPage() {
-  const { user } = useAuth();
-  const [events, setEvents] = useState<StateEvent[]>([]);
-  const [loading, setLoading] = useState<string | null>(null);
-  const [lastResponse, setLastResponse] = useState<string>("");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState("");
+  const [response, setResponse] = useState("");
 
-  const addEvent = (event: string, detail: string, status: StateEvent["status"]) => {
-    const ev: StateEvent = {
-      id: Math.random().toString(36).slice(2, 8),
-      event, detail, status,
-      time: new Date().toLocaleTimeString("en-NG"),
-    };
-    setEvents((prev) => [ev, ...prev].slice(0, 20));
+  const addLog = (event: string, detail: string, status: "success" | "error" = "success") => {
+    setLogs((prev) => [{ id: Math.random().toString(36).slice(2, 8), event, detail, status, time: new Date().toLocaleTimeString("en-NG") }, ...prev].slice(0, 30));
   };
 
-  const handleSimulateCharge = async (outcome: string) => {
-    setLoading(outcome);
-    setLastResponse("");
+  const sendWebhook = async (eventType: string, data: Record<string, unknown>) => {
+    setLoading(eventType);
+    setResponse("");
     try {
-      // Use a throwaway merchant so we don't pollute the demo data
-      const API = "http://localhost:8000";
-      const ts = Date.now();
-      const regRes = await fetch(`${API}/v1/auth/register`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Playground", email: `pg-${ts}@test.dev`, password: "pgtest12345" }),
-      });
-      const reg = await regRes.json();
-      const key = reg.data?.api_key;
-      if (!key) throw new Error("Failed to create test merchant");
-
-      const planRes = await fetch(`${API}/v1/plans`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ name: "Test Plan", description: "Temp", amount: 5000, currency: "NGN", interval: "monthly", interval_count: 1 }),
-      });
-      const plan = await planRes.json();
-
-      const custRes = await fetch(`${API}/v1/customers`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ name: "Test Customer", email: `cust-${ts}@test.dev` }),
-      });
-      const cust = await custRes.json();
-
-      const subRes = await fetch(`${API}/v1/subscriptions`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ customer_id: cust.data?.id, plan_id: plan.data?.id, start_date: new Date().toISOString() }),
-      });
-      const sub = await subRes.json();
-
-      const pmRes = await fetch(`${API}/v1/payment-methods`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ customer_id: cust.data?.id, type: "card", nomba_token: `tok_${ts}`, last4: "6666", brand: "visa" }),
-      });
-
-      // Pause + resume to trigger state machine
-      await fetch(`${API}/v1/subscriptions/${sub.data?.id}/pause`, {
-        method: "POST", headers: { Authorization: `Bearer ${key}` }, body: "{}",
-      });
-      await fetch(`${API}/v1/subscriptions/${sub.data?.id}/resume`, {
-        method: "POST", headers: { Authorization: `Bearer ${key}` }, body: "{}",
-      });
-
-      // Get final state
-      const finalRes = await fetch(`${API}/v1/subscriptions/${sub.data?.id}`, {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      const finalData = await finalRes.json();
-      const state = finalData.state || finalData.data?.state || "active";
-
-      setLastResponse(JSON.stringify({ merchant: reg.data?.merchant?.id, subscription: sub.data?.id, state, outcome }, null, 2));
-      addEvent("subscription.test", `Created sub (${state}) — outcome: ${outcome}`, "success");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setLastResponse(msg);
-      addEvent("charge.error", msg, "error");
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleSimulateVA = async () => {
-    setLoading("va");
-    setLastResponse("");
-    try {
-      // Send a properly formatted Nomba webhook to the gateway
-      const payload = {
-        event_type: "virtual_account.funded",
-        requestId: `va_${Date.now()}`,
-        data: {
-          accountRef: `inv_test_${Date.now()}`,
-          accountNumber: "8227727373",
-          bankName: "Nombank MFB",
-          accountName: "RailSwitch Test",
-          amountReceived: 500000,
-          amountExpected: 500000,
-        },
-      };
-
-      // Compute HMAC
       const secret = "NombaHackathon2026";
+      const ts = String(Math.floor(Date.now() / 1000));
+      const payload = { event_type: eventType, requestId: `wh_${Date.now()}`, data };
       const encoder = new TextEncoder();
+      const body = encoder.encode(JSON.stringify(payload));
       const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(JSON.stringify(payload)));
-      const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+      const sig = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, body)))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
 
       const res = await fetch("http://localhost:8000/webhooks/nomba", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "nomba-signature": sigHex },
+        headers: { "Content-Type": "application/json", "nomba-signature": sig, "nomba-timestamp": ts, "nomba-signature-algorithm": "HmacSHA256" },
         body: JSON.stringify(payload),
       });
-
       const text = await res.text();
-      setLastResponse(`HTTP ${res.status}: ${text}`);
-      addEvent("va.funded", `Nomba VA funded webhook sent — ${res.status}`, res.ok ? "success" : "error");
+      setResponse(`HTTP ${res.status}\n${text.slice(0, 300)}`);
+      addLog(eventType, `HTTP ${res.status}`, res.ok ? "success" : "error");
     } catch (err) {
-      setLastResponse(String(err));
-      addEvent("va.funded", `Failed: ${err instanceof Error ? err.message : "Unknown"}`, "error");
+      setResponse(String(err));
+      addLog(eventType, `Failed: ${err instanceof Error ? err.message : "Unknown"}`, "error");
     } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleSimulateFailedCharge = async () => {
-    setLoading("fail");
-    setLastResponse("");
-    try {
-      const payload = {
-        event_type: "payment_success",
-        requestId: `pay_${Date.now()}`,
-        data: {
-          merchant: {
-            merchantTxRef: `charge_${Date.now()}`,
-            amount: 990000,
-          },
-          transaction: { status: "FAILED", responseCode: "51", message: "Insufficient funds" },
-        },
-      };
-
-      const secret = "NombaHackathon2026";
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(JSON.stringify(payload)));
-      const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-      const res = await fetch("http://localhost:8000/webhooks/nomba", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "nomba-signature": sigHex },
-        body: JSON.stringify(payload),
-      });
-
-      const text = await res.text();
-      setLastResponse(`HTTP ${res.status}: ${text}`);
-      addEvent("charge.failed", `Failed charge webhook sent — ${res.status}`, res.ok ? "success" : "error");
-    } catch (err) {
-      setLastResponse(String(err));
-      addEvent("charge.failed", `Failed: ${err instanceof Error ? err.message : "Unknown"}`, "error");
-    } finally {
-      setLoading(null);
+      setLoading("");
     }
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Sandbox Playground" description="Test RailSwitch payment rails and webhook events." />
+      <PageHeader title="Webhook Playground" description="Send real Nomba webhooks to test the cascade and event pipeline." />
 
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
-          <CreditCard className="size-4 text-indigo-500" /> Nomba Sandbox Test Cards
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TEST_CARDS.map((card) => (
-            <div key={card.outcome} className="rounded-lg border border-zinc-100 dark:border-zinc-800/60 p-3 flex flex-col gap-2">
-              <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{card.label}</p>
-              <p className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">{card.number}</p>
-              <button
-                onClick={() => handleSimulateCharge(card.outcome)}
-                disabled={loading !== null}
-                className="mt-1 h-7 px-3 rounded-md text-[11px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50"
-              >
-                {loading === card.outcome ? "Running..." : "Test Flow"}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left: Simulate */}
+        <div className="space-y-4">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Test Cards</h3>
+            <div className="grid gap-2">
+              {TEST_CARDS.map((card) => (
+                <div key={card.key} className="flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/60">
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{card.label}</p>
+                    <p className="text-[11px] font-mono text-zinc-400">{card.number}</p>
+                  </div>
+                  <button onClick={() => sendWebhook("payment_success", { merchant: { merchantTxRef: `tx_${Date.now()}`, amount: 990000 }, transaction: { status: card.key === "success" ? "SUCCESS" : "FAILED", responseCode: card.key === "success" ? "00" : "51", message: card.key === "success" ? "Approved" : "Insufficient funds" } })}
+                    disabled={loading !== ""} className="h-7 px-3 rounded-md text-[11px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors">
+                    {loading === "payment_success" ? <Loader2 className="size-3 animate-spin" /> : "Charge Card"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Payment Rails</h3>
+            <div className="grid gap-2">
+              <button onClick={() => sendWebhook("virtual_account.funded", { accountRef: `inv_${Date.now()}`, accountNumber: "8227727373", bankName: "Nombank MFB", amountReceived: 500000, amountExpected: 500000 })}
+                disabled={loading !== ""} className="flex items-center gap-3 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-colors text-left w-full disabled:opacity-50">
+                <Landmark className="size-5 text-emerald-600" />
+                <div className="flex-1 min-w-0"><p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Virtual Account Funded</p><p className="text-[10px] text-zinc-500">Simulate customer transferring to a VA</p></div>
+                {loading === "virtual_account.funded" ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4 text-zinc-400" />}
+              </button>
+
+              <button onClick={() => sendWebhook("payment_success", { merchant: { merchantTxRef: `tx_${Date.now()}`, amount: 2990000 }, transaction: { status: "FAILED", responseCode: "51", message: "Insufficient funds" } })}
+                disabled={loading !== ""} className="flex items-center gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors text-left w-full disabled:opacity-50">
+                <CreditCard className="size-5 text-red-600" />
+                <div className="flex-1 min-w-0"><p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Charge Failed</p><p className="text-[10px] text-zinc-500">Simulate a declined card charge</p></div>
+                {loading === "payment_success" ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4 text-zinc-400" />}
               </button>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
-          <Zap className="size-4 text-amber-500" /> Simulate Payment Rails (Real Nomba Webhooks)
-        </h3>
-        <div className="flex flex-wrap gap-3">
-          <button onClick={handleSimulateVA} disabled={loading !== null}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-sm">
-            <Landmark className="size-3.5" />
-            {loading === "va" ? "Sending..." : "Simulate VA Funded"}
-          </button>
-          <button onClick={handleSimulateFailedCharge} disabled={loading !== null}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 shadow-sm">
-            <AlertTriangle className="size-3.5" />
-            {loading === "fail" ? "Sending..." : "Simulate Failed Charge"}
-          </button>
-        </div>
-        {lastResponse && (
-          <div className="mt-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/60">
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Last Response</p>
-            <pre className="text-[11px] text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap font-mono max-h-40 overflow-auto">{lastResponse}</pre>
           </div>
-        )}
-      </div>
 
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Recent Events</h3>
-        {events.length === 0 ? (
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 py-4 text-center">No events yet. Click a simulation button above.</p>
-        ) : (
-          <div className="space-y-2">
-            {events.map((ev) => {
-              const Icon = ev.status === "success" ? CheckCircle2 : ev.status === "error" ? XCircle : Clock;
-              const color = ev.status === "success" ? "text-emerald-500" : ev.status === "error" ? "text-red-500" : "text-amber-500";
-              return (
-                <div key={ev.id} className="flex items-start gap-3 py-2 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0">
-                  <Icon className={`size-4 shrink-0 mt-0.5 ${color}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{ev.event}</p>
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 shrink-0 font-mono">{ev.time}</span>
+          {response && (
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/50 p-4">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Response</p>
+              <pre className="text-[11px] text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap font-mono max-h-32 overflow-auto">{response}</pre>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Event log */}
+        <div>
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-5 shadow-sm sticky top-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Event Log</h3>
+              {logs.length > 0 && (
+                <button onClick={() => { setLogs([]); setResponse(""); }}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                  Clear
+                </button>
+              )}
+            </div>
+            {logs.length === 0 ? (
+              <div className="py-12 text-center">
+                <Zap className="size-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                <p className="text-sm text-zinc-400">No events yet</p>
+                <p className="text-[11px] text-zinc-400 mt-1">Click a webhook simulation to see the event pipeline in action.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-auto">
+                {logs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/60 bg-zinc-50 dark:bg-zinc-900/30">
+                    <div className={`shrink-0 mt-0.5 ${log.status === "success" ? "text-emerald-500" : "text-red-500"}`}>
+                      {EVENT_ICONS[log.event] || <Zap className="size-3.5" />}
                     </div>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{ev.detail}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-mono font-semibold text-zinc-700 dark:text-zinc-300">{log.event}</p>
+                        <span className="text-[10px] text-zinc-400 font-mono shrink-0">{log.time}</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">{log.detail}</p>
+                    </div>
+                    {log.status === "success" ? <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" /> : <XCircle className="size-3.5 text-red-500 shrink-0" />}
                   </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

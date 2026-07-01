@@ -69,8 +69,21 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
   const totalPages = Math.ceil(filtered.length / pageSize);
   const pagedData = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  // Reset page when filters change
   useEffect(() => { setPage(0); }, [search, statusFilter, planFilter]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 0; i < totalPages; i++) pages.push(i);
+    } else {
+      pages.push(0);
+      if (page > 3) pages.push("...");
+      for (let i = Math.max(1, page - 1); i <= Math.min(totalPages - 2, page + 1); i++) pages.push(i);
+      if (page < totalPages - 4) pages.push("...");
+      pages.push(totalPages - 1);
+    }
+    return pages;
+  }, [totalPages, page]);
 
   const hasFilters = !!search || !!statusFilter || !!planFilter;
 
@@ -150,26 +163,30 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
         <DataTable columns={columns}         data={pagedData} rowKey={(row) => row.id} onRowClick={setSelected}
           emptyTitle="No subscriptions found" emptyDescription="Try a different search term or clear your filters." />
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 px-1">
-            <p className="text-xs text-zinc-400">
-              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}
-            </p>
+          <div className="flex flex-col items-center gap-2 mt-4">
             <div className="flex items-center gap-1">
               <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
                 className="h-7 px-2.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 Prev
               </button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button key={i} onClick={() => setPage(i)}
-                  className={`h-7 w-7 rounded text-xs font-medium transition-colors ${page === i ? 'bg-indigo-600 text-white' : 'border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                  {i + 1}
-                </button>
-              ))}
+              {pageNumbers.map((p, i) =>
+                p === "..." ? (
+                  <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-zinc-400">…</span>
+                ) : (
+                  <button key={p} onClick={() => setPage(p as number)}
+                    className={`h-7 w-7 rounded text-xs font-medium transition-colors ${page === p ? 'bg-indigo-600 text-white' : 'border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    {(p as number) + 1}
+                  </button>
+                )
+              )}
               <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
                 className="h-7 px-2.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 Next
               </button>
             </div>
+            <p className="text-[11px] text-zinc-400">
+              {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}
+            </p>
           </div>
         )}
       </div>
