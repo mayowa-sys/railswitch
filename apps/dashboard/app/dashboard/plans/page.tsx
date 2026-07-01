@@ -31,12 +31,13 @@ export default function PlansPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: apiPlans, isLoading } = useApiData({
-    fetcher: async (key) => {
-      const plans = await api.plans.list(key);
+    fetcher: async () => {
+      const KEY = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+      const plans = await api.plans.list(KEY);
       return plans.map(toMockPlan);
     },
     mockData: PLANS,
-    apiKey: user?.apiKey ?? "",
+    apiKey: "hardcoded",
   });
 
   const handleRefresh = () => setRefreshKey((k) => k + 1);

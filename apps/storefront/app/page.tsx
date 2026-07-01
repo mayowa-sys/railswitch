@@ -105,63 +105,46 @@ export default function StorefrontPage() {
     setSubscribing(planId);
     const plan = PLANS.find((p) => p.id === planId);
     try {
-      // Create a customer + subscription via the RailSwitch gateway
       const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       const email = `demo-${Date.now()}@naijamusic.pro`;
-      const name = "Naija Music Pro User";
 
-      // 1. Register merchant (demo key)
       const regRes = await fetch(`${API}/v1/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password: "demo123!" }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Demo User", email, password: "demo123456" }),
       });
       const reg = await regRes.json();
-      if (!reg.data?.api_key) throw new Error("Registration failed");
+      const key = reg.data?.api_key;
+      if (!key) throw new Error(`Register failed: ${JSON.stringify(reg).slice(0,100)}`);
 
-      // 2. Create plan
+      const planAmount = Math.round((plan?.amount ?? 0) / 100);
+
       const planRes = await fetch(`${API}/v1/plans`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
-        body: JSON.stringify({
-          name: plan?.name ?? planId,
-          description: plan?.name ?? planId,
-          amount: Math.round((plan?.amount ?? 0) / 100),
-          currency: "NGN",
-          interval: "monthly",
-          interval_count: 1,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ name: plan?.name ?? planId, description: plan?.name ?? planId, amount: planAmount, currency: "NGN", interval: "monthly", interval_count: 1 }),
       });
       const p = await planRes.json();
-      if (!p.data?.id) throw new Error("Plan creation failed");
+      if (!p.data?.id) throw new Error(`Plan failed: ${JSON.stringify(p).slice(0,100)}`);
 
-      // 3. Create customer
       const custRes = await fetch(`${API}/v1/customers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({ name: "Demo Customer", email }),
       });
       const c = await custRes.json();
-      if (!c.data?.id) throw new Error("Customer creation failed");
+      if (!c.data?.id) throw new Error(`Customer failed: ${JSON.stringify(c).slice(0,100)}`);
 
-      // 4. Create subscription
       const subRes = await fetch(`${API}/v1/subscriptions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${reg.data.api_key}` },
-        body: JSON.stringify({
-          customer_id: c.data.id,
-          plan_id: p.data.id,
-          start_date: new Date().toISOString(),
-        }),
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ customer_id: c.data.id, plan_id: p.data.id, start_date: new Date().toISOString() }),
       });
       const s = await subRes.json();
-      if (!s.data?.id) throw new Error("Subscription creation failed");
+      if (!s.data?.id) throw new Error(`Subscription failed: ${JSON.stringify(s).slice(0,100)}`);
 
-      setSuccess(`Subscribed to ${plan?.name}! Subscription active.`);
+      setSuccess(`Subscribed to ${plan?.name}! Subscription active (${s.data.state}).`);
     } catch (err) {
-      setSuccess(`Demo mode: ${plan?.name} subscription simulated. (API not available)`);
+      const msg = err instanceof Error ? err.message : String(err);
+      setSuccess(`${plan?.name}: ${msg}`);
     }
-    setTimeout(() => { setSubscribing(null); setTimeout(() => setSuccess(""), 3000); }, 1500);
+    setTimeout(() => { setSubscribing(null); setTimeout(() => setSuccess(""), 3000); }, 2000);
   };
 
   return (
