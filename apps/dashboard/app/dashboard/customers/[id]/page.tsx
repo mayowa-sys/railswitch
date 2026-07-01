@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { api, isMockMode } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 import {
   getCustomerById,
   getSubscriptionsByCustomer,
@@ -14,9 +15,9 @@ import {
 } from "@/lib/mock-data";
 import { CustomerDetail } from "@/components/dashboard/customers/customer-detail";
 
-const API_KEY = user?.apiKey ?? "";
-
 export default function CustomerDetailPage() {
+  const { user } = useAuth();
+  const API_KEY = user?.apiKey ?? "";
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [customer, setCustomer] = useState<MockCustomer | null>(null);
