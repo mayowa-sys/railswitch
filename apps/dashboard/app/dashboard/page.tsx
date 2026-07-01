@@ -7,7 +7,6 @@ import { StatsCard } from "@/components/dashboard/overview/stats-card";
 import { RevenueChart } from "@/components/dashboard/overview/revenue-chart";
 import { FailedPaymentsTable } from "@/components/dashboard/overview/failed-payments-table";
 import { WebhookFeed } from "@/components/dashboard/overview/webhook-feed";
-import { OVERVIEW_STATS } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api-client";
 
@@ -67,8 +66,8 @@ export default function OverviewPage() {
         </div>
 
         <StatsCard label="Active Subscribers" value={fetching ? "..." : activeSubscribers.toLocaleString()} change="+18.1%" trend="up" icon={Zap} colorConfig={STATS_COLOR_MAP.emerald} />
-        <StatsCard label="Recovery Rate" value={`${OVERVIEW_STATS.recoveryRate}%`} change="+5.2%" trend="up" icon={Activity} colorConfig={STATS_COLOR_MAP.violet} subLabel="Cards recovered / cards failed" />
-        <StatsCard label="Churn Rate" value={`${OVERVIEW_STATS.churnRate}%`} change="-0.4%" trend="down" icon={TrendingDown} colorConfig={STATS_COLOR_MAP.red} subLabel="Monthly subscriber churn" />
+        <StatsCard label="Recovery Rate" value={recoveryRate} change="industry avg" trend="up" icon={Activity} colorConfig={STATS_COLOR_MAP.violet} subLabel="Cards recovered / cards failed" />
+        <StatsCard label="Churn Rate" value={churnRate} change="" trend="down" icon={TrendingDown} colorConfig={STATS_COLOR_MAP.red} subLabel="Monthly subscriber churn" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-7">

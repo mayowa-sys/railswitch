@@ -10,8 +10,10 @@ import { useAuth } from "@/lib/auth-context";
 import { api, type GatewayPlan } from "@/lib/api-client";
 import { type Plan as MockPlan } from "@/lib/mock-data";
 
-function toMockPlan(p: GatewayPlan): MockPlan {
-  return {
+function computePlans(rawPlans: GatewayPlan[], rawSubs: { plan_id: string; state: string }[]): MockPlan[] {
+  const subCounts: Record<string, number> = {};
+  for (const s of rawSubs) { subCounts[s.plan_id] = (subCounts[s.plan_id] || 0) + 1; }
+  return rawPlans.map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description ?? "",
@@ -19,9 +21,9 @@ function toMockPlan(p: GatewayPlan): MockPlan {
     interval: p.interval as MockPlan["interval"],
     trialDays: 0,
     status: p.is_active ? "active" : "archived",
-    subscriberCount: 0,
+    subscriberCount: subCounts[p.id] || 0,
     createdAt: p.created_at,
-  };
+  }));
 }
 
 export default function PlansPage() {
@@ -29,21 +31,17 @@ export default function PlansPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [plans, setPlans] = useState<MockPlan[] | null>(null);
 
-  useEffect(() => {
+  const fetchPlans = () => {
     const key = user?.apiKey;
     if (!key) return;
-    api.plans.list(key).then((rawPlans) => {
-      setPlans(rawPlans.map(toMockPlan));
-    }).catch(() => setPlans([]));
-  }, [user?.apiKey]);
-
-  const handleCreated = () => {
-    if (user?.apiKey) {
-      api.plans.list(user.apiKey).then((rawPlans) => {
-        setPlans(rawPlans.map(toMockPlan));
-      }).catch(() => {});
-    }
+    Promise.all([api.plans.list(key), api.subscriptions.list(key)])
+      .then(([rawPlans, rawSubs]) => {
+        setPlans(computePlans(rawPlans, rawSubs.map((s) => ({ plan_id: s.plan_id, state: s.state }))));
+      })
+      .catch(() => {});
   };
+
+  useEffect(fetchPlans, [user?.apiKey]);
 
   return (
     <div className="space-y-6">
@@ -51,30 +49,18 @@ export default function PlansPage() {
         title="Plans"
         description="Manage subscription plans available to your customers."
         action={
-          <Button
-            size="sm"
-            onClick={() => setModalOpen(true)}
-            className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0 shadow-sm shadow-indigo-500/20"
-          >
-            <Plus className="size-3.5" />
-            Create plan
+          <Button size="sm" onClick={() => setModalOpen(true)}
+            className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0 shadow-sm shadow-indigo-500/20">
+            <Plus className="size-3.5" /> Create plan
           </Button>
         }
       />
-
       {plans === null ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="size-5 animate-spin text-zinc-400" />
-        </div>
+        <div className="flex items-center justify-center py-20"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>
       ) : (
         <PlansTable externalPlans={plans} />
       )}
-
-      <NewPlanModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onCreate={handleCreated}
-      />
+      <NewPlanModal open={modalOpen} onOpenChange={setModalOpen} onCreate={fetchPlans} />
     </div>
   );
 }
