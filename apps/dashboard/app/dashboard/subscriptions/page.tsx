@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SubscriptionsTable } from "@/components/dashboard/subscriptions/subscriptions-table-live";
-import { useAuth } from "@/lib/auth-context";
-import { api, isMockMode } from "@/lib/api-client";
-import type { GatewaySubscription, GatewayPlan, GatewayCustomer } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 interface LiveSubscription {
   id: string;
@@ -22,49 +20,36 @@ interface LivePlan { id: string; name: string; amount: number; }
 interface LiveCustomer { id: string; name: string; email: string; }
 
 export default function SubscriptionsPage() {
-  const { user } = useAuth();
   const [subs, setSubs] = useState<LiveSubscription[]>([]);
   const [plans, setPlans] = useState<LivePlan[]>([]);
   const [customers, setCustomers] = useState<LiveCustomer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isMockMode() || !user?.apiKey) { setLoading(false); return; }
-    (async () => {
-      try {
-        const [rawSubs, rawPlans, rawCusts] = await Promise.all([
-          api.subscriptions.list(user.apiKey),
-          api.plans.list(user.apiKey),
-          api.customers.list(user.apiKey),
-        ]);
-        const planMap = new Map(rawPlans.map((p) => [p.id, p]));
-        const custMap = new Map(rawCusts.map((c) => [c.id, c]));
-        setSubs(rawSubs.map((s) => ({
-          id: s.id,
-          customerId: s.customer_id,
-          planId: s.plan_id,
-          status: (s.state as "active" | "past_due" | "cancelled" | "paused" | "trialing") ?? "active",
-          state: s.state ?? "active",
-          amount: planMap.get(s.plan_id)?.amount ?? 0,
-          nextBillingDate: s.current_period_end ?? s.next_billing_at ?? new Date().toISOString(),
-          cascadeHistory: [],
-        })));
-        setPlans(rawPlans);
-        setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
-      } catch {} finally { setLoading(false); }
-    })();
-  }, [user]);
+    const key = "sk_test_mer_p37g-Bwaww__FVAamREwyvnijyV73gk8sacBjmI";
+    Promise.all([
+      api.subscriptions.list(key),
+      api.plans.list(key),
+      api.customers.list(key),
+    ]).then(([rawSubs, rawPlans, rawCusts]) => {
+      const planMap = new Map(rawPlans.map((p) => [p.id, p]));
+      setPlans(rawPlans);
+      setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
+      setSubs(rawSubs.map((s) => ({
+        id: s.id,
+        customerId: s.customer_id,
+        planId: s.plan_id,
+        status: (s.state as LiveSubscription["status"]) ?? "active",
+        state: s.state,
+        amount: planMap.get(s.plan_id)?.amount ?? 0,
+        nextBillingDate: s.current_period_end ?? new Date().toISOString(),
+        cascadeHistory: [],
+      })) as LiveSubscription[]);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   const activeCount = subs.filter((s) => s.status === "active").length;
-
-  if (loading && subs.length === 0) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Subscriptions" description="Loading..." badge={null} />
-        <div className="flex items-center justify-center py-20 text-zinc-400">Loading subscriptions...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
