@@ -22,8 +22,8 @@ export interface CreatePlanInput {
   description: string;
   amount: number;
   interval: string;
-  currency?: string;
-  interval_count?: number;
+  currency: string;
+  interval_count: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -60,7 +60,7 @@ export interface Subscription {
 export interface CreateSubscriptionInput {
   customer_id: string;
   plan_id: string;
-  start_date?: string;
+  start_date: string;
   trial_end?: string;
   metadata?: Record<string, unknown>;
 }
