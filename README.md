@@ -51,7 +51,7 @@ Plus:
 | `apps/portal` | Customer self-service portal (Next.js) |
 | `apps/storefront` | Demo storefront for live presentations |
 | `apps/docs` | Mintlify docs site |
-| `packages/sdk-node` | TypeScript SDK (`@railswitch/node`) |
+| `packages/sdk-node` | TypeScript SDK (`railswitch` on npm) |
 | `packages/sdk-python` | Python SDK (`railswitch` on PyPI) |
 
 ---
@@ -207,10 +207,10 @@ Full contract at [`docs/internal-api.md`](docs/internal-api.md). OpenAPI spec au
 
 ## SDKs
 
-**TypeScript (`@railswitch/node`):**
+**TypeScript (`railswitch` on npm):**
 
 ```typescript
-import { RailSwitch } from "@railswitch/node";
+import { RailSwitch } from "railswitch";
 const client = new RailSwitch({ apiKey: "sk_test_..." });
 const subscription = await client.subscriptions.create({
   customerId: "cus_abc",
@@ -229,7 +229,7 @@ subscription = client.subscriptions.create(
 )
 ```
 
-Both publish to their respective registries on Day 5 of the hackathon window.
+Both published to their respective registries.
 
 ---
 

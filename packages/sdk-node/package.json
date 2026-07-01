@@ -1,5 +1,5 @@
 {
-  "name": "@railswitch/node",
+  "name": "railswitch",
   "version": "0.1.0",
   "description": "Official TypeScript SDK for RailSwitch — recurring billing recovery",
   "main": "dist/index.js",
