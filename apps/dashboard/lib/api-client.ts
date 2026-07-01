@@ -85,7 +85,6 @@ export interface GatewaySubscription {
   customer_id: string;
   plan_id: string;
   state: string;
-  status: string;
   current_period_start: string;
   current_period_end: string;
   trial_ends_at?: string;
@@ -107,13 +106,53 @@ export interface GatewayCustomer {
   updated_at: string;
 }
 
+
+export interface GatewayAuditEntry {
+  id: string;
+  merchant_id: string;
+  subscription_id: string;
+  from_state: string;
+  to_state: string;
+  actor: string;
+  reason: string;
+  timestamp: string;
+}
+
+export interface GatewayWebhookEndpoint {
+  id: string;
+  merchant_id: string;
+  url: string;
+  status: string;
+  secret?: string;
+  last_delivery_at: string | null;
+  created_at: string;
+}
+
+export interface GatewayWebhookEvent {
+  id: string;
+  merchant_id: string;
+  event: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface GatewayWebhookDelivery {
+  id: string;
+  endpoint_id: string;
+  event_id: string;
+  merchant_id: string;
+  status: string;
+  status_code: number | null;
+  attempts: number;
+  delivered_at: string | null;
+  created_at: string;
+}
 export interface GatewayInvoice {
   id: string;
   subscription_id: string;
   merchant_id: string;
   amount: number;
   currency: string;
-  status: string;
   description?: string;
   due_date: string;
   metadata?: Record<string, unknown>;
@@ -171,6 +210,34 @@ export const api = {
   },
 
   health: () => request<{ status: string }>("/health"),
+  webhooks: {
+    endpoints: {
+      list: (apiKey: string) =>
+        request<GatewayWebhookEndpoint[]>("/v1/webhooks/endpoints", { apiKey }),
+      create: (url: string, apiKey: string) =>
+        request<GatewayWebhookEndpoint>("/v1/webhooks/endpoints", { method: "POST", body: { url }, apiKey }),
+      remove: (id: string, apiKey: string) =>
+        request<{ id: string; disabled: boolean }>(`/v1/webhooks/endpoints/${id}`, { method: "DELETE", apiKey }),
+    },
+    events: {
+      list: (apiKey: string) =>
+        request<GatewayWebhookEvent[]>("/v1/webhooks/events", { apiKey }),
+    },
+    deliveries: {
+      list: (apiKey: string) =>
+        request<GatewayWebhookDelivery[]>("/v1/webhooks/deliveries", { apiKey }),
+      replay: (id: string, apiKey: string) =>
+        request<{ id: string; replayed: boolean }>(`/v1/webhooks/deliveries/${id}/replay`, { method: "POST", apiKey }),
+    },
+  },
+
+  auditLogs: {
+    list: (apiKey: string) =>
+      request<GatewayAuditEntry[]>("/v1/audit-logs", { apiKey }),
+    forSubscription: (subscriptionId: string, apiKey: string) =>
+      request<GatewayAuditEntry[]>(`/v1/audit-logs/subscription/${subscriptionId}`, { apiKey }),
+  },
+
 };
 
 /** Check whether the app is running against mock APIs. */
