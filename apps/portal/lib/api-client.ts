@@ -24,6 +24,8 @@ export interface GatewaySubscription {
   trial_ends_at?: string;
   cancel_at_period_end: boolean;
   next_billing_at?: string;
+  va_id?: string;
+  va_expires_at?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;

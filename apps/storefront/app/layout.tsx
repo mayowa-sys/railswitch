@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Naija Music Pro",
-  description: "Premium Nigerian music streaming service",
+  title: "FitCore Nigeria — Premium Fitness Memberships",
+  description: "Join Nigeria's fastest-growing fitness chain. Flexible memberships with smart recurring billing powered by RailSwitch.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#0a0a0b", color: "#e4e4e7" }}>
+      <body className="min-h-screen bg-white text-zinc-900 font-sans antialiased">
         {children}
       </body>
     </html>

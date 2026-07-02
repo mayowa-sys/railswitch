@@ -58,14 +58,16 @@ export class RealNombaClient implements NombaClient {
 
   async chargeCard(opts: ChargeCardOptions): Promise<ChargeResult> {
     const body = {
-      amount: Math.round(opts.amount * 100),
-      currency: opts.currency,
-      cardId: opts.token,
-      customerId: opts.customerId,
-      merchantTxRef: opts.merchantTxRef,
+      tokenKey: opts.token,
+      order: {
+        amount: Math.round(opts.amount * 100),
+        currency: opts.currency,
+        customerId: opts.customerId,
+        merchantTxRef: opts.merchantTxRef,
+      },
     };
 
-    const json = await this.request('POST', '/v1/tokenized-card/charge', body);
+    const json = await this.request('POST', '/v1/checkout/tokenized-card-payment', body);
     const charge = nombaData(json);
 
     if (charge.status === 'SUCCESS' || charge.status === 'success') {

@@ -22,7 +22,7 @@ export default function OverviewPage() {
   const [arr, setArr] = useState(0);
   const [activeSubscribers, setActiveSubscribers] = useState(0);
   const [churnRate, setChurnRate] = useState("—");
-  const [recoveryRate] = useState("~74%");
+  const [recoveryRate, setRecoveryRate] = useState("—");
   const [fetching, setFetching] = useState(true);
 
   const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
@@ -48,6 +48,13 @@ export default function OverviewPage() {
         setArr((m * 12) / 100);
         setActiveSubscribers(active.length);
         setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
+      
+      // Compute recovery rate from invoices
+      const paidInvs = invoices.filter((i) => i.status === "paid" || i.status === "recovered");
+      const failedInvs = invoices.filter((i) => i.status === "payment_failed" || i.status === "uncollectible" || i.status === "pending_retry");
+      if (paidInvs.length + failedInvs.length > 0) {
+        setRecoveryRate(`${((paidInvs.length / (paidInvs.length + failedInvs.length)) * 100).toFixed(1)}%`);
+      }
         setSubscriptionBars(bars);
         setFetching(false);
       }).catch((e) => { console.error("plans error:", e); setFetching(false); });

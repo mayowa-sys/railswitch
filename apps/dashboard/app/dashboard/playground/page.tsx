@@ -328,9 +328,29 @@ export default function PlaygroundPage() {
                 ))}
               </div>
             )}
+          
+          {/* WhatsApp Recovery Preview */}
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-emerald-800 mb-4 flex items-center gap-2">
+              <MessageCircle className="size-4" /> WhatsApp Recovery Message
+            </h3>
+            <p className="text-[11px] text-emerald-600 mb-3">When cascade reaches WhatsApp fallback, the customer receives:</p>
+            <div className="rounded-xl bg-white border border-emerald-200 p-4 max-w-sm mx-auto shadow-sm">
+              <div className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">WhatsApp</div>
+              <p className="text-xs font-bold text-zinc-800 mb-2">*Payment Recovery — FitCore*</p>
+              <p className="text-xs text-zinc-600 mb-2">Your recent card payment could not be processed. No worries — you can pay via bank transfer:</p>
+              <div className="bg-zinc-50 rounded-lg p-3 mb-2 text-xs">
+                <p className="font-bold text-zinc-800">Transfer ₦9,900 to:</p>
+                <p className="text-zinc-600">Bank: <strong>Nombank MFB</strong></p>
+                <p className="text-zinc-600">Account: <strong>1467672117</strong></p>
+                <p className="text-zinc-600">Ref: <strong>sub_Md7EhBouST</strong></p>
+              </div>
+              <p className="text-[10px] text-zinc-400">Need help? Reply to this message.</p>
+              <p className="text-[10px] text-zinc-400 mt-1">Ref: sub_Md7EhBouST</p>
+            </div>
+            <p className="text-[10px] text-emerald-500 mt-3 text-center">Sent via WhatsApp Cloud API • RailSwitch Recovery Engine</p>
           </div>
-        </div>
-      </div>
+
     </div>
   );
 }
