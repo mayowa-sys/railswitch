@@ -1,0 +1,205 @@
+[90mstderr[2m | tests/tenants/cross_tenant_test.test.ts[2m > [22m[2mcross-tenant isolation: 'plan'[2m > [22m[2mreturns 404 when Merchant B reads Merchant A's resource[22m[39m
+[plans] get error: DrizzleQueryError: Failed query: select "id", "merchant_id", "name", "description", "amount", "currency", "interval", "interval_count", "is_active", "metadata", "created_at", "updated_at" from "plans" where ("plans"."id" = $1 and "plans"."merchant_id" = $2) limit $3
+params: plan_vwwvsXROB0,mer_-Y75iB359m,1
+    at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:73:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+    at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/plans.ts:53:20 {
+  query: [32m'select "id", "merchant_id", "name", "description", "amount", "currency", "interval", "interval_count", "is_active", "metadata", "created_at", "updated_at" from "plans" where ("plans"."id" = $1 and "plans"."merchant_id" = $2) limit $3'[39m,
+  params: [ [32m'plan_vwwvsXROB0'[39m, [32m'mer_-Y75iB359m'[39m, [33m1[39m ],
+  cause: error: permission denied for table plans
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:71:12[90m)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/plans.ts:53:20 {
+    length: [33m93[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'42501'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'aclchk.c'[39m,
+    line: [32m'2812'[39m,
+    routine: [32m'aclcheck_error'[39m
+  }
+}
+
+[90mstderr[2m | tests/tenants/cross_tenant_test.test.ts[2m > [22m[2mcross-tenant isolation: 'customer'[2m > [22m[2mreturns 404 when Merchant B reads Merchant A's resource[22m[39m
+[customers] get error: DrizzleQueryError: Failed query: select "id", "merchant_id", "email", "name", "phone", "metadata", "created_at", "updated_at" from "customers" where ("customers"."id" = $1 and "customers"."merchant_id" = $2) limit $3
+params: cus_23-QRMgSad,mer_wsTrA0VPsA,1
+    at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:73:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+    at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/customers.ts:49:24 {
+  query: [32m'select "id", "merchant_id", "email", "name", "phone", "metadata", "created_at", "updated_at" from "customers" where ("customers"."id" = $1 and "customers"."merchant_id" = $2) limit $3'[39m,
+  params: [ [32m'cus_23-QRMgSad'[39m, [32m'mer_wsTrA0VPsA'[39m, [33m1[39m ],
+  cause: error: permission denied for table customers
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:71:12[90m)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/customers.ts:49:24 {
+    length: [33m97[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'42501'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'aclchk.c'[39m,
+    line: [32m'2812'[39m,
+    routine: [32m'aclcheck_error'[39m
+  }
+}
+
+[90mstderr[2m | tests/tenants/cross_tenant_test.test.ts[2m > [22m[2mcross-tenant isolation: 'subscription'[2m > [22m[2mreturns 404 when Merchant B reads Merchant A's resource[22m[39m
+[subscriptions] get error: DrizzleQueryError: Failed query: select "id", "merchant_id", "customer_id", "plan_id", "policy", "state", "version", "retry_count", "last_failure_reason", "last_failure_retryable", "va_id", "va_expires_at", "current_invoice_id", "cancel_at_period_end", "metadata", "created_at", "updated_at", "next_billing_at", "trial_ends_at", "current_period_start", "current_period_end", "paused_at", "cancelled_at" from "subscriptions" where ("subscriptions"."id" = $1 and "subscriptions"."merchant_id" = $2) limit $3
+params: sub_4DMhLt8vz1,mer_GbJHfif_y5,1
+    at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:73:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+    at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/subscriptions.ts:107:28 {
+  query: [32m'select "id", "merchant_id", "customer_id", "plan_id", "policy", "state", "version", "retry_count", "last_failure_reason", "last_failure_retryable", "va_id", "va_expires_at", "current_invoice_id", "cancel_at_period_end", "metadata", "created_at", "updated_at", "next_billing_at", "trial_ends_at", "current_period_start", "current_period_end", "paused_at", "cancelled_at" from "subscriptions" where ("subscriptions"."id" = $1 and "subscriptions"."merchant_id" = $2) limit $3'[39m,
+  params: [ [32m'sub_4DMhLt8vz1'[39m, [32m'mer_GbJHfif_y5'[39m, [33m1[39m ],
+  cause: error: permission denied for table subscriptions
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:71:12[90m)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/subscriptions.ts:107:28 {
+    length: [33m101[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'42501'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'aclchk.c'[39m,
+    line: [32m'2812'[39m,
+    routine: [32m'aclcheck_error'[39m
+  }
+}
+
+[90mstderr[2m | tests/tenants/cross_tenant_test.test.ts[2m > [22m[2mcross-tenant isolation: 'invoice'[2m > [22m[2mreturns 404 when Merchant B reads Merchant A's resource[22m[39m
+[invoices] get error: DrizzleQueryError: Failed query: select "id", "subscription_id", "merchant_id", "status", "amount", "amount_paid", "currency", "description", "metadata", "due_date", "paid_at", "next_attempt_at", "created_at" from "invoices" where ("invoices"."id" = $1 and "invoices"."merchant_id" = $2) limit $3
+params: inv_1VGAMUS6r9,mer_6wpdGOoNh1,1
+    at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:73:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+    at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/invoices.ts:28:23 {
+  query: [32m'select "id", "subscription_id", "merchant_id", "status", "amount", "amount_paid", "currency", "description", "metadata", "due_date", "paid_at", "next_attempt_at", "created_at" from "invoices" where ("invoices"."id" = $1 and "invoices"."merchant_id" = $2) limit $3'[39m,
+  params: [ [32m'inv_1VGAMUS6r9'[39m, [32m'mer_6wpdGOoNh1'[39m, [33m1[39m ],
+  cause: error: permission denied for table invoices
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:71:12[90m)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/invoices.ts:28:23 {
+    length: [33m96[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'42501'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'aclchk.c'[39m,
+    line: [32m'2812'[39m,
+    routine: [32m'aclcheck_error'[39m
+  }
+}
+
+[90mstderr[2m | tests/tenants/cross_tenant_test.test.ts[2m > [22m[2mcross-tenant isolation: 'payment_method'[2m > [22m[2mreturns 404 when Merchant B reads Merchant A's resource[22m[39m
+[payment-methods] get error: DrizzleQueryError: Failed query: select "id", "customer_id", "type", "nomba_token", "merchant_id", "last4", "brand", "exp_month", "exp_year", "is_default", "metadata", "created_at", "deleted_at" from "payment_methods" where ("payment_methods"."id" = $1 and "payment_methods"."merchant_id" = $2) limit $3
+params: pm_jt1iGjGW1H,mer_ZdrQarZ94i,1
+    at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:73:11[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+    at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/payment_methods.ts:78:18 {
+  query: [32m'select "id", "customer_id", "type", "nomba_token", "merchant_id", "last4", "brand", "exp_month", "exp_year", "is_default", "metadata", "created_at", "deleted_at" from "payment_methods" where ("payment_methods"."id" = $1 and "payment_methods"."merchant_id" = $2) limit $3'[39m,
+  params: [ [32m'pm_jt1iGjGW1H'[39m, [32m'mer_ZdrQarZ94i'[39m, [33m1[39m ],
+  cause: error: permission denied for table payment_methods
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at NodePgPreparedQuery.queryWithCache [90m(file:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/pg-core/session.ts:71:12[90m)[39m
+      at [90mfile:///home/lavender/workspace/lavender/railswitch/services/engine/[39mnode_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at [90m/home/lavender/workspace/lavender/railswitch/services/engine/[39msrc/routes/payment_methods.ts:78:18 {
+    length: [33m103[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'42501'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'aclchk.c'[39m,
+    line: [32m'2812'[39m,
+    routine: [32m'aclcheck_error'[39m
+  }
+}
+
+[31m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 5 [27m[22m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/tenants/cross_tenant_test.test.ts[2m > [22mcross-tenant isolation: 'plan'[2m > [22mreturns 404 when Merchant B reads Merchant A's resource
+[31m[1m[7m FAIL [27m[22m[39m tests/tenants/cross_tenant_test.test.ts[2m > [22mcross-tenant isolation: 'customer'[2m > [22mreturns 404 when Merchant B reads Merchant A's resource
+[31m[1m[7m FAIL [27m[22m[39m tests/tenants/cross_tenant_test.test.ts[2m > [22mcross-tenant isolation: 'subscription'[2m > [22mreturns 404 when Merchant B reads Merchant A's resource
+[31m[1m[7m FAIL [27m[22m[39m tests/tenants/cross_tenant_test.test.ts[2m > [22mcross-tenant isolation: 'invoice'[2m > [22mreturns 404 when Merchant B reads Merchant A's resource
+[31m[1m[7m FAIL [27m[22m[39m tests/tenants/cross_tenant_test.test.ts[2m > [22mcross-tenant isolation: 'payment_method'[2m > [22mreturns 404 when Merchant B reads Merchant A's resource
+[31m[1mAssertionError[22m: expected 500 to be 404 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 404[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/tenants/cross_tenant_test.test.ts:[2m212:26[22m[39m
+    [90m210| [39m        [33m.[39m[35mset[39m([32m"x-internal-auth"[39m[33m,[39m process[33m.[39menv[33m.[39m[33mINTERNAL_AUTH_SECRET[39m[33m![39m)
+    [90m211| [39m        [33m.[39m[35mset[39m([32m"x-merchant-id"[39m[33m,[39m merchantA[33m.[39mid)[33m;[39m
+    [90m212| [39m      [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([34m404[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m213| [39m    })[33m;[39m
+    [90m214| [39m  }[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
