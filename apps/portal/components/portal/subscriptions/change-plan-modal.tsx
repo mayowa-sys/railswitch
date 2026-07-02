@@ -19,7 +19,7 @@ interface ChangePlanModalProps {
   selectedPlanId: string;
   onSelectPlan: (planId: string) => void;
   previewLoading: boolean;
-  previewData: any;
+  previewData: Record<string, unknown>;
   applying: boolean;
   success: boolean;
   onConfirm: () => void;

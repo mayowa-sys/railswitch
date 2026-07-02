@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.auth import ApiKeyRecord, get_current_merchant, get_current_merchant_with_portal
+from app.auth import ApiKeyRecord, get_current_merchant
 
 
 from app.config import settings

@@ -149,6 +149,7 @@ export interface GatewayWebhookDelivery {
 }
 export interface GatewayInvoice {
   id: string;
+  status: string;
   subscription_id: string;
   merchant_id: string;
   amount: number;

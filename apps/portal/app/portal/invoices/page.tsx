@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
 import { api, type GatewayInvoice } from "@/lib/api-client";
 import { Search, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY, PORTAL_SUBSCRIPTION_ID } from "@/lib/config";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<GatewayInvoice[]>([]);
@@ -14,7 +14,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     api.invoices.list(API_KEY).then((data) => {
-      setInvoices(data.filter((i) => i.subscription_id === PORTAL_SUBSCRIPTION_ID));
+      setInvoices(data.filter((i) => i.subscription_id === ""));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

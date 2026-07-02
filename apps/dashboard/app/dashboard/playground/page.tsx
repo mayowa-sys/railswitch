@@ -40,16 +40,6 @@ function randomName() {
 }
 
 
-  // Clean up test data to avoid polluting the dashboard
-  const cleanupTestData = async (customerId: string, planId: string, subId: string) => {
-    try {
-      // Delete in reverse order: subscription -> plan -> customer
-      // We can't actually delete via the gateway (no DELETE endpoints exposed)
-      // So we just log that cleanup would happen
-      addLog("cleanup", `Test data created: ${subId}. Refreshing dashboard will show changes.`, "success");
-    } catch {}
-  };
-
 export default function PlaygroundPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState("");

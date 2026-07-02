@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import httpx
 import os
 import json
 import hmac
@@ -48,7 +47,7 @@ async def get_portal_merchant(request: Request) -> str | None:
             return None
         
         return data.get("merchantId")
-    except:
+    except Exception:
         return None
 
 async def get_current_merchant_with_portal(

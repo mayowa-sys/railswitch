@@ -8,7 +8,7 @@ export function getPortalToken(): string | null {
   return params.get('token');
 }
 
-export async function resolveToken(token: string): Promise<{ customer: any; merchant_id: string } | null> {
+export async function resolveToken(token: string): Promise<{ customer: Record<string, unknown>; merchant_id: string } | null> {
   try {
     const res = await fetch(`${PORTAL_API_URL}/v1/portal/resolve?token=${token}`);
     const json = await res.json();

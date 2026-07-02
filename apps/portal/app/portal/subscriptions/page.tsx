@@ -7,7 +7,7 @@ import { PlanComparison } from "@/components/portal/subscriptions/plan-compariso
 import { ChangePlanModal } from "@/components/portal/subscriptions/change-plan-modal";
 import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
 import { CreditCard, Zap, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY, PORTAL_SUBSCRIPTION_ID } from "@/lib/config";
+import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function SubscriptionsPage() {
   const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
@@ -21,7 +21,7 @@ export default function SubscriptionsPage() {
   const [success, setSuccess] = useState(false);
 
   const fetchData = () => {
-    Promise.all([api.subscriptions.get(PORTAL_SUBSCRIPTION_ID, API_KEY), api.plans.list(API_KEY)])
+    Promise.all([api.subscriptions.get(API_KEY), api.plans.list(API_KEY)])
       .then(([sub, plansData]) => { setSubscription(sub); setPlans(plansData.filter(p => p.is_active)); setLoading(false); })
       .catch(() => setLoading(false));
   };
@@ -43,7 +43,7 @@ export default function SubscriptionsPage() {
     if (planId === currentPlan.id) { setPreviewData(null); return; }
     setPreviewLoading(true);
     try {
-      const result = await api.subscriptions.preview(PORTAL_SUBSCRIPTION_ID, planId, API_KEY);
+      const result = await api.subscriptions.preview(planId, API_KEY);
       setPreviewData({ ...result, currentPlanName: currentPlan.name, newPlanName: plans.find(p => p.id === planId)?.name ?? "" });
     } catch { setPreviewData(null); }
     setPreviewLoading(false);
@@ -53,7 +53,7 @@ export default function SubscriptionsPage() {
     if (!selectedPlanId || selectedPlanId === currentPlan.id) return;
     setApplying(true);
     try {
-      await api.subscriptions.changePlan(PORTAL_SUBSCRIPTION_ID, selectedPlanId, API_KEY);
+      await api.subscriptions.changePlan(selectedPlanId, API_KEY);
       setSuccess(true);
       fetchData();
     } catch {}
