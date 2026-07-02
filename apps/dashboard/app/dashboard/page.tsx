@@ -31,8 +31,7 @@ export default function OverviewPage() {
     const key = user?.apiKey ?? "";
     if (!key) { setFetching(false); return; }
     setFetching(true);
-    api.subscriptions.list(key).then((subs) => {
-      api.plans.list(key).then((plans) => {
+    Promise.all([api.subscriptions.list(key), api.plans.list(key), api.invoices.list(key)]).then(([subs, plans, invoices]) => {
         const planMap = new Map(plans.map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
         const allSubs = subs.map((s) => {
           const plan = planMap.get(s.plan_id);
@@ -57,8 +56,7 @@ export default function OverviewPage() {
       }
         setSubscriptionBars(bars);
         setFetching(false);
-      }).catch((e) => { console.error("plans error:", e); setFetching(false); });
-    }).catch((e) => { console.error("subs error:", e); setFetching(false); });
+      }).catch((e) => { console.error("overview fetch error:", e); setFetching(false); });
   }, [user?.apiKey]);
 
   return (

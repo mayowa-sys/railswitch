@@ -76,9 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (email === "demo@railswitch.dev" && password === "demo123456") {
         const demoUser: AuthUser = {
           id: "mer_HfDzRi_p6G",
-          name: "Demo User",
+          name: "FitCore Nigeria",
           email: "demo@railswitch.dev",
-          company: "Demo User",
+          company: "FitCore Nigeria",
           apiKey: DEMO_API_KEY,
         };
         persist(demoUser);
