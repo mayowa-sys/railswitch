@@ -126,7 +126,7 @@ export async function handlePlanChange(
     throw new Error("Current Plan and New Plan cannot be the same");
   }
 
-  db.execute(sql`SET LOCAL app.current.merchant_id=${merchantId}`);
+  db.execute(sql`SET LOCAL app.current_merchant_id=${merchantId}`);
 
   const inputs = await loadPlanChangeInputs(
     subscriptionId,

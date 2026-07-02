@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { PaymentMethodsTable } from '../schema/payment_methods.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
@@ -75,6 +75,7 @@ paymentMethodsRouter.get('/', async (req: Request, res: Response) => {
 
 paymentMethodsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
+    await db.transaction(async (tx) => {await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`)});
     const [pm] = await db
       .select()
       .from(PaymentMethodsTable)

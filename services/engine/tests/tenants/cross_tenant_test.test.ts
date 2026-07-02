@@ -208,7 +208,7 @@ describe.each(tenantScopedResources)(
         .set("Authorization", `Bearer sk_test_mockmerchantb`)
         .set("x-internal-auth", process.env.INTERNAL_AUTH_SECRET!)
         .set("x-merchant-id", merchantA.id);
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(404);
     });
   },
 );

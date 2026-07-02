@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
@@ -109,6 +109,7 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
 
 subscriptionsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
+    await db.transaction(async (tx) => {await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`)});
     const [subscription] = await db
       .select()
       .from(SubscriptionsTable)
