@@ -112,31 +112,38 @@ async function handlePaymentSuccess(
     return;
   }
 
-  // Find invoice by merchantTxRef (used as idempotency key suffix)
+  // Try to find invoice by merchantTxRef
   const invoices = await db
     .select()
     .from(InvoicesTable)
     .where(eq(InvoicesTable.id, merchantTxRef))
     .limit(1);
 
-  if (invoices.length === 0) {
-    logger.warn('payment_success: no matching invoice', { merchantTxRef });
-    // Still record as processed to prevent infinite retries
-    await recordProcessed(requestId);
-    return;
+  let subscription;
+  let invoice;
+  
+  if (invoices.length > 0) {
+    invoice = invoices[0];
+    const [sub] = await db
+      .select()
+      .from(SubscriptionsTable)
+      .where(eq(SubscriptionsTable.id, invoice.subscription_id))
+      .limit(1);
+    subscription = sub;
+  }
+  
+  // If no invoice found, try looking up subscription directly by merchantTxRef
+  if (!subscription) {
+    const [sub] = await db
+      .select()
+      .from(SubscriptionsTable)
+      .where(eq(SubscriptionsTable.id, merchantTxRef))
+      .limit(1);
+    subscription = sub;
   }
 
-  const invoice = invoices[0];
-
-  // Get the subscription to find merchantId
-  const [subscription] = await db
-    .select()
-    .from(SubscriptionsTable)
-    .where(eq(SubscriptionsTable.id, invoice.subscription_id))
-    .limit(1);
-
   if (!subscription) {
-    logger.warn('payment_success: no matching subscription', { invoiceId: invoice.id });
+    logger.warn('payment_success: no matching invoice or subscription', { merchantTxRef });
     await recordProcessed(requestId);
     return;
   }
@@ -156,15 +163,17 @@ async function handlePaymentSuccess(
     idempotencyKey: `webhook:payment_success:${requestId}`,
   });
 
-  // Mark invoice as paid
-  await db
-    .update(InvoicesTable)
-    .set({
-      status: 'paid',
-      amount_paid: String(amount),
-      paid_at: new Date(),
-    })
-    .where(eq(InvoicesTable.id, invoice.id));
+  // Mark invoice as paid if it exists
+  if (invoice) {
+    await db
+      .update(InvoicesTable)
+      .set({
+        status: 'paid',
+        amount_paid: String(amount),
+        paid_at: new Date(),
+      })
+      .where(eq(InvoicesTable.id, invoice.id));
+  }
 
   await recordProcessed(requestId);
 

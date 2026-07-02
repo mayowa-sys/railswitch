@@ -90,11 +90,7 @@ export class BillingHelper {
           eq(PaymentMethodsTable.is_default, true),
         ),
       );
-    if (!defaultMethod)
-      throw new Error(
-        `Default Payment Method for customer ${customerId} not found`,
-      );
-    return defaultMethod;
+    return defaultMethod || null;
   }
 
   async getDefaultPaymentMethodBySubId(subscriptionId: string) {
@@ -223,6 +219,13 @@ class BillingService {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
+    if (!defaultPaymentMethod) {
+      this.logger.info('No default payment method — skipping charge', {
+        subscriptionId: data.subscriptionId,
+        customerId: data.customerId,
+      });
+      return;
+    }
     const credits = await db
       .select()
       .from(CreditsTable)
@@ -355,6 +358,20 @@ class BillingService {
         next_attempt_at: nextAttempt,
       })
       .where(eq(InvoicesTable.id, invoiceId));
+
+    // Schedule cascade coordinator to handle the failure
+    if (BillingsQueue) {
+      await BillingsQueue.add(
+        'cascade_retry',
+        {
+          subscriptionId: subId,
+          invoiceId,
+          amount: subscription.amount || 0,
+          merchantId: subscription.merchant_id,
+        },
+        { delay: shouldRetry ? nextAttempt.getTime() - Date.now() : 5000 },
+      );
+    }
   }
 }
 
@@ -384,6 +401,10 @@ export const BillingWorker = process.env.REDIS_URL
           const data = job.data as CascadeRetryData;
           const coordinator = createCascadeCoordinator(data.merchantId);
           const paymentMethod = await new BillingHelper().getDefaultPaymentMethodBySubId(data.subscriptionId);
+          if (!paymentMethod) {
+            logger.info('No payment method for cascade retry — skipping', { subscriptionId: data.subscriptionId });
+            return;
+          }
           await coordinator.processRetry({
             subscriptionId: data.subscriptionId,
             invoiceId: data.invoiceId,

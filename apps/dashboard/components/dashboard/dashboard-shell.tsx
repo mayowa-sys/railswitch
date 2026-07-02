@@ -90,7 +90,7 @@ export default function DashboardShell({
               <Activity className="size-4" />
             </div>
             <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:to-zinc-400">
-              RailSwitch
+              {user?.company || "RailSwitch"}
             </span>
           </Link>
           <button

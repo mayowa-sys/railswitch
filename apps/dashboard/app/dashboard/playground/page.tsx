@@ -109,9 +109,19 @@ export default function PlaygroundPage() {
       });
       addLog("payment_method.added", `Card ending ${shouldSucceed ? "6666" : "6674"}`, "success");
 
-      // Step 5: Send webhook directly to gateway
-      // The webhook handler will create the invoice internally via the billing flow
+      // Step 5: Create a real invoice in the database
       const invoiceId = `inv_${sub.id}_${Date.now()}`;
+      
+      // Create invoice via API
+      await fetch(`${GATEWAY_URL}/v1/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEMO_API_KEY}` },
+        body: JSON.stringify({
+          subscription_id: sub.id,
+          amount: 9900,
+          due_date: new Date().toISOString()
+        })
+      }).catch(() => {});
       const secret = "NombaHackathon2026";
       const ts = String(Math.floor(Date.now() / 1000));
       const payload = {
@@ -119,7 +129,7 @@ export default function PlaygroundPage() {
         requestId: `wh_${Date.now()}`,
         data: {
           merchant: {
-            merchantTxRef: invoiceId,
+            merchantTxRef: sub.id,
             amount: shouldSucceed ? 9900 : 0,
           },
           transaction: {

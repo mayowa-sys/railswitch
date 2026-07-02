@@ -48,11 +48,12 @@ export default function OverviewPage() {
         setActiveSubscribers(active.length);
         setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
       
-      // Compute recovery rate from invoices
-      const paidInvs = invoices.filter((i) => i.status === "paid" || i.status === "recovered");
-      const failedInvs = invoices.filter((i) => i.status === "payment_failed" || i.status === "uncollectible" || i.status === "pending_retry");
-      if (paidInvs.length + failedInvs.length > 0) {
-        setRecoveryRate(`${((paidInvs.length / (paidInvs.length + failedInvs.length)) * 100).toFixed(1)}%`);
+      // Compute recovery rate from invoices in terminal states
+      const recoveredInvs = invoices.filter((i) => i.status === "paid" || i.status === "recovered");
+      const terminalFailedInvs = invoices.filter((i) => i.status === "uncollectible");
+      const terminalTotal = recoveredInvs.length + terminalFailedInvs.length;
+      if (terminalTotal > 0) {
+        setRecoveryRate(`${((recoveredInvs.length / terminalTotal) * 100).toFixed(1)}%`);
       }
         setSubscriptionBars(bars);
         setFetching(false);

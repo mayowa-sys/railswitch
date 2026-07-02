@@ -57,7 +57,7 @@ export class CascadeCoordinator {
       idempotencyKey: input.idempotencyKey,
     });
 
-    if (result.status === 'failed') {
+    if (result.status === 'failed' || result.status === 'already_processing') {
       await this.handleFailedCharge(input.subscriptionId, input.invoiceId, input.amount, result.context);
     }
 
@@ -82,7 +82,7 @@ export class CascadeCoordinator {
       idempotencyKey: input.idempotencyKey,
     });
 
-    if (result.status === 'failed') {
+    if (result.status === 'failed' || result.status === 'already_processing') {
       await this.handleFailedCharge(input.subscriptionId, input.invoiceId, input.amount, result.context);
     }
 
@@ -208,7 +208,7 @@ export class CascadeCoordinator {
         subscriptionId,
         event: {
           type: 'VA_CREATED',
-          vaId: va.vaId,
+          vaId: va.accountNumber,
           expiresAt: va.expiresAt,
         },
         idempotencyKey: `cascade:va_created:${invoiceId}`,
@@ -376,7 +376,7 @@ export class CascadeCoordinator {
         subscriptionId,
         event: {
           type: 'VA_CREATED',
-          vaId: va.vaId,
+          vaId: va.accountNumber,
           expiresAt: va.expiresAt,
         },
         idempotencyKey: `signup:va_created:${invoiceId}`,
