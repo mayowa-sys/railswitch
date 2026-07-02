@@ -58,12 +58,14 @@ Plus:
 
 ## What's built
 
-**Engine — pre-window foundation complete (114 tests):**
+**Engine — pre-window foundation complete (91 tests):**
 
 - XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded, visualizable via `/debug/subscription-machine`
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
-- Mock Nomba client + rail orchestrator — interface-driven, 6 interval types (daily, weekly, monthly, annual, day-of-month, day-of-week)
+- Real Nomba client — OAuth 2.0, tokenized card charges, virtual account creation via sandbox API
 - Smart retry timing — payday-aware, liquidity-window optimization, exponential backoff with jitter
+- **Cascade coordinator** — Card → Retry → VA → WhatsApp → Past Due with real Nomba VAs (5 verified in sandbox)
+- **Portal token system** — HMAC-SHA256 signed tokens for customer self-service access
 - BillingHandler — bridges orchestrator to state machine (`bill()` + `retry()`), idempotent
 - BullMQ billing scheduler with trial-to-paid conversion (requires Redis, dev-only until production Redis)
 - Internal API routes at `/internal/v1/*` — plans, customers, subscriptions, invoices, payment methods, auth, webhooks CRUD
@@ -73,7 +75,7 @@ Plus:
 - Outbound webhook delivery — HMAC-SHA256 signing, 9-step exponential backoff, replay support
 - Inbound Nomba webhook ingress — signature verification (gateway), engine handler stub (window phase)
 
-**Gateway — 14 tests:**
+**Gateway — pytest suite:**
 
 - Stripe-style REST API with `{ data, error, meta }` envelope
 - Scoped API key auth + CORS + typed internal HTTP client
@@ -154,13 +156,13 @@ cd apps/docs && npx -p node@20 -- mintlify dev --port 3002
 
 ## Running tests
 
-**Engine (vitest — 114 tests):**
+**Engine (vitest — 91 tests):**
 
 ```bash
 cd services/engine && npm test
 ```
 
-**Gateway (pytest — 14 tests):**
+**Gateway (pytest — pytest suite):**
 
 ```bash
 cd services/gateway && source .venv/bin/activate && pytest
