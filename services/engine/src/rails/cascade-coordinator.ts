@@ -17,7 +17,6 @@ import { nextRetryAt } from './retry-timing.js';
 import type { DunningPolicy, SubscriptionContext } from '../state-machines/subscription.js';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
-import { InvoicesTable } from '../schema/invoices.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { eq } from 'drizzle-orm';
 

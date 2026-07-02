@@ -151,7 +151,7 @@ async function handlePaymentSuccess(
   const repo = new DrizzleSubscriptionRepository(db, subscription.merchant_id);
   const wrapper = new SubscriptionWrapper({ repo });
 
-  const amount = Number(eventData.amount ?? invoice.amount);
+  const amount = Number(eventData.amount ?? invoice?.amount ?? 0);
 
   // Advance state machine: charge succeeded
   const result = await wrapper.processEvent({
@@ -182,7 +182,7 @@ async function handlePaymentSuccess(
     event: 'charge.succeeded',
     data: {
       subscription_id: subscription.id,
-      invoice_id: invoice.id,
+      invoice_id: invoice?.id ?? subscription?.id ?? '',
       amount,
       charge_id: requestId,
     },
@@ -220,6 +220,7 @@ async function handleVAFunded(
   }
 
   const invoice = invoices[0];
+    if (!invoice) { await recordProcessed(requestId); return; }
 
   const [subscription] = await db
     .select()
@@ -272,7 +273,7 @@ async function handleVAFunded(
     event: 'va.credited',
     data: {
       subscription_id: subscription.id,
-      invoice_id: invoice.id,
+      invoice_id: invoice?.id ?? subscription?.id ?? '',
       amount_received: amountReceived,
       amount_expected: amountExpected,
     },

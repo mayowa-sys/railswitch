@@ -53,7 +53,7 @@ app.get('/internal/v1/portal/resolve', requireInternalAuth, async (req: Request,
       if (!customer) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Customer not found' } }); return; }
       
       res.json({ customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, created_at: customer.created_at }, merchant_id: data.merchantId });
-    } catch (e) { res.status(401).json({ error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' } }); }
+    } catch (_e) { res.status(401).json({ error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' } }); }
   } catch (err) {
     console.error('[portal-resolve] error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to resolve token' } });

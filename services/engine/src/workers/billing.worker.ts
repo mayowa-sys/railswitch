@@ -1,6 +1,5 @@
 import { Job, Worker } from "bullmq";
 import { BillingHandler } from "../rails/billing-handler.js";
-import { CascadeCoordinator } from "../rails/cascade-coordinator.js";
 import { BillingsQueue } from "../queues/billings.queue.js";
 import { GlobalLogger } from "../utils/logger.js";
 import { db } from "../db/client.js";
@@ -366,7 +365,7 @@ class BillingService {
         {
           subscriptionId: subId,
           invoiceId,
-          amount: subscription.amount || 0,
+          amount: 0, // amount will be resolved from the plan in the coordinator
           merchantId: subscription.merchant_id,
         },
         { delay: shouldRetry ? nextAttempt.getTime() - Date.now() : 5000 },
