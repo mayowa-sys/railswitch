@@ -437,6 +437,11 @@ class EngineClient:
         body = await self._request("GET", f"/internal/v1/audit-logs/subscription/{subscription_id}")
         return body.get("data", body)
 
+    # =========== CLEANUP ===================
+
+    async def cleanup_playground(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/cleanup/playground", json=payload)
+
 
 async def get_engine_client(
     request: Request,

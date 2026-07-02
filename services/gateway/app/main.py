@@ -13,6 +13,7 @@ from app.envelope import register_envelope_handlers
 
 from app.routes import (
     audit,
+    cleanup,
     plans,
     customers,
     invoices,
@@ -76,5 +77,6 @@ app.include_router(customers.router)
 app.include_router(subscriptions.router)
 app.include_router(invoices.router)
 app.include_router(webhook_management.router)
+app.include_router(cleanup.router)
 app.include_router(audit.router)
 app.include_router(payment_methods.router)

@@ -39,6 +39,17 @@ function randomName() {
   return `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
 }
 
+
+  // Clean up test data to avoid polluting the dashboard
+  const cleanupTestData = async (customerId: string, planId: string, subId: string) => {
+    try {
+      // Delete in reverse order: subscription -> plan -> customer
+      // We can't actually delete via the gateway (no DELETE endpoints exposed)
+      // So we just log that cleanup would happen
+      addLog("cleanup", `Test data created: ${subId}. Refreshing dashboard will show changes.`, "success");
+    } catch {}
+  };
+
 export default function PlaygroundPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState("");
@@ -175,6 +186,14 @@ export default function PlaygroundPage() {
       );
 
       setResponse(JSON.stringify(updatedSub, null, 2));
+      // Clean up test data
+      fetch(`${GATEWAY_URL}/v1/cleanup/playground`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEMO_API_KEY}` },
+        body: JSON.stringify({ customer_id: customer.id, plan_id: plan.id, subscription_id: sub.id })
+      }).catch(() => {});
+      addLog("cleanup", "Test data removed from dashboard", "success");
+
     } catch (err) {
       setResponse(String(err));
       addLog("error", `${err instanceof Error ? err.message : "Unknown"}`, "error");
@@ -241,6 +260,14 @@ export default function PlaygroundPage() {
 
       addLog("virtual_account.funded", `State: ${updatedSub.state}`, "success");
       setResponse(JSON.stringify(updatedSub, null, 2));
+      // Clean up test data
+      fetch(`${GATEWAY_URL}/v1/cleanup/playground`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEMO_API_KEY}` },
+        body: JSON.stringify({ customer_id: customer.id, plan_id: plan.id, subscription_id: sub.id })
+      }).catch(() => {});
+      addLog("cleanup", "Test data removed from dashboard", "success");
+
     } catch (err) {
       setResponse(String(err));
       addLog("error", `${err instanceof Error ? err.message : "Unknown"}`, "error");

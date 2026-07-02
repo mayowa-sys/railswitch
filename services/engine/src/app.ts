@@ -17,6 +17,7 @@ import { webhooksRouter } from './routes/webhooks.js';
 import { authRouter } from './routes/auth.js';
 import { auditRouter } from './routes/audit.js';
 import { webhookManagementRouter } from './routes/webhook_management.js';
+import { cleanupRouter } from './routes/cleanup.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -62,3 +63,4 @@ app.use('/internal/v1/audit-logs', requireInternalAuth, extractMerchantId, audit
 
 // Webhook management — gateway-only, CRUD + delivery logs.
 app.use('/internal/v1/webhooks/management', requireInternalAuth, extractMerchantId, webhookManagementRouter);
+app.use('/internal/v1/cleanup', requireInternalAuth, extractMerchantId, cleanupRouter);
