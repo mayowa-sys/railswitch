@@ -442,6 +442,13 @@ class EngineClient:
     async def cleanup_playground(self, payload: dict) -> dict:
         return await self._request("POST", "/internal/v1/cleanup/playground", json=payload)
 
+    # =========== PORTAL ===================
+    async def create_portal_link(self, customer_id: str) -> dict:
+        return await self._request("POST", f"/internal/v1/portal/customers/{customer_id}/portal-link")
+
+    async def resolve_portal_token(self, token: str) -> dict:
+        return await self._request("GET", f"/internal/v1/portal/resolve?token={token}")
+
 
 async def get_engine_client(
     request: Request,

@@ -19,7 +19,7 @@ rm -f "$LOGDIR"/*.log
 cleanup() {
   echo ""
   echo -e "${YELLOW}Shutting down...${NC}"
-  kill $ENGINE_PID $GATEWAY_PID $DASHBOARD_PID $PORTAL_PID $STOREFRONT_PID 2>/dev/null
+  kill $ENGINE_PID $GATEWAY_PID $DASHBOARD_PID $PORTAL_PID $STOREFRONT_PID $DOCS_PID 2>/dev/null
   wait 2>/dev/null
   echo -e "${GREEN}All services stopped.${NC}"
 }
@@ -98,6 +98,14 @@ STOREFRONT_PID=$!
 sleep 2
 echo -e "  ${GREEN}✓${NC} Storefront → http://localhost:3200"
 
+# 6. Docs (Mintlify)
+echo -e "${YELLOW}[6/6] Starting Docs (Mintlify)...${NC}"
+cd "$ROOT/apps/docs"
+/opt/homebrew/opt/node@20/bin/npx mintlify dev --port 3333 > "$LOGDIR/docs.log" 2>&1 &
+DOCS_PID=$!
+sleep 3
+echo -e "  ${GREEN}✓${NC} Docs → http://localhost:3333"
+
 echo ""
 echo -e "${CYAN}════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  All services running. Press Ctrl+C to stop.${NC}"
@@ -108,6 +116,8 @@ echo "  Portal     → http://localhost:3100/portal"
 echo "  Storefront → http://localhost:3200"
 echo "  API        → http://localhost:8000"
 echo "  Engine     → http://localhost:3001/health"
+  echo "  Docs       → http://localhost:3333"
+  echo "  API Docs   → http://localhost:8000/redoc"
 echo ""
 
 # Open log viewer in a new Terminal window

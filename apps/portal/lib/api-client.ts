@@ -1,14 +1,23 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-async function request<T>(path: string, apiKey: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...opts,
-    headers: { ...opts.headers, "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `API ${res.status}`);
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('token');
+}
+
+async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(opts.headers as Record<string, string> || {}),
+  };
+  
+  if (token) {
+    headers["x-portal-token"] = token;
   }
+  
+  const res = await fetch(`${BASE_URL}${path}`, { ...opts, headers });
+  if (!res.ok) throw new Error(`API ${res.status}`);
   const json = await res.json();
   return (json.data ?? json) as T;
 }
@@ -25,7 +34,6 @@ export interface GatewaySubscription {
   cancel_at_period_end: boolean;
   next_billing_at?: string;
   va_id?: string;
-  va_expires_at?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -64,45 +72,53 @@ export interface GatewayPaymentMethod {
   id: string;
   customer_id: string;
   type: string;
-  nomba_token: string;
   last4: string;
   brand: string;
   is_default: boolean;
   created_at: string;
 }
 
+export interface PortalCustomer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  created_at: string;
+}
+
 export const api = {
+  portal: {
+    resolve: () => {
+      const token = getToken();
+      if (!token) return Promise.reject(new Error('No token'));
+      return request<{ customer: PortalCustomer; merchant_id: string }>(`/v1/portal/resolve?token=${token}`);
+    },
+  },
   subscriptions: {
-    list: (apiKey: string) => request<GatewaySubscription[]>("/v1/subscriptions", apiKey),
-    get: (id: string, apiKey: string) => request<GatewaySubscription>(`/v1/subscriptions/${id}`, apiKey),
-    preview: (subId: string, newPlanId: string, apiKey: string) =>
-      request<Record<string, unknown>>(`/v1/subscriptions/${subId}/preview`, apiKey, {
+    list: () => request<GatewaySubscription[]>("/v1/subscriptions"),
+    get: (id: string) => request<GatewaySubscription>(`/v1/subscriptions/${id}`),
+    preview: (subId: string, newPlanId: string) =>
+      request<Record<string, unknown>>(`/v1/subscriptions/${subId}/preview`, {
         method: "POST",
         body: JSON.stringify({ new_plan_id: newPlanId }),
       }),
-    pause: (id: string, apiKey: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/pause`, apiKey, { method: "POST" }),
-    resume: (id: string, apiKey: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/resume`, apiKey, { method: "POST" }),
-    cancel: (id: string, apiKey: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/cancel`, apiKey, { method: "POST" }),
-    changePlan: (id: string, planId: string, apiKey: string) =>
-      request<Record<string, unknown>>(`/v1/subscriptions/${id}`, apiKey, {
-        method: "PATCH",
-        body: JSON.stringify({ plan_id: planId }),
-      }),
+    pause: (id: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/pause`, { method: "POST" }),
+    resume: (id: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/resume`, { method: "POST" }),
+    cancel: (id: string) => request<Record<string, unknown>>(`/v1/subscriptions/${id}/cancel`, { method: "POST" }),
+    changePlan: (id: string, planId: string) =>
+      request<Record<string, unknown>>(`/v1/subscriptions/${id}`, { method: "PATCH", body: JSON.stringify({ plan_id: planId }) }),
   },
   plans: {
-    list: (apiKey: string) => request<GatewayPlan[]>("/v1/plans", apiKey),
+    list: () => request<GatewayPlan[]>("/v1/plans"),
   },
   invoices: {
-    list: (apiKey: string) => request<GatewayInvoice[]>("/v1/invoices", apiKey),
+    list: () => request<GatewayInvoice[]>("/v1/invoices"),
   },
   paymentMethods: {
-    list: (customerId: string, apiKey: string) =>
-      request<GatewayPaymentMethod[]>(`/v1/payment-methods?customer_id=${customerId}`, apiKey),
-    create: (data: Record<string, unknown>, apiKey: string) =>
-      request<GatewayPaymentMethod>("/v1/payment-methods", apiKey, { method: "POST", body: JSON.stringify(data) }),
-    remove: (id: string, apiKey: string) =>
-      request<Record<string, unknown>>(`/v1/payment-methods/${id}`, apiKey, { method: "DELETE" }),
+    list: (customerId: string) => request<GatewayPaymentMethod[]>(`/v1/payment-methods?customer_id=${customerId}`),
+    create: (data: Record<string, unknown>) =>
+      request<GatewayPaymentMethod>("/v1/payment-methods", { method: "POST", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      request<Record<string, unknown>>(`/v1/payment-methods/${id}`, { method: "DELETE" }),
   },
 };
-
-export function isMockMode() { return false; }

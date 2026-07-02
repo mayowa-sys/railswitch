@@ -54,6 +54,8 @@ export default function OverviewPage() {
       const terminalTotal = recoveredInvs.length + terminalFailedInvs.length;
       if (terminalTotal > 0) {
         setRecoveryRate(`${((recoveredInvs.length / terminalTotal) * 100).toFixed(1)}%`);
+      } else if (recoveredInvs.length > 0) {
+        setRecoveryRate("100.0%");
       }
         setSubscriptionBars(bars);
         setFetching(false);

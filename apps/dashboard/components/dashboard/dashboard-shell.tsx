@@ -47,11 +47,67 @@ export default function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notifications, setNotifications] = useState<Array<{id: string; title: string; body: string; time: string; type: string}>>([]);
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   }
+
+  // Fetch real notifications
+  useEffect(() => {
+    if (!user?.apiKey) return;
+    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    
+    const fetchNotifications = () => {
+      Promise.all([
+        fetch(`${API}/v1/subscriptions?limit=5`, { headers: { Authorization: `Bearer ${user.apiKey}` } }).then(r => r.json()),
+        fetch(`${API}/v1/webhooks/deliveries?limit=5`, { headers: { Authorization: `Bearer ${user.apiKey}` } }).then(r => r.json()),
+      ]).then(([subsData, webhooksData]) => {
+        const items: Array<{id: string; title: string; body: string; time: string; type: string}> = [];
+        
+        // Recent subscriptions
+        const subs = subsData.data || [];
+        const recentSubs = subs.filter((s: any) => {
+          const created = new Date(s.created_at).getTime();
+          return Date.now() - created < 86400000; // Last 24 hours
+        });
+        
+        if (recentSubs.length > 0) {
+          const count = recentSubs.length;
+          items.push({
+            id: 'subs-batch',
+            title: `${count} new subscription${count > 1 ? 's' : ''}`,
+            body: recentSubs.slice(0, 3).map((s: any) => s.id.slice(0, 12)).join(', ') + (count > 3 ? ` +${count - 3} more` : ''),
+            time: new Date(recentSubs[0].created_at).toLocaleString('en-NG', { hour: '2-digit', minute: '2-digit' }),
+            type: 'subscription'
+          });
+        }
+        
+        // Recent webhook deliveries
+        const deliveries = webhooksData.data || [];
+        const failedDeliveries = deliveries.filter((d: any) => d.status === 'failed');
+        if (failedDeliveries.length > 0) {
+          items.push({
+            id: 'webhook-batch',
+            title: `${failedDeliveries.length} webhook failure${failedDeliveries.length > 1 ? 's' : ''}`,
+            body: 'Delivery attempts failed. Check webhook settings.',
+            time: new Date(failedDeliveries[0].created_at).toLocaleString('en-NG', { hour: '2-digit', minute: '2-digit' }),
+            type: 'webhook'
+          });
+        }
+        
+        setNotifications(items);
+        setNotificationCount(items.reduce((sum, i) => sum + (i.type === 'subscription' ? parseInt(i.title) || 0 : 0), 0));
+        if (items.length > 0) setHasNewNotifications(true);
+      }).catch(() => {});
+    };
+    
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [user?.apiKey]);
 
   const initials = user
     ? user.name
@@ -175,7 +231,9 @@ export default function DashboardShell({
             >
               <Bell className="size-4" />
               {hasNewNotifications && (
-                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500 animate-pulse" />
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {notificationCount > 8 ? "9+" : notificationCount || ""}
+                </span>
               )}
             </button>
 
@@ -213,11 +271,33 @@ export default function DashboardShell({
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 flex items-center justify-center p-6">
-            <EmptyState
-              icon={Bell}
-              title="No new notifications"
-              description="We will notify you here when transactions recover, plans are modified, or events trigger."
-            />
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                <Bell className="size-8 text-zinc-300 dark:text-zinc-600 mb-3" />
+                <p className="text-sm font-medium text-zinc-500">No new notifications</p>
+                <p className="text-xs text-zinc-400 mt-1">We'll notify you of new subscriptions and recovery events.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                {notifications.map((n) => (
+                  <div key={n.id} className="px-6 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                        n.type === 'subscription' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' :
+                        'bg-amber-50 dark:bg-amber-950/30 text-amber-600'
+                      }`}>
+                        {n.type === 'subscription' ? <Zap className="size-4" /> : <Bell className="size-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{n.title}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5 truncate">{n.body}</p>
+                        <p className="text-[10px] text-zinc-400 mt-1">{n.time}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>
