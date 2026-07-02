@@ -4,7 +4,7 @@ import { BillingsQueue } from "../queues/billings.queue.js";
 import { GlobalLogger } from "../utils/logger.js";
 import { db } from "../db/client.js";
 import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
-import { lte, sql, eq, and } from "drizzle-orm";
+import { lte, sql, eq, and, gte } from "drizzle-orm";
 import { Plan, PlansTable } from "../schema/plans.schema.js";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
 import { InvoicesTable } from "../schema/invoices.schema.js";
@@ -12,8 +12,10 @@ import { getNextBillingDate } from "../utils/interval_util.js";
 import { createBillingHandler } from "../rails/billing-handler-dependencies.js";
 import { nextRetryAt } from "../rails/retry-timing.js";
 import type { DunningPolicy } from "../state-machines/subscription";
+import { CreditsTable } from "../schema/credits.schema";
+import * as ProrationHelper from "../proration/proration-helper";
 
-interface ChargeSubscriptionData {
+export interface ChargeSubscriptionData {
   subscriptionId: string;
   customerId: string;
   planId: string;
@@ -30,7 +32,7 @@ interface TrialConversionData {
 
 type BillingJobData = ChargeSubscriptionData | TrialConversionData;
 
-class BillingHelper {
+export class BillingHelper {
   async getPendingSubscriptions() {
     return db
       .select()
@@ -76,7 +78,7 @@ class BillingHelper {
     return defaultMethod;
   }
 
-  async markInvoiceAsPaid(invoiceId: string, amount: string) {
+  static async markInvoiceAsPaid(invoiceId: string, amount: string) {
     await db
       .update(InvoicesTable)
       .set({
@@ -87,7 +89,7 @@ class BillingHelper {
       .where(eq(InvoicesTable.id, invoiceId));
   }
 
-  async updateSubscriptionNextBillingDate(
+  static async updateSubscriptionNextBillingDate(
     subscriptionId: string,
     nextBillingDate: Date,
   ) {
@@ -96,6 +98,8 @@ class BillingHelper {
       .set({
         next_billing_at: nextBillingDate,
         retry_count: 0,
+        current_period_start: new Date(),
+        current_period_end: nextBillingDate,
       })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
@@ -103,7 +107,9 @@ class BillingHelper {
   async updateSubscriptionState(subscriptionId: string, state: string) {
     await db
       .update(SubscriptionsTable)
-      .set({ state: state as typeof SubscriptionsTable.$inferSelect["state"] })
+      .set({
+        state: state as (typeof SubscriptionsTable.$inferSelect)["state"],
+      })
       .where(eq(SubscriptionsTable.id, subscriptionId));
   }
 }
@@ -188,13 +194,33 @@ class BillingService {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
+    const credits = await db
+      .select()
+      .from(CreditsTable)
+      .where(
+        and(
+          eq(CreditsTable.subscription_id, data.subscriptionId),
+          gte(CreditsTable.amount, CreditsTable.amount_consumed),
+        ),
+      );
+    const amountToCharge = await ProrationHelper.applyCreditsToCharge(
+      plan.amount,
+      credits.map((credit) => ({
+        id: credit.id,
+        amount: credit.amount,
+        amount_consumed: credit.amount_consumed,
+      })),
+    );
+
+
     const [invoice] = await db
       .insert(InvoicesTable)
       .values({
         subscription_id: data.subscriptionId,
         merchant_id: data.merchantId,
-        amount: `${plan.amount}`,
+        amount: `${amountToCharge.netCharge}`,
         due_date: new Date(),
+        metadata: {creditApplied: amountToCharge.creditApplied}
       })
       .returning();
     if (!invoice)
@@ -240,8 +266,12 @@ class BillingService {
     }
 
     // Schedule first billing — same as a regular charge but marks trial end
-    const nextDate = getNextBillingDate(now, plan.interval, plan.interval_count);
-    await this.billingHelper.updateSubscriptionNextBillingDate(
+    const nextDate = getNextBillingDate(
+      now,
+      plan.interval,
+      plan.interval_count,
+    );
+    await BillingHelper.updateSubscriptionNextBillingDate(
       data.subscriptionId,
       nextDate,
     );
@@ -258,14 +288,14 @@ class BillingService {
     invoiceId: string,
     plan: Plan,
   ) {
-    await this.billingHelper.markInvoiceAsPaid(invoiceId, `${plan.amount}`);
+    await BillingHelper.markInvoiceAsPaid(invoiceId, `${plan.amount}`);
 
     const nextBillingDate = getNextBillingDate(
       new Date(),
       plan.interval,
       plan.interval_count,
     );
-    await this.billingHelper.updateSubscriptionNextBillingDate(
+    await BillingHelper.updateSubscriptionNextBillingDate(
       subscriptionId,
       nextBillingDate,
     );
@@ -296,6 +326,11 @@ class BillingService {
         next_attempt_at: nextAttempt,
       })
       .where(eq(InvoicesTable.id, invoiceId));
+
+    await db
+      .update(SubscriptionsTable)
+      .set({ next_billing_at: null })
+      .where(eq(SubscriptionsTable.id, subId));
   }
 }
 
