@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PlanComparison } from "@/components/portal/subscriptions/plan-comparison";
 import { ChangePlanModal } from "@/components/portal/subscriptions/change-plan-modal";
 import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
 import { CreditCard, Zap, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function SubscriptionsPage() {
   const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
@@ -21,8 +20,8 @@ export default function SubscriptionsPage() {
   const [success, setSuccess] = useState(false);
 
   const fetchData = () => {
-    Promise.all([api.subscriptions.get(API_KEY), api.plans.list(API_KEY)])
-      .then(([sub, plansData]) => { setSubscription(sub); setPlans(plansData.filter(p => p.is_active)); setLoading(false); })
+    Promise.all([api.subscriptions.list(), api.plans.list()])
+      .then(([subs, plansData]) => { const s = Array.isArray(subs) ? (subs.length > 0 ? subs[0] : null) : subs; setSubscription(s); setPlans(plansData.filter(p => p.is_active)); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -43,7 +42,8 @@ export default function SubscriptionsPage() {
     if (planId === currentPlan.id) { setPreviewData(null); return; }
     setPreviewLoading(true);
     try {
-      const result = await api.subscriptions.preview(planId, API_KEY);
+      if (!subscription) return;
+      const result = await api.subscriptions.preview(subscription.id, planId);
       setPreviewData({ ...result, currentPlanName: currentPlan.name, newPlanName: plans.find(p => p.id === planId)?.name ?? "" });
     } catch { setPreviewData(null); }
     setPreviewLoading(false);
@@ -53,7 +53,7 @@ export default function SubscriptionsPage() {
     if (!selectedPlanId || selectedPlanId === currentPlan.id) return;
     setApplying(true);
     try {
-      await api.subscriptions.changePlan(selectedPlanId, API_KEY);
+      if (!subscription) return; await api.subscriptions.changePlan(subscription.id, selectedPlanId);
       setSuccess(true);
       fetchData();
     } catch {}

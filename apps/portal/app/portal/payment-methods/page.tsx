@@ -6,8 +6,7 @@ import { MethodsList } from "@/components/portal/payment-methods/methods-list";
 import { AddCardModal } from "@/components/portal/payment-methods/add-card-modal";
 import { api, type GatewayPaymentMethod } from "@/lib/api-client";
 import { Plus, Shield, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
-
+// 
 export default function PaymentMethodsPage() {
   const [methods, setMethods] = useState<GatewayPaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +19,7 @@ export default function PaymentMethodsPage() {
   const [success, setSuccess] = useState(false);
 
   const fetchMethods = () => {
-    api.paymentMethods.list(API_KEY)
+    api.paymentMethods.list("")
       .then((data) => { setMethods(data); setLoading(false); })
       .catch(() => setLoading(false));
   };
@@ -44,7 +43,7 @@ export default function PaymentMethodsPage() {
     if (!cardName || cardNumber.length < 15 || cardExpiry.length < 5 || cardCvv.length < 3) return;
     setTokenizing(true);
     try {
-      await api.paymentMethods.create({ customer_id: "temp", type: "card", nomba_token: `tok_${Date.now()}`, last4: cardNumber.replace(/\s/g, "").slice(-4), brand: cardNumber.startsWith("5") ? "mastercard" : cardNumber.startsWith("4") ? "visa" : "verve", is_default: methods.length === 0 }, API_KEY);
+      await api.paymentMethods.create({ customer_id: "temp", type: "card", nomba_token: `tok_${Date.now()}`, last4: cardNumber.replace(/\s/g, "").slice(-4), brand: cardNumber.startsWith("5") ? "mastercard" : cardNumber.startsWith("4") ? "visa" : "verve", is_default: methods.length === 0 });
       setSuccess(true);
       fetchMethods();
     } catch {}
@@ -53,7 +52,7 @@ export default function PaymentMethodsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    try { await api.paymentMethods.remove(id, API_KEY); fetchMethods(); } catch {}
+    try { await api.paymentMethods.remove(id); fetchMethods(); } catch {}
   };
 
   if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;

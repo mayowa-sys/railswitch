@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Receipt, CreditCard, Wallet, Settings, Menu, X, Bell, ChevronDown, AlertCircle, Copy, CheckCircle, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Wallet, Settings, Menu, X, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -20,14 +20,13 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
-  const [merchantName, setMerchantName] = useState("FitCore Nigeria");
+  const merchantName = "FitCore Nigeria";
 
   useEffect(() => {
     if (!token) return;
     resolveToken(token).then(data => {
-      if (data) setCustomer(data.customer);
+      if (data) setCustomer(data.customer as unknown as PortalCustomer);
     }).catch(() => {});
   }, [token]);
 
@@ -36,7 +35,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
     return pathname.startsWith(href);
   }
 
-  const initials = customer?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??";
+  const initials = customer?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "??";
   const displayName = customer?.name || "Customer";
   const displayEmail = customer?.email || "";
 

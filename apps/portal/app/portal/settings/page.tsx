@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusManagement } from "@/components/portal/settings/status-management";
 import { CancelModal } from "@/components/portal/settings/cancel-modal";
 import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
 import { CheckCircle, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
 export default function SettingsPage() {
   const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
@@ -19,8 +18,8 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const fetchSub = () => {
-    Promise.all([api.subscriptions.get(API_KEY), api.plans.list(API_KEY)])
-      .then(([sub, plansData]) => { setSubscription(sub); setPlans(plansData); setLoading(false); })
+    Promise.all([api.subscriptions.list(), api.plans.list()])
+      .then(([subs, plansData]) => { const s = Array.isArray(subs) ? (subs.length > 0 ? subs[0] : null) : subs; setSubscription(s); setPlans(plansData); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -28,7 +27,7 @@ export default function SettingsPage() {
 
   const handlePause = async () => {
     setActionLoading("pause");
-    try { await api.subscriptions.pause(API_KEY); setSuccessMsg("Subscription paused."); fetchSub(); }
+    try { if (!subscription) return; await api.subscriptions.pause(subscription.id); setSuccessMsg("Subscription paused."); fetchSub(); }
     catch { setSuccessMsg("Failed to pause."); }
     setActionLoading(null);
     setTimeout(() => setSuccessMsg(""), 3000);
@@ -36,7 +35,7 @@ export default function SettingsPage() {
 
   const handleResume = async () => {
     setActionLoading("resume");
-    try { await api.subscriptions.resume(API_KEY); setSuccessMsg("Subscription resumed."); fetchSub(); }
+    try { if (!subscription) return; await api.subscriptions.resume(subscription.id); setSuccessMsg("Subscription resumed."); fetchSub(); }
     catch { setSuccessMsg("Failed to resume."); }
     setActionLoading(null);
     setTimeout(() => setSuccessMsg(""), 3000);
@@ -46,7 +45,7 @@ export default function SettingsPage() {
     if (!selectedReason) return;
     setActionLoading("cancel");
     setCancelModalOpen(false);
-    try { await api.subscriptions.cancel(API_KEY); setSuccessMsg("Subscription cancelled."); fetchSub(); }
+    try { if (!subscription) return; await api.subscriptions.cancel(subscription.id); setSuccessMsg("Subscription cancelled."); fetchSub(); }
     catch { setSuccessMsg("Failed to cancel."); }
     setActionLoading(null);
     setTimeout(() => setSuccessMsg(""), 3000);
@@ -62,7 +61,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <PageHeader title="Portal Settings" description="Manage your subscription lifecycle." />
       {successMsg && <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2"><CheckCircle className="size-4" />{successMsg}</div>}
-      <StatusManagement subscriptionStatus={subscription.state} currentPlan={{ name: plan?.name ?? "Unknown", price: Number(plan?.amount ?? 0), interval: (plan?.interval === "annual" ? "annually" : "monthly") as "monthly" | "annually", description: plan?.description ?? "" }} nextBillingDate={nextBilling} actionLoading={actionLoading} onPause={handlePause} onResume={handleResume} onCancelClick={() => { setSelectedReason(""); setOtherDetails(""); setCancelModalOpen(true); }} />
+      <StatusManagement subscriptionStatus={subscription.state} currentPlan={{ id: plan?.id ?? "", name: plan?.name ?? "Unknown", price: Number(plan?.amount ?? 0), interval: (plan?.interval === "annual" ? "annually" : "monthly") as "monthly" | "annually", description: plan?.description ?? "" }} nextBillingDate={nextBilling} actionLoading={actionLoading} onPause={handlePause} onResume={handleResume} onCancelClick={() => { setSelectedReason(""); setOtherDetails(""); setCancelModalOpen(true); }} />
       <CancelModal open={cancelModalOpen} onOpenChange={setCancelModalOpen} selectedReason={selectedReason} onSelectReason={setSelectedReason} otherDetails={otherDetails} onOtherDetailsChange={setOtherDetails} onConfirm={handleConfirmCancel} applying={actionLoading === "cancel"} />
     </div>
   );

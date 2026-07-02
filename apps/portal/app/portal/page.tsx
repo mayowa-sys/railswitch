@@ -9,8 +9,9 @@ import { resolveToken } from "@/lib/config";
 import { AlertOctagon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function OverviewPage() {
+function OverviewPageContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
@@ -26,7 +27,7 @@ export default function OverviewPage() {
     
     resolveToken(token).then(async (data) => {
       if (!data) { setError('Invalid or expired portal link'); setLoading(false); return; }
-      setCustomer(data.customer);
+      setCustomer(data.customer as unknown as PortalCustomer);
       
       try {
         const [subs, plansData, invData] = await Promise.all([
@@ -36,16 +37,16 @@ export default function OverviewPage() {
         ]);
         
         setPlans(plansData);
-        const custSubs = subs.filter(s => s.customer_id === data.customer.id);
-        const custInvs = invData.filter(i => custSubs.some(s => s.id === i.subscription_id));
-        setInvoices(custInvs);
+        const custSubs = subs.filter(s => s.customer_id === (data.customer as any).id);
+        const custInvoices = invData.filter((i: any) => custSubs.some((s: any) => s.id === i.subscription_id));
+        setInvoices(custInvoices);
         
         if (custSubs.length > 0) {
           setSubscription(custSubs[0]);
         }
         
         try {
-          const pms = await api.paymentMethods.list(data.customer.id);
+          const pms = await api.paymentMethods.list((data.customer as any).id);
           setPaymentMethods(pms);
         } catch {}
         
@@ -65,7 +66,7 @@ export default function OverviewPage() {
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.amount), 0);
   const defaultPM = paymentMethods.find(p => p.is_default) || paymentMethods[0];
   const pmLabel = defaultPM ? `${defaultPM.brand || 'Card'} •••• ${defaultPM.last4}` : 'No payment method';
-  const formatNaira = (kobo: number) => `₦${(kobo / 100).toLocaleString()}`;
+  
 
   return (
     <div className="space-y-8">
@@ -78,7 +79,7 @@ export default function OverviewPage() {
       )}
       <KpiCards totalSpentKobo={totalPaid} activeServices={status === 'cancelled' ? 0 : 1} subscriptionStatus={status} defaultPaymentMethodName={pmLabel} />
       <div className="grid gap-6 md:grid-cols-2">
-        <SubscriptionDetails subscriptionStatus={status} currentPlan={{ name: planName, price: planPrice, interval: plan?.interval === 'annual' ? 'annually' : 'monthly', description: plan?.description || '' }} nextBillingDate={nextBilling} paymentMethodName={pmLabel} />
+        <SubscriptionDetails subscriptionStatus={status} currentPlan={{ id: plan?.id || "", name: planName, price: planPrice, interval: plan?.interval === 'annual' ? 'annually' : 'monthly', description: plan?.description || '' }} nextBillingDate={nextBilling} paymentMethodName={pmLabel} />
         <div className="rounded-xl border bg-white dark:bg-[#121215] p-6 shadow-sm">
           <h3 className="text-base font-semibold">Quick Actions</h3>
           <div className="mt-6 grid grid-cols-2 gap-3">
@@ -90,5 +91,13 @@ export default function OverviewPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OverviewPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>}>
+      <OverviewPageContent />
+    </Suspense>
   );
 }

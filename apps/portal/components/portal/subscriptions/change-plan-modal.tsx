@@ -19,7 +19,7 @@ interface ChangePlanModalProps {
   selectedPlanId: string;
   onSelectPlan: (planId: string) => void;
   previewLoading: boolean;
-  previewData: Record<string, unknown>;
+  previewData: Record<string, any> | null;
   applying: boolean;
   success: boolean;
   onConfirm: () => void;
@@ -100,17 +100,17 @@ export function ChangePlanModal({
 
                   <div className="divide-y divide-zinc-200/50 dark:divide-zinc-800/50 text-xs font-medium space-y-2.5">
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
-                      <span>Unused {previewData.currentPlanName} credit ({previewData.totalDays - previewData.remainingDays} days)</span>
-                      <span className="text-emerald-600 dark:text-emerald-400">-{formatNaira(previewData.credit)}</span>
+                      <span>Unused {previewData.currentPlanName} credit ({Number(previewData.totalDays) - Number(previewData.remainingDays)} days)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">-{formatNaira(Number(previewData.credit))}</span>
                     </div>
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400 pt-2.5">
                       <span>Prorated {previewData.newPlanName} charge ({previewData.remainingDays} days)</span>
-                      <span className="text-zinc-900 dark:text-zinc-100">+{formatNaira(previewData.charge)}</span>
+                      <span className="text-zinc-900 dark:text-zinc-100">+{formatNaira(Number(previewData.charge))}</span>
                     </div>
                     <div className="flex justify-between pt-2.5 font-bold border-t border-zinc-200 dark:border-zinc-800 text-sm">
                       <span className="text-zinc-900 dark:text-zinc-100">Net Amount due immediately</span>
                       <span className="text-indigo-600 dark:text-indigo-400">
-                        {previewData.net < 0 ? `-${formatNaira(Math.abs(previewData.net))}` : formatNaira(previewData.net)}
+                        {Number(previewData.net) < 0 ? `-${formatNaira(Math.abs(Number(previewData.net)))}` : formatNaira(Number(previewData.net))}
                       </span>
                     </div>
                   </div>
@@ -118,7 +118,7 @@ export function ChangePlanModal({
                   <div className="flex gap-2 p-2.5 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 text-[10px] text-indigo-700 dark:text-indigo-400 leading-normal font-semibold">
                     <AlertCircle className="size-4 shrink-0 text-indigo-500" />
                     <span>
-                      Changing plan will charge {formatNaira(Math.max(0, previewData.net))} to your Visa card now. Your billing period stays unchanged, next full renewal is {previewData.billingDate}.
+                      Changing plan will charge {formatNaira(Math.max(0, Number(previewData.net)))} to your Visa card now. Your billing period stays unchanged, next full renewal is {previewData.billingDate}.
                     </span>
                   </div>
                 </div>

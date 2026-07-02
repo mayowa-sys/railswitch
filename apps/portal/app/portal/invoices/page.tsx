@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
 import { api, type GatewayInvoice } from "@/lib/api-client";
 import { Search, Loader2 } from "lucide-react";
-import { PORTAL_API_KEY as API_KEY } from "@/lib/config";
 
-export default function InvoicesPage() {
+function InvoicesContent() {
   const [invoices, setInvoices] = useState<GatewayInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    api.invoices.list(API_KEY).then((data) => {
+    api.invoices.list().then((data) => {
       setInvoices(data.filter((i) => i.subscription_id === ""));
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -51,4 +50,8 @@ export default function InvoicesPage() {
       }} />
     </div>
   );
+}
+
+export default function InvoicesPage() {
+  return <Suspense fallback={<div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>}><InvoicesContent /></Suspense>;
 }

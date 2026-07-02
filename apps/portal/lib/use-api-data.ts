@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { isMockMode } from "./api-client";
 
 interface UseApiDataOptions<T> {
   fetcher: (apiKey: string) => Promise<T>;
@@ -27,10 +26,6 @@ export function useApiData<T>({
   const hasFetched = useRef(false);
 
   const doFetch = useCallback(async () => {
-    if (isMockMode()) {
-      setData(mockData);
-      return;
-    }
     if (!apiKey) { setData(mockData); return; }
 
     setIsLoading(true);
