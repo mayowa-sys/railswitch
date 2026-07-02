@@ -1,5 +1,6 @@
 export const PORTAL_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "http://localhost:3100";
+export const PORTAL_API_KEY = "sk_test_mer_HfDzRi_p6G___5GjJ2qsjwpi1eRVU0Hw-2GvTEc";
 
 export function getPortalToken(): string | null {
   if (typeof window === 'undefined') return null;

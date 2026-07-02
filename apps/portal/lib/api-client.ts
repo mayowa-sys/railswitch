@@ -1,3 +1,5 @@
+import { PORTAL_API_KEY } from "@/lib/config";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function getToken(): string | null {
@@ -5,15 +7,18 @@ function getToken(): string | null {
   return new URLSearchParams(window.location.search).get('token');
 }
 
-async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+function getAuthHeaders(): Record<string, string> {
   const token = getToken();
+  const headers: Record<string, string> = { Authorization: `Bearer ${PORTAL_API_KEY}` };
+  if (token) headers['x-portal-token'] = token;
+  return headers;
+}
+
+async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...getAuthHeaders(),
     ...(opts.headers as Record<string, string> || {}),
-  };
-  
-  if (token) {
-    headers["x-portal-token"] = token;
   }
   
   const res = await fetch(`${BASE_URL}${path}`, { ...opts, headers });
