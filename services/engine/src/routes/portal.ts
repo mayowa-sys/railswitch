@@ -40,7 +40,7 @@ portalRouter.post('/customers/:id/portal-link', async (req: Request, res: Respon
       .where(eq(CustomersTable.id, req.params.id))
       .limit(1);
 
-    if (!customer || customer.merchant_id !== (req as any).merchantId) {
+    if (!customer || customer.merchant_id !== (req as Request & { merchantId: string }).merchantId) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Customer not found' } });
       return;
     }
