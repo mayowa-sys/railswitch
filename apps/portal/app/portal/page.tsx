@@ -4,121 +4,100 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCards } from "@/components/portal/overview/kpi-cards";
 import { SubscriptionDetails } from "@/components/portal/overview/subscription-details";
-import { loadPortalState, PLANS, getServerPortalState } from "@/lib/mock-data";
-import { AlertOctagon, ArrowRight } from "lucide-react";
+import { api, type GatewaySubscription, type GatewayPlan, type GatewayInvoice, type GatewayPaymentMethod, type PortalCustomer } from "@/lib/api-client";
+import { resolveToken } from "@/lib/config";
+import { AlertOctagon, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function OverviewPage() {
-  const [state, setState] = useState(() => getServerPortalState());
+function OverviewPageContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
+  const [customer, setCustomer] = useState<PortalCustomer | null>(null);
+  const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
+  const [plans, setPlans] = useState<GatewayPlan[]>([]);
+  const [invoices, setInvoices] = useState<GatewayInvoice[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<GatewayPaymentMethod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Hydrate state from localStorage on mount
-    setState(loadPortalState());
+    if (!token) { setError('No portal token provided'); setLoading(false); return; }
+    
+    resolveToken(token).then(async (data) => {
+      if (!data) { setError('Invalid or expired portal link'); setLoading(false); return; }
+      setCustomer(data.customer as unknown as PortalCustomer);
+      
+      try {
+        const [subs, plansData, invData] = await Promise.all([
+          api.subscriptions.list(),
+          api.plans.list(),
+          api.invoices.list(),
+        ]);
+        
+        setPlans(plansData);
+        const custSubs = subs.filter(s => s.customer_id === (data.customer as any).id);
+        const custInvoices = invData.filter((i: any) => custSubs.some((s: any) => s.id === i.subscription_id));
+        setInvoices(custInvoices);
+        
+        if (custSubs.length > 0) {
+          setSubscription(custSubs[0]);
+        }
+        
+        try {
+          const pms = await api.paymentMethods.list((data.customer as any).id);
+          setPaymentMethods(pms);
+        } catch {}
+        
+        setLoading(false);
+      } catch { setLoading(false); }
+    }).catch(() => { setError('Failed to load portal'); setLoading(false); });
+  }, [token]);
 
-    const handleStorageChange = () => {
-      setState(loadPortalState());
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;
+  if (error) return <div className="py-12 text-center"><p className="text-sm text-zinc-500">{error}</p></div>;
 
-  const subscription = state?.subscription || getServerPortalState().subscription;
-  const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
-  const activePaymentMethod = (state?.paymentMethods || getServerPortalState().paymentMethods).find((pm) => pm.id === subscription.paymentMethodId) || (state?.paymentMethods || getServerPortalState().paymentMethods)[0];
-
-  // Calculate stats
-  const totalSpentKobo = state.invoices
-    .filter((inv) => inv.status === "paid")
-    .reduce((sum, inv) => sum + inv.amount, 0);
-
-  const activeServices = subscription.status === "cancelled" ? 0 : 1;
-
-  const defaultPaymentMethodName = activePaymentMethod.type === "card"
-    ? `${activePaymentMethod.brand} •••• ${activePaymentMethod.last4}`
-    : `${activePaymentMethod.bankName} Account •••• ${activePaymentMethod.last4}`;
+  const plan = plans.find(p => subscription && p.id === subscription.plan_id);
+  const planName = plan?.name || 'Unknown';
+  const planPrice = Number(plan?.amount || 0);
+  const status = subscription?.state || 'active';
+  const nextBilling = subscription ? new Date(subscription.current_period_end).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.amount), 0);
+  const defaultPM = paymentMethods.find(p => p.is_default) || paymentMethods[0];
+  const pmLabel = defaultPM ? `${defaultPM.brand || 'Card'} •••• ${defaultPM.last4}` : 'No payment method';
+  
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Portal Overview"
-        description="Manage your subscription, default payment cards, and review recent activity."
-      />
-
-      {/* Warning Banner if past_due */}
-      {subscription.status === "past_due" && (
-        <div className="p-4 rounded-xl border border-red-205 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/40 flex items-start gap-3">
-          <AlertOctagon className="size-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0 animate-pulse" />
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-red-800 dark:text-red-400 font-heading">Action Required: Subscription Past Due</h4>
-            <p className="text-xs text-red-700 dark:text-red-500/80 leading-relaxed font-semibold">
-              Your automatic card renewal failed. To prevent service disruption, please configure bank transfers on Wema Bank Account 9012345678 or update your card immediately in the Payment Methods tab.
-            </p>
-          </div>
+      <PageHeader title={`Welcome, ${customer?.name || 'Customer'}`} description="Manage your subscription, payment methods, and billing history." />
+      {status === "past_due" && (
+        <div className="p-4 rounded-xl border border-red-200 bg-red-50/50 flex items-start gap-3">
+          <AlertOctagon className="size-5 text-red-600 mt-0.5 shrink-0" />
+          <div><h4 className="text-sm font-bold text-red-800">Action Required: Subscription Past Due</h4><p className="text-xs text-red-700 mt-1">Your payment failed. Update your card or pay via bank transfer.</p></div>
         </div>
       )}
-
-      {/* KPI Cards Row */}
-      <KpiCards
-        totalSpentKobo={totalSpentKobo}
-        activeServices={activeServices}
-        subscriptionStatus={subscription.status}
-        defaultPaymentMethodName={defaultPaymentMethodName}
-      />
-
-      {/* Main Overview Grid */}
+      <KpiCards totalSpentKobo={totalPaid} activeServices={status === 'cancelled' ? 0 : 1} subscriptionStatus={status} defaultPaymentMethodName={pmLabel} />
       <div className="grid gap-6 md:grid-cols-2">
-
-        {/* Subscription Plan details */}
-        <SubscriptionDetails
-          subscriptionStatus={subscription.status}
-          currentPlan={currentPlan}
-          nextBillingDate={subscription.nextBillingDate}
-          paymentMethodName={defaultPaymentMethodName}
-        />
-
-        {/* Quick Self Service Portal Links */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#121215] p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Quick Actions</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Quick shortcuts for self-service flows.</p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Link
-                href="/portal/subscriptions"
-                className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 text-left transition-all"
-              >
-                <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Change Plan</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Upgrade or downgrade your current tier</p>
-              </Link>
-
-              <Link
-                href="/portal/payment-methods"
-                className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 text-left transition-all"
-              >
-                <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Update Card</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Manage tokenized card payment rails</p>
-              </Link>
-
-              <Link
-                href="/portal/invoices"
-                className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 text-left transition-all"
-              >
-                <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Billing Statements</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Download receipts and view logs</p>
-              </Link>
-
-              <Link
-                href="/portal/settings"
-                className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 text-left transition-all"
-              >
-                <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Pause / Cancel</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Temporarily pause or cancel billing</p>
-              </Link>
-            </div>
+        <SubscriptionDetails subscriptionStatus={status} currentPlan={{ id: plan?.id || "", name: planName, price: planPrice, interval: plan?.interval === 'annual' ? 'annually' : 'monthly', description: plan?.description || '' }} nextBillingDate={nextBilling} paymentMethodName={pmLabel} />
+        <div className="rounded-xl border bg-white dark:bg-[#121215] p-6 shadow-sm">
+          <h3 className="text-base font-semibold">Quick Actions</h3>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Link href={`/portal/subscriptions?token=${token}`} className="p-3.5 rounded-xl border hover:bg-zinc-50"><p className="text-xs font-bold">Change Plan</p></Link>
+            <Link href={`/portal/payment-methods?token=${token}`} className="p-3.5 rounded-xl border hover:bg-zinc-50"><p className="text-xs font-bold">Update Card</p></Link>
+            <Link href={`/portal/invoices?token=${token}`} className="p-3.5 rounded-xl border hover:bg-zinc-50"><p className="text-xs font-bold">Billing History</p></Link>
+            <Link href={`/portal/settings?token=${token}`} className="p-3.5 rounded-xl border hover:bg-zinc-50"><p className="text-xs font-bold">Pause / Cancel</p></Link>
           </div>
         </div>
-
       </div>
     </div>
+  );
+}
+
+export default function OverviewPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>}>
+      <OverviewPageContent />
+    </Suspense>
   );
 }

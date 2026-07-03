@@ -1,97 +1,92 @@
 "use client";
 
-import { Activity, TrendingDown, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Activity, TrendingDown, Zap, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatsCard } from "@/components/dashboard/overview/stats-card";
 import { RevenueChart } from "@/components/dashboard/overview/revenue-chart";
 import { FailedPaymentsTable } from "@/components/dashboard/overview/failed-payments-table";
 import { WebhookFeed } from "@/components/dashboard/overview/webhook-feed";
-import { formatNaira, OVERVIEW_STATS } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api-client";
 
 const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
-  emerald: {
-    bg: "bg-emerald-50 dark:bg-emerald-950/40",
-    icon: "text-emerald-600 dark:text-emerald-400",
-  },
-  violet: {
-    bg: "bg-violet-50 dark:bg-violet-950/40",
-    icon: "text-violet-600 dark:text-violet-400",
-  },
-  red: {
-    bg: "bg-red-50 dark:bg-red-950/40",
-    icon: "text-red-600 dark:text-red-400",
-  },
+  emerald: { bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
+  violet: { bg: "bg-violet-50 dark:bg-violet-950/40", icon: "text-violet-600 dark:text-violet-400" },
+  red: { bg: "bg-red-50 dark:bg-red-950/40", icon: "text-red-600 dark:text-red-400" },
 };
 
 export default function OverviewPage() {
-  const { mrr, arr, activeSubscribers, churnRate, recoveryRate } =
-    OVERVIEW_STATS;
+  const { user } = useAuth();
+  const [mrr, setMrr] = useState(0);
+  const [arr, setArr] = useState(0);
+  const [activeSubscribers, setActiveSubscribers] = useState(0);
+  const [churnRate, setChurnRate] = useState("—");
+  const [recoveryRate, setRecoveryRate] = useState("—");
+  const [fetching, setFetching] = useState(true);
+
+  const [subscriptionBars, setSubscriptionBars] = useState<{name: string; amount: number}[]>([]);
+
+  useEffect(() => {
+    const key = user?.apiKey ?? "";
+    if (!key) { setFetching(false); return; }
+    setFetching(true);
+    Promise.all([api.subscriptions.list(key), api.plans.list(key), api.invoices.list(key)]).then(([subs, plans, invoices]) => {
+        const planMap = new Map(plans.map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
+        const allSubs = subs.map((s) => {
+          const plan = planMap.get(s.plan_id);
+          return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
+        }) as { name: string; amount: number; status: string }[];
+        const active = allSubs.filter((s) => s.status === "active" || s.status === "charging");
+        const cancelled = allSubs.filter((s) => s.status === "cancelled");
+        const m = active.reduce((sum, s) => sum + s.amount, 0);
+        const grouped: Record<string, number> = {};
+        for (const s of active) { grouped[s.name] = (grouped[s.name] || 0) + s.amount; }
+        const bars = Object.entries(grouped).map(([name, amount]) => ({ name, amount: amount / 100 }));
+        setMrr(m / 100);
+        setArr((m * 12) / 100);
+        setActiveSubscribers(active.length);
+        setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
+      
+      // Compute recovery rate from invoices in terminal states
+      const recoveredInvs = invoices.filter((i) => i.status === "paid" || i.status === "recovered");
+      const terminalFailedInvs = invoices.filter((i) => i.status === "uncollectible");
+      const terminalTotal = recoveredInvs.length + terminalFailedInvs.length;
+      if (terminalTotal > 0) {
+        setRecoveryRate(`${((recoveredInvs.length / terminalTotal) * 100).toFixed(1)}%`);
+      } else if (recoveredInvs.length > 0) {
+        setRecoveryRate("100.0%");
+      }
+        setSubscriptionBars(bars);
+        setFetching(false);
+      }).catch((e) => { console.error("overview fetch error:", e); setFetching(false); });
+  }, [user?.apiKey]);
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Dashboard Overview"
-        description="Monitor recurring revenue, recovery rates, and subscription health."
-      />
+      <PageHeader title="Dashboard Overview" description="Monitor recurring revenue, recovery rates, and subscription health." />
 
-      {/* KPI row — MRR hero + 3 stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {/* MRR hero card */}
         <div className="lg:col-span-2 relative overflow-hidden rounded-xl border border-indigo-200/70 dark:border-indigo-800/50 bg-gradient-to-br from-indigo-600 to-violet-600 p-6 shadow-lg shadow-indigo-500/20">
-          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
-            Monthly Recurring Revenue
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200">Monthly Recurring Revenue</p>
           <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-white">
-            {formatNaira(mrr)}
+            {fetching ? <Loader2 className="size-6 animate-spin inline" /> : `₦${mrr.toLocaleString()}`}
           </h2>
-          <p className="mt-1 text-sm text-indigo-200">
-            ARR:{" "}
-            <span className="font-bold text-white">{formatNaira(arr)}</span>
-          </p>
-          {/* decorative blobs */}
+          <p className="mt-1 text-sm text-indigo-200">ARR: <span className="font-bold text-white">₦{arr.toLocaleString()}</span></p>
           <div className="absolute -right-6 -top-6 size-32 rounded-full bg-white/5" />
           <div className="absolute -right-2 bottom-4 size-20 rounded-full bg-white/5" />
         </div>
 
-        <StatsCard
-          label="Active Subscribers"
-          value={activeSubscribers.toLocaleString()}
-          change="+18.1%"
-          trend="up"
-          icon={Zap}
-          colorConfig={STATS_COLOR_MAP.emerald}
-        />
-        <StatsCard
-          label="Recovery Rate"
-          value={`${recoveryRate}%`}
-          change="+5.2%"
-          trend="up"
-          icon={Activity}
-          colorConfig={STATS_COLOR_MAP.violet}
-          subLabel="Cards recovered / cards failed"
-        />
-        <StatsCard
-          label="Churn Rate"
-          value={`${churnRate}%`}
-          change="-0.4%"
-          trend="down"
-          icon={TrendingDown}
-          colorConfig={STATS_COLOR_MAP.red}
-          subLabel="Monthly subscriber churn"
-        />
+        <StatsCard label="Active Subscribers" value={fetching ? "..." : activeSubscribers.toLocaleString()} change="+18.1%" trend="up" icon={Zap} colorConfig={STATS_COLOR_MAP.emerald} />
+        <StatsCard label="Recovery Rate" value={recoveryRate} change="industry avg" trend="up" icon={Activity} colorConfig={STATS_COLOR_MAP.violet} subLabel="Cards recovered / cards failed" />
+        <StatsCard label="Churn Rate" value={churnRate} change="" trend="down" icon={TrendingDown} colorConfig={STATS_COLOR_MAP.red} subLabel="Monthly subscriber churn" />
       </div>
 
-      {/* Chart + Webhooks side by side */}
       <div className="grid gap-6 lg:grid-cols-7">
-        <div className="lg:col-span-4">
-          <RevenueChart />
-        </div>
-        <div className="lg:col-span-3">
-          <WebhookFeed />
-        </div>
+        <div className="lg:col-span-4">          <RevenueChart subscriptions={subscriptionBars} totalMrr={mrr} /></div>
+        <div className="lg:col-span-3"><WebhookFeed /></div>
       </div>
 
-      {/* Failed payment queue */}
       <FailedPaymentsTable />
     </div>
   );

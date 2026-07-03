@@ -6,6 +6,7 @@ import {
   getSubscriptionsByCustomer,
   PLANS,
   formatNaira,
+  type Customer,
   type Subscription,
 } from "@/lib/mock-data";
 import { CustomerStatsRow } from "@/components/dashboard/customers/customer-stats-row";
@@ -81,11 +82,17 @@ const subColumns: Column<Subscription>[] = [
 
 interface CustomerDetailProps {
   customerId: string;
+  customer?: Customer;
+  subscriptions?: Subscription[];
 }
 
-export function CustomerDetail({ customerId }: CustomerDetailProps) {
-  const customer = getCustomerById(customerId);
-  const subscriptions = getSubscriptionsByCustomer(customerId);
+export function CustomerDetail({
+  customerId,
+  customer: providedCustomer,
+  subscriptions: providedSubscriptions,
+}: CustomerDetailProps) {
+  const customer = providedCustomer ?? getCustomerById(customerId);
+  const subscriptions = providedSubscriptions ?? getSubscriptionsByCustomer(customerId);
 
   if (!customer) return null;
 

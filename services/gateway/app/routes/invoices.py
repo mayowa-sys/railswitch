@@ -7,13 +7,21 @@ from app.engine_client import (
 from app.envelope import Envelope
 
 router = APIRouter(prefix="/v1/invoices", tags=["invoices"])
+@router.post("")
+async def create_invoice(
+    payload: dict,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.create_invoice(payload)
+    return Envelope(data=result)
+
 
 
 @router.get("")
 async def list_invoices(
     starting_after: str | None = Query(default=None),
     ending_before: str | None = Query(default=None),
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=500, ge=1, le=1000),
     engine: EngineClient = Depends(get_engine_client),
 ) -> Envelope:
     invoices, has_more = await engine.list_invoices(

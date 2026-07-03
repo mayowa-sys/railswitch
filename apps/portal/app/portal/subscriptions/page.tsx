@@ -5,11 +5,13 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PlanComparison } from "@/components/portal/subscriptions/plan-comparison";
 import { ChangePlanModal } from "@/components/portal/subscriptions/change-plan-modal";
-import { loadPortalState, savePortalState, formatNaira, PLANS, type Invoice, getServerPortalState } from "@/lib/mock-data";
-import { CreditCard, Zap, Calendar } from "lucide-react";
+import { api, type GatewaySubscription, type GatewayPlan } from "@/lib/api-client";
+import { CreditCard, Zap, Loader2 } from "lucide-react";
 
 export default function SubscriptionsPage() {
-  const [state, setState] = useState(() => getServerPortalState());
+  const [subscription, setSubscription] = useState<GatewaySubscription | null>(null);
+  const [plans, setPlans] = useState<GatewayPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -17,195 +19,73 @@ export default function SubscriptionsPage() {
   const [applying, setApplying] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    // Hydrate state from localStorage on mount
-    setState(loadPortalState());
-
-    const handleStorageChange = () => {
-      setState(loadPortalState());
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  const subscription = state?.subscription || getServerPortalState().subscription;
-  const currentPlan = PLANS.find((p) => p.id === subscription.planId) || PLANS[0];
-  const defaultCard = (state?.paymentMethods || getServerPortalState().paymentMethods).find((pm) => pm.id === subscription.paymentMethodId) || (state?.paymentMethods || getServerPortalState().paymentMethods)[0];
-
-  const handleOpenPlanModal = () => {
-    setSelectedPlanId(currentPlan.id);
-    setPreviewData(null);
-    setSuccess(false);
-    setModalOpen(true);
+  const fetchData = () => {
+    Promise.all([api.subscriptions.list(), api.plans.list()])
+      .then(([subs, plansData]) => { const s = Array.isArray(subs) ? (subs.length > 0 ? subs[0] : null) : subs; setSubscription(s); setPlans(plansData.filter(p => p.is_active)); setLoading(false); })
+      .catch(() => setLoading(false));
   };
 
-  // Run live proration preview calculation (mocking the gateway endpoint)
-  const calculateProrationPreview = (newPlanId: string) => {
-    if (newPlanId === currentPlan.id) {
-      setPreviewData(null);
-      return;
-    }
+  useEffect(() => { fetchData(); }, []);
 
-    setPreviewLoading(true);
+  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;
+  if (!subscription) return <div className="py-12 text-center"><p className="text-sm text-zinc-500">No subscription found</p></div>;
 
-    // Simulate gateway request latency
-    setTimeout(() => {
-      const newPlan = PLANS.find((p) => p.id === newPlanId);
-      if (!newPlan) return;
+  const plan = plans.find((p) => p.id === subscription.plan_id);
+  const currentPlan = { id: plan?.id ?? "", name: plan?.name ?? "Unknown", description: plan?.description ?? "", price: Number(plan?.amount ?? 0), interval: (plan?.interval === "annual" ? "annually" : "monthly") as "monthly" | "annually" };
+  const nextBilling = new Date(subscription.current_period_end).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
+  const formatNaira = (kobo: number) => `₦${(kobo / 100).toLocaleString()}`;
 
-      const periodStart = new Date("2026-06-15T00:00:00");
-      const periodEnd = new Date("2026-07-15T00:00:00");
-      const today = new Date("2026-06-25T00:00:00");
+  const handleOpenPlanModal = () => { setSelectedPlanId(currentPlan.id); setPreviewData(null); setSuccess(false); setModalOpen(true); };
 
-      const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / 86_400_000);
-      const remainingDays = Math.max(0, Math.ceil((periodEnd.getTime() - today.getTime()) / 86_400_000));
-
-      const creditAmount = (currentPlan.price / totalDays) * remainingDays;
-      const chargeAmount = (newPlan.price / totalDays) * remainingDays;
-      const netAmount = chargeAmount - creditAmount;
-
-      setPreviewData({
-        currentPlanName: currentPlan.name,
-        newPlanName: newPlan.name,
-        totalDays,
-        remainingDays,
-        credit: Math.round(creditAmount),
-        charge: Math.round(chargeAmount),
-        net: Math.round(netAmount),
-        billingDate: subscription.nextBillingDate
-      });
-      setPreviewLoading(false);
-    }, 500);
-  };
-
-  const handleSelectPlan = (planId: string) => {
+  const handleSelectPlan = async (planId: string) => {
     setSelectedPlanId(planId);
-    calculateProrationPreview(planId);
+    if (planId === currentPlan.id) { setPreviewData(null); return; }
+    setPreviewLoading(true);
+    try {
+      if (!subscription) return;
+      const result = await api.subscriptions.preview(subscription.id, planId);
+      setPreviewData({ ...result, currentPlanName: currentPlan.name, newPlanName: plans.find(p => p.id === planId)?.name ?? "" });
+    } catch { setPreviewData(null); }
+    setPreviewLoading(false);
   };
 
-  const handleConfirmPlanChange = () => {
+  const handleConfirmPlanChange = async () => {
     if (!selectedPlanId || selectedPlanId === currentPlan.id) return;
     setApplying(true);
-
-    setTimeout(() => {
-      const newPlan = PLANS.find((p) => p.id === selectedPlanId);
-      if (!newPlan) return;
-
-      // 1. Update subscription plan
-      const updatedSub = {
-        ...subscription,
-        planId: selectedPlanId,
-      };
-
-      // 2. Add new prorated invoice to history
-      const newInvoice: Invoice = {
-        id: `INV-2026-00${state.invoices.length + 1}`,
-        planName: `Prorated Upgrade: ${currentPlan.name} ➔ ${newPlan.name}`,
-        amount: previewData ? Math.max(0, previewData.net) : 0,
-        status: "paid",
-        date: "June 25, 2026",
-        method: `${defaultCard.brand || "Card"} (•••• ${defaultCard.last4})`,
-      };
-
-      const updatedInvoices = [newInvoice, ...state.invoices];
-
-      savePortalState({
-        subscription: updatedSub,
-        invoices: updatedInvoices
-      });
-
-      setState((s) => ({
-        ...s,
-        subscription: updatedSub,
-        invoices: updatedInvoices
-      }));
-
-      setApplying(false);
+    try {
+      if (!subscription) return; await api.subscriptions.changePlan(subscription.id, selectedPlanId);
       setSuccess(true);
-
-      setTimeout(() => {
-        setModalOpen(false);
-      }, 1000);
-    }, 800);
+      fetchData();
+    } catch {}
+    setApplying(false);
+    setTimeout(() => setModalOpen(false), 1000);
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Subscription Configuration"
-        description="Review your service plan features, renewal frequency, and change billing tiers."
-      />
-
-      {/* Subscription Card */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-100 dark:border-zinc-800/60">
+      <PageHeader title="Subscription" description="Review your plan and change billing tiers." />
+      <div className="rounded-xl border bg-white dark:bg-[#121215] p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <Zap className="size-5" />
-            </div>
+            <div className="size-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"><Zap className="size-5" /></div>
             <div>
-              <h3 className="font-semibold text-sm text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Current Service Plan</h3>
-              <p className="text-xl font-extrabold text-zinc-900 dark:text-white mt-0.5">{currentPlan.name}</p>
+              <h3 className="font-semibold text-sm text-zinc-500 uppercase">Current Plan</h3>
+              <p className="text-xl font-extrabold mt-0.5">{currentPlan.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <StatusBadge status={subscription.status} />
-            {subscription.status !== "cancelled" && (
-              <button
-                onClick={handleOpenPlanModal}
-                className="h-8 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors shadow-sm"
-              >
-                Change Plan
-              </button>
-            )}
+            <StatusBadge status={subscription.state as any} />
+            {subscription.state !== "cancelled" && <button onClick={handleOpenPlanModal} className="h-8 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Change Plan</button>}
           </div>
         </div>
-
         <div className="grid gap-6 sm:grid-cols-3 mt-6 text-xs">
-          <div>
-            <p className="font-semibold text-zinc-400 dark:text-zinc-500">Plan Description</p>
-            <p className="text-zinc-900 dark:text-zinc-200 mt-1 font-medium leading-relaxed">
-              {currentPlan.description}
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-zinc-400 dark:text-zinc-500">Pricing & Billing Date</p>
-            <p className="text-zinc-900 dark:text-zinc-200 mt-1 font-bold">
-              {formatNaira(currentPlan.price)} / month
-            </p>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 font-semibold">
-              Next billing: {subscription.nextBillingDate}
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-zinc-400 dark:text-zinc-500">Payment Rail</p>
-            <p className="text-zinc-900 dark:text-zinc-200 mt-1 font-bold flex items-center gap-1.5">
-              <CreditCard className="size-3.5 text-zinc-400" />
-              {defaultCard.type === "card" ? `${defaultCard.brand} •••• ${defaultCard.last4}` : `${defaultCard.bankName} •••• ${defaultCard.last4}`}
-            </p>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 font-semibold">
-              {subscription.status === "active" ? "Auto-charge is active" : "Auto-billing disabled"}
-            </p>
-          </div>
+          <div><p className="font-semibold text-zinc-400">Description</p><p className="mt-1 font-medium">{currentPlan.description}</p></div>
+          <div><p className="font-semibold text-zinc-400">Pricing</p><p className="mt-1 font-bold">{formatNaira(currentPlan.price)} / month</p><p className="text-zinc-500 mt-0.5">Next: {nextBilling}</p></div>
+          <div><p className="font-semibold text-zinc-400">Status</p><p className="mt-1 font-bold flex items-center gap-1.5"><CreditCard className="size-3.5 text-zinc-400" />{subscription.state === "active" ? "Auto-charge active" : "Auto-billing disabled"}</p></div>
         </div>
       </div>
-
-      {/* Available Plans Comparison Widget */}
       <PlanComparison currentPlan={currentPlan} />
-
-      {/* Plan Change Modal */}
-      <ChangePlanModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        currentPlan={currentPlan}
-        selectedPlanId={selectedPlanId}
-        onSelectPlan={handleSelectPlan}
-        previewLoading={previewLoading}
-        previewData={previewData}
-        applying={applying}
-        success={success}
-        onConfirm={handleConfirmPlanChange}
-      />
+      <ChangePlanModal open={modalOpen} onOpenChange={setModalOpen} currentPlan={currentPlan} selectedPlanId={selectedPlanId} onSelectPlan={handleSelectPlan} previewLoading={previewLoading} previewData={previewData} applying={applying} success={success} onConfirm={handleConfirmPlanChange} />
     </div>
   );
 }

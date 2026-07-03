@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { createStatusHandler } from './status/route.js';
 import { probePostgres, probeRedis } from './status/probes.js';
 import { requireInternalAuth } from './middleware/auth.js';
 import { extractMerchantId } from './middleware/merchant.js';
+import { setRLSContext } from './middleware/rls.js';
 import { requestId } from './middleware/request-id.js';
 import { plansRouter } from './routes/plans.js';
 import { customersRouter } from './routes/customers.js';
@@ -15,7 +16,11 @@ import { paymentMethodsRouter } from './routes/payment_methods.js';
 import { debugRouter } from './routes/debug.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { authRouter } from './routes/auth.js';
+import { auditRouter } from './routes/audit.js';
 import { webhookManagementRouter } from './routes/webhook_management.js';
+import { cleanupRouter } from './routes/cleanup.js';
+import { portalRouter } from './routes/portal.js';
+import { merchantActionsRouter } from './routes/merchant-actions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -23,7 +28,6 @@ const pkg = JSON.parse(
 ) as { version: string };
 
 export const app = express();
-
 app.use(express.json());
 app.use(requestId);
 
@@ -46,17 +50,27 @@ app.get(
 app.use('/debug', debugRouter);
 
 // Internal API — gateway-only, protected by shared secret + merchant scoping.
-app.use('/internal/v1/plans', requireInternalAuth, extractMerchantId, plansRouter);
-app.use('/internal/v1/customers', requireInternalAuth, extractMerchantId, customersRouter);
-app.use('/internal/v1/subscriptions', requireInternalAuth, extractMerchantId, subscriptionsRouter);
-app.use('/internal/v1/invoices', requireInternalAuth, extractMerchantId, invoicesRouter);
-app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, paymentMethodsRouter);
+app.use('/internal/v1/plans', requireInternalAuth, extractMerchantId, setRLSContext, plansRouter);
+app.use('/internal/v1/customers', requireInternalAuth, extractMerchantId, setRLSContext, customersRouter);
+app.use('/internal/v1/subscriptions', requireInternalAuth, extractMerchantId, setRLSContext, subscriptionsRouter);
+app.use('/internal/v1/invoices', requireInternalAuth, extractMerchantId, setRLSContext, invoicesRouter);
+app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, setRLSContext, paymentMethodsRouter);
 
 // Internal webhook ingress — auth only, no merchant scoping (engine handler resolves merchant from Nomba payload).
 app.use('/internal/v1/webhooks', requireInternalAuth, webhooksRouter);
 
 // Auth — internal auth only, no merchant scoping (login/register create/verify merchants).
 app.use('/internal/v1/auth', requireInternalAuth, authRouter);
+app.use('/internal/v1/audit-logs', requireInternalAuth, extractMerchantId, setRLSContext, auditRouter);
 
 // Webhook management — gateway-only, CRUD + delivery logs.
-app.use('/internal/v1/webhooks/management', requireInternalAuth, extractMerchantId, webhookManagementRouter);
+app.use('/internal/v1/webhooks/management', requireInternalAuth, extractMerchantId, setRLSContext, webhookManagementRouter);
+app.use('/internal/v1/cleanup', requireInternalAuth, extractMerchantId, setRLSContext, cleanupRouter);
+app.use('/internal/v1/portal', requireInternalAuth, extractMerchantId, portalRouter);
+app.use('/internal/v1/actions', requireInternalAuth, extractMerchantId, setRLSContext, merchantActionsRouter);
+
+// Global Express error handler — catches unhandled errors and returns JSON.
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[unhandled-error]', err);
+  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+});

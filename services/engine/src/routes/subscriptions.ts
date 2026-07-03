@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
+import { InvoicesTable } from '../schema/invoices.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
@@ -86,6 +87,22 @@ subscriptionsRouter.post('/', async (req: Request, res: Response) => {
       next_billing_at: periodEnd,
     }).returning();
 
+    // Create initial invoice — customer is charged immediately at signup
+    try {
+      await db.insert(InvoicesTable).values({
+        subscription_id: subscription.id,
+        merchant_id: req.merchantId,
+        amount: String(plan.amount),
+        currency: 'NGN',
+        status: 'paid',
+        description: plan.name + ' - First Month',
+        due_date: new Date(),
+        paid_at: new Date(),
+      });
+    } catch (invErr) {
+      console.error('[subscriptions] invoice creation error:', invErr);
+    }
+
     res.status(201).json(subscription);
   } catch (err) {
     console.error('[subscriptions] create error:', err);
@@ -100,7 +117,48 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
       .from(SubscriptionsTable)
       .where(eq(SubscriptionsTable.merchant_id, req.merchantId));
 
-    res.json({ data: subscriptions, total: subscriptions.length });
+    // For cascade-state subs, fetch charge attempt history
+    const cascadeStates = ['retrying', 'va_fallback', 'whatsapp_fallback', 'past_due'];
+    const cascadeSubs = subscriptions.filter(s => cascadeStates.includes(s.state));
+
+    const cascadeHistoryMap: Record<string, Array<{step: string; status: string; attempted_at: string}>> = {};
+
+    if (cascadeSubs.length > 0) {
+      const invoiceIds = cascadeSubs
+        .filter(s => s.current_invoice_id)
+        .map(s => s.current_invoice_id!);
+
+      if (invoiceIds.length > 0) {
+        const result = await db.execute(
+          sql`SELECT * FROM charge_attempts WHERE invoice_id IN (${sql.join(invoiceIds.map(id => sql`${id}`), sql`, `)}) AND merchant_id = ${req.merchantId} ORDER BY attempted_at ASC`,
+        );
+        const rows = (result as any).rows ?? [];
+        for (const attempt of rows) {
+          const subId = cascadeSubs.find(s => s.current_invoice_id === attempt.invoice_id)?.id;
+          if (subId) {
+            if (!cascadeHistoryMap[subId]) cascadeHistoryMap[subId] = [];
+            const step = attempt.reason?.includes('virtual account') ? 'virtual_account'
+              : attempt.reason?.includes('ussd') ? 'ussd'
+              : attempt.reason?.includes('whatsapp') ? 'whatsapp'
+              : attempt.reason?.includes('Card declined') ? 'card_retry'
+              : attempt.reason?.includes('Card retry') ? 'card_retry'
+              : 'card';
+            cascadeHistoryMap[subId].push({
+              step,
+              status: attempt.status === 'failed' ? 'failed' : 'success',
+              attempted_at: attempt.attempted_at?.toISOString?.() ?? String(attempt.attempted_at),
+            });
+          }
+        }
+      }
+    }
+
+    const enriched = subscriptions.map(s => ({
+      ...s,
+      cascade_history: cascadeHistoryMap[s.id] ?? [],
+    }));
+
+    res.json({ data: enriched, total: enriched.length });
   } catch (err) {
     console.error('[subscriptions] list error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to list subscriptions' } });
@@ -109,16 +167,19 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
 
 subscriptionsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [subscription] = await db
-      .select()
-      .from(SubscriptionsTable)
-      .where(
-        and(
-          eq(SubscriptionsTable.id, req.params.id),
-          eq(SubscriptionsTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const [subscription] = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
+      return tx
+        .select()
+        .from(SubscriptionsTable)
+        .where(
+          and(
+            eq(SubscriptionsTable.id, req.params.id),
+            eq(SubscriptionsTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
+    });
 
     if (!subscription) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Subscription not found' } });

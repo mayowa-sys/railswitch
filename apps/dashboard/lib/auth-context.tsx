@@ -28,6 +28,10 @@ interface AuthContextValue extends AuthState {
 const STORAGE_KEY = "railswitch_auth";
 const MOCK_API_KEY = "sk_test_mockmerchanta";
 
+// Demo API key for demo@railswitch.dev auto-login
+// Override via NEXT_PUBLIC_DEMO_API_KEY env var
+const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
+
 function loadUserFromStorage(): AuthUser | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -66,6 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         persist(mockUser);
         return mockUser;
+      }
+
+      // Demo account: use hardcoded real API key so dashboard shows live data
+      if (email === "demo@railswitch.dev" && password === "demo123456") {
+        const demoUser: AuthUser = {
+          id: "mer_HfDzRi_p6G",
+          name: "FitCore Nigeria",
+          email: "demo@railswitch.dev",
+          company: "FitCore Nigeria",
+          apiKey: DEMO_API_KEY,
+        };
+        persist(demoUser);
+        return demoUser;
       }
 
       const data = await api.auth.login(email, password);

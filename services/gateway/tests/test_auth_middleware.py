@@ -7,7 +7,7 @@ client = TestClient(app)
 
 def test_auth_middleware_ok():
     response = client.get(
-        "/v1/whoami", headers={"Authorization": "Bearer sk_test_mockmerchanta"}
+        "/v1/whoami", headers={"Authorization": "Bearer sk_test_merchant_a__validkey12345"}
     )
     assert response.status_code == 200
     assert response.json() == {"merchant": "merchant_a", "mode": "test"}

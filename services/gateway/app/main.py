@@ -12,6 +12,9 @@ from app.routes.webhooks import router as webhooks_router
 from app.envelope import register_envelope_handlers
 
 from app.routes import (
+    audit,
+    cleanup,
+    portal,
     plans,
     customers,
     invoices,
@@ -41,6 +44,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3100",
+        "http://localhost:3200",
+        "https://railswitch-dashboard.fly.dev",
+        "https://railswitch-portal.fly.dev",
+        "https://railswitch-storefront.fly.dev",
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
@@ -74,4 +81,7 @@ app.include_router(customers.router)
 app.include_router(subscriptions.router)
 app.include_router(invoices.router)
 app.include_router(webhook_management.router)
+app.include_router(audit.router)
+app.include_router(cleanup.router)
+app.include_router(portal.router)
 app.include_router(payment_methods.router)

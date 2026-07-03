@@ -61,6 +61,8 @@ services:
       ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
       INTERNAL_AUTH_SECRET: dev-internal-secret-change-me
       NOMBA_WEBHOOK_SECRET: change-me-in-production
+      PORTAL_SECRET: railswitch-portal-secret-dev
+      RAILSWITCH_USE_MOCK_KEYS: "true"
       DATABASE_URL: postgresql://railswitch:railswitch_dev@postgres:5432/railswitch
     depends_on:
       - engine

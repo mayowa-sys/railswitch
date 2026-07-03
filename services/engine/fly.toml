@@ -1,23 +1,16 @@
-app = 'railswitch-engine'
-primary_region = 'lhr'
+app = "railswitch-engine"
+primary_region = "lhr"
 
 [build]
 
-[experimental]
-  auto_rollback = true
-
-[[services]]
+[http_service]
   internal_port = 3001
-  protocol = 'tcp'
-  auto_stop_machines = 'off'
+  force_https = true
+  auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 1
-
-  [[services.ports]]
-    port = 3001
-    handlers = []
+  min_machines_running = 0
 
 [[vm]]
-  memory = '256mb'
-  cpu_kind = 'shared'
+  memory = "256mb"
+  cpu_kind = "shared"
   cpus = 1

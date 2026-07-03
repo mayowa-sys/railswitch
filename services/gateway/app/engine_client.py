@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 
 from fastapi import Request, Depends, Header
@@ -23,7 +23,15 @@ class CreateSubscriptionRequest(BaseModel):
     metadata: dict[str, Any] = {}
 
 
+class CascadeAttempt(BaseModel):
+    step: str
+    status: str
+    attempted_at: str | None = None
+
+
 class SubscriptionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     id: str
     merchant_id: str
     customer_id: str
@@ -36,6 +44,7 @@ class SubscriptionResponse(BaseModel):
     metadata: dict[str, Any] = {}
     created_at: datetime
     updated_at: datetime
+    cascade_history: list[CascadeAttempt] = []
 
 
 class UpdateSubscriptionRequest(BaseModel):
@@ -49,7 +58,7 @@ class UpdateSubscriptionRequest(BaseModel):
 
 class CreatePlanRequest(BaseModel):
     name: str
-    description: str
+    description: str | None = None
     amount: Decimal
     currency: str
     interval: str  # "monthly" | "annual" | "custom"
@@ -71,7 +80,7 @@ class Plan(BaseModel):
     id: str
     merchant_id: str
     name: str
-    description: str
+    description: str | None = None
     amount: Decimal
     currency: str
     interval: str
@@ -93,7 +102,7 @@ class CreateInvoice(BaseModel):
     subscription_id: str
     amount: Decimal
     currency: str
-    description: str
+    description: str | None = None
     due_date: datetime
     metadata: dict[str, Any] | None = None
 
@@ -105,7 +114,7 @@ class Invoice(BaseModel):
     amount: Decimal
     currency: str
     status: str
-    description: str
+    description: str | None = None
     due_date: datetime
     metadata: dict[str, Any]
     created_at: datetime
@@ -260,6 +269,20 @@ class EngineClient:
             "POST", f"/internal/v1/subscriptions/{sub_id}/preview", json=body
         )
 
+    # ── Merchant Actions ──
+
+    async def get_subscription_detail(self, sub_id: str) -> dict:
+        return await self._request("GET", f"/internal/v1/actions/{sub_id}")
+
+    async def mark_subscription_recovered(self, sub_id: str, reason: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/mark-recovered", json={"reason": reason})
+
+    async def send_subscription_reminder(self, sub_id: str, channel: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/send-reminder", json={"channel": channel})
+
+    async def override_subscription_state(self, sub_id: str, state: str, reason: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/override-state", json={"state": state, "reason": reason})
+
     async def update_subscription(
         self, sub_id: str, payload: UpdateSubscriptionRequest
     ) -> SubscriptionResponse:
@@ -297,7 +320,7 @@ class EngineClient:
         body = await self._request(
             "PATCH",
             f"/internal/v1/plans/{plan_id}",
-            json=payload.model_dump(exclude_none=True),
+            json=payload.model_dump(exclude_none=True, mode='json'),
         )
         return Plan.model_validate(body)
 
@@ -321,6 +344,10 @@ class EngineClient:
         return body.get("data", body)
 
     # =========== INVOICES ==================
+
+    
+    async def create_invoice(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/invoices", json=payload)
 
     async def list_invoices(
         self, starting_after: str | None, ending_before: str | None, limit: int
@@ -427,6 +454,28 @@ class EngineClient:
             "POST", f"/internal/v1/webhooks/management/deliveries/{delivery_id}/replay"
         )
 
+    # =========== AUDIT LOGS ===================
+
+    async def list_audit_logs(self, limit: int = 100) -> list:
+        body = await self._request("GET", "/internal/v1/audit-logs", params={"limit": limit})
+        return body.get("data", body)
+
+    async def get_subscription_audit_logs(self, subscription_id: str) -> list:
+        body = await self._request("GET", f"/internal/v1/audit-logs/subscription/{subscription_id}")
+        return body.get("data", body)
+
+    # =========== CLEANUP ===================
+
+    async def cleanup_playground(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/cleanup/playground", json=payload)
+
+    # =========== PORTAL ===================
+    async def create_portal_link(self, customer_id: str) -> dict:
+        return await self._request("POST", f"/internal/v1/portal/customers/{customer_id}/portal-link")
+
+    async def resolve_portal_token(self, token: str) -> dict:
+        return await self._request("GET", f"/internal/v1/portal/resolve?token={token}")
+
 
 async def get_engine_client(
     request: Request,
@@ -446,3 +495,4 @@ async def get_engine_client_no_auth(request: Request) -> EngineClient:
         merchant_id="",
         idempotency_key=None,
     )
+

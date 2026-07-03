@@ -8,9 +8,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
+  formatNaira,
   CUSTOMERS,
   PLANS,
-  formatNaira,
   type Subscription,
   type CascadeAttempt,
 } from "@/lib/mock-data";

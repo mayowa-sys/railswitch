@@ -10,6 +10,12 @@ declare global {
 }
 
 export function extractMerchantId(req: Request, res: Response, next: NextFunction): void {
+  // Portal resolve is token-based — merchant ID is extracted from the signed token
+  if (req.path === '/resolve' && (req.method === 'GET' || req.method === 'HEAD')) {
+    next();
+    return;
+  }
+
   const merchantId = req.headers['x-merchant-id'] as string | undefined;
 
   if (!merchantId) {

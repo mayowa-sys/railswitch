@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
 import { ChargeAttempts } from '../schema/charge_attempts.schema.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
+import { PlansTable } from '../schema/plans.schema.js';
+import { CustomersTable } from '../schema/customers.schema.js';
+import { generateInvoicePDF } from '../invoices/pdf-generator.js';
 import type { Request, Response } from 'express';
 
 export const invoicesRouter = Router();
@@ -25,34 +28,41 @@ invoicesRouter.get('/', async (req: Request, res: Response) => {
 
 invoicesRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [invoice] = await db
-      .select()
-      .from(InvoicesTable)
-      .where(
-        and(
-          eq(InvoicesTable.id, req.params.id),
-          eq(InvoicesTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
+      const [invoice] = await tx
+        .select()
+        .from(InvoicesTable)
+        .where(
+          and(
+            eq(InvoicesTable.id, req.params.id),
+            eq(InvoicesTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
 
-    if (!invoice) {
+      if (!invoice) return null;
+
+      const chargeAttempts = await tx
+        .select()
+        .from(ChargeAttempts)
+        .where(
+          and(
+            eq(ChargeAttempts.invoice_id, req.params.id),
+            eq(ChargeAttempts.merchant_id, req.merchantId),
+          ),
+        )
+        .orderBy(desc(ChargeAttempts.attempted_at));
+
+      return { ...invoice, charge_attempts: chargeAttempts };
+    });
+
+    if (!result) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Invoice not found' } });
       return;
     }
 
-    const chargeAttempts = await db
-      .select()
-      .from(ChargeAttempts)
-      .where(
-        and(
-          eq(ChargeAttempts.invoice_id, req.params.id),
-          eq(ChargeAttempts.merchant_id, req.merchantId),
-        ),
-      )
-      .orderBy(desc(ChargeAttempts.attempted_at));
-
-    res.json({ ...invoice, charge_attempts: chargeAttempts });
+    res.json(result);
   } catch (err) {
     console.error('[invoices] get error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get invoice' } });
@@ -237,5 +247,45 @@ invoicesRouter.post('/:id/fallback', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[invoices] fallback error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate fallback methods' } });
+  }
+});
+
+// GET /:id/pdf — Download invoice as PDF
+invoicesRouter.get('/:id/pdf', async (req: Request, res: Response) => {
+  try {
+    const [invoice] = await db
+      .select()
+      .from(InvoicesTable)
+      .where(
+        and(
+          eq(InvoicesTable.id, req.params.id),
+          eq(InvoicesTable.merchant_id, req.merchantId),
+        ),
+      )
+      .limit(1);
+
+    if (!invoice) {
+      res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Invoice not found' } });
+      return;
+    }
+
+    const [subscription] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, invoice.subscription_id)).limit(1);
+    const [customer] = subscription ? await db.select().from(CustomersTable).where(eq(CustomersTable.id, subscription.customer_id)).limit(1) : [null];
+    const [plan] = subscription ? await db.select().from(PlansTable).where(eq(PlansTable.id, subscription.plan_id)).limit(1) : [null];
+
+    generateInvoicePDF({
+      id: invoice.id,
+      amount: Number(invoice.amount),
+      currency: invoice.currency ?? 'NGN',
+      status: invoice.status ?? 'open',
+      due_date: invoice.due_date?.toISOString?.() ?? new Date().toISOString(),
+      paid_at: invoice.paid_at?.toISOString?.(),
+      customer: { name: customer?.name ?? 'Customer', email: customer?.email ?? '' },
+      plan: { name: plan?.name ?? 'Subscription', amount: Number(plan?.amount ?? 0) },
+      merchant: { name: req.merchantId },
+    }, res);
+  } catch (err) {
+    console.error('[invoices] pdf error:', err);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate PDF' } });
   }
 });

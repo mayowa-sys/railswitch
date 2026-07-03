@@ -25,6 +25,7 @@ export function useApiData<T>({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasFetched = useRef(false);
+  const prevApiKey = useRef(apiKey);
 
   const doFetch = useCallback(async () => {
     if (isMockMode()) {
@@ -46,11 +47,15 @@ export function useApiData<T>({
   }, [fetcher, mockData, apiKey]);
 
   useEffect(() => {
+    if (apiKey !== prevApiKey.current) {
+      hasFetched.current = false;
+      prevApiKey.current = apiKey;
+    }
     if (!hasFetched.current) {
       hasFetched.current = true;
       doFetch();
     }
-  }, [doFetch]);
+  }, [doFetch, apiKey]);
 
   return { data, isLoading, error, refetch: doFetch };
 }

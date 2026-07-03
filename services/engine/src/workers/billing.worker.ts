@@ -9,7 +9,7 @@ import { Plan, PlansTable } from "../schema/plans.schema.js";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
 import { InvoicesTable } from "../schema/invoices.schema.js";
 import { getNextBillingDate } from "../utils/interval_util.js";
-import { createBillingHandler } from "../rails/billing-handler-dependencies.js";
+import { createBillingHandler, createCascadeCoordinator } from "../rails/billing-handler-dependencies.js";
 import { nextRetryAt } from "../rails/retry-timing.js";
 import type { DunningPolicy } from "../state-machines/subscription";
 import { CreditsTable } from "../schema/credits.schema";
@@ -30,7 +30,25 @@ interface TrialConversionData {
   merchantId: string;
 }
 
-type BillingJobData = ChargeSubscriptionData | TrialConversionData;
+interface CascadeRetryData {
+  subscriptionId: string;
+  invoiceId: string;
+  amount: number;
+  merchantId: string;
+}
+
+interface VAExpiryData {
+  subscriptionId: string;
+  invoiceId: string;
+  merchantId: string;
+}
+
+interface GraceExpiryData {
+  subscriptionId: string;
+  merchantId: string;
+}
+
+type BillingJobData = ChargeSubscriptionData | TrialConversionData | CascadeRetryData | VAExpiryData | GraceExpiryData;
 
 export class BillingHelper {
   async getPendingSubscriptions() {
@@ -71,11 +89,17 @@ export class BillingHelper {
           eq(PaymentMethodsTable.is_default, true),
         ),
       );
-    if (!defaultMethod)
-      throw new Error(
-        `Default Payment Method for customer ${customerId} not found`,
-      );
-    return defaultMethod;
+    return defaultMethod || null;
+  }
+
+  async getDefaultPaymentMethodBySubId(subscriptionId: string) {
+    const [sub] = await db
+      .select()
+      .from(SubscriptionsTable)
+      .where(eq(SubscriptionsTable.id, subscriptionId))
+      .limit(1);
+    if (!sub) throw new Error(`Subscription ${subscriptionId} not found`);
+    return this.getDefaultPaymentMethod(sub.customer_id);
   }
 
   static async markInvoiceAsPaid(invoiceId: string, amount: string) {
@@ -194,6 +218,13 @@ class BillingService {
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
+    if (!defaultPaymentMethod) {
+      this.logger.info('No default payment method — skipping charge', {
+        subscriptionId: data.subscriptionId,
+        customerId: data.customerId,
+      });
+      return;
+    }
     const credits = await db
       .select()
       .from(CreditsTable)
@@ -239,7 +270,7 @@ class BillingService {
     if (result.status === "paid") {
       await this.handleSuccessfulPayment(data.subscriptionId, invoice.id, plan);
     } else {
-      await this.handleFailedPayment(data.subscriptionId, invoice.id);
+      await this.handleFailedPayment(data.subscriptionId, invoice.id, data.merchantId);
     }
   }
 
@@ -301,7 +332,7 @@ class BillingService {
     );
   }
 
-  private async handleFailedPayment(subId: string, invoiceId: string) {
+  private async handleFailedPayment(subId: string, invoiceId: string, merchantId: string) {
     const [subscription] = await db
       .select()
       .from(SubscriptionsTable)
@@ -327,10 +358,19 @@ class BillingService {
       })
       .where(eq(InvoicesTable.id, invoiceId));
 
-    await db
-      .update(SubscriptionsTable)
-      .set({ next_billing_at: null })
-      .where(eq(SubscriptionsTable.id, subId));
+    // Schedule cascade coordinator to handle the failure
+    if (BillingsQueue) {
+      await BillingsQueue.add(
+        'cascade_retry',
+        {
+          subscriptionId: subId,
+          invoiceId,
+          amount: 0, // amount will be resolved from the plan in the coordinator
+          merchantId: subscription.merchant_id,
+        },
+        { delay: shouldRetry ? nextAttempt.getTime() - Date.now() : 5000 },
+      );
+    }
   }
 }
 
@@ -354,6 +394,35 @@ export const BillingWorker = process.env.REDIS_URL
           const merchantId = job.data.merchantId;
           const billingHandler = createBillingHandler(merchantId);
           await billingService.processCharge(job.data, billingHandler);
+          break;
+        }
+        case "cascade_retry": {
+          const data = job.data as CascadeRetryData;
+          const coordinator = createCascadeCoordinator(data.merchantId);
+          const paymentMethod = await new BillingHelper().getDefaultPaymentMethodBySubId(data.subscriptionId);
+          if (!paymentMethod) {
+            logger.info('No payment method for cascade retry — skipping', { subscriptionId: data.subscriptionId });
+            return;
+          }
+          await coordinator.processRetry({
+            subscriptionId: data.subscriptionId,
+            invoiceId: data.invoiceId,
+            amount: data.amount,
+            paymentMethodToken: paymentMethod.nomba_token,
+            idempotencyKey: `billing:${data.subscriptionId}:retry:${Date.now()}`,
+          });
+          break;
+        }
+        case "va_expiry_check": {
+          const data = job.data as VAExpiryData;
+          const coordinator = createCascadeCoordinator(data.merchantId);
+          await coordinator.handleVAExpiry(data.subscriptionId, data.invoiceId, data.merchantId);
+          break;
+        }
+        case "grace_expiry_check": {
+          const data = job.data as GraceExpiryData;
+          const coordinator = createCascadeCoordinator(data.merchantId);
+          await coordinator.handleGraceExpiry(data.subscriptionId, data.merchantId);
           break;
         }
         case "trial_conversion": {

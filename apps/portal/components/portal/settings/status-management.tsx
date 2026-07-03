@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatNaira, type Plan } from "@/lib/mock-data";
+import type { Plan, SubscriptionStatus } from "@/lib/mock-data";
 import { Pause, Play, XCircle, HelpCircle, Loader2 } from "lucide-react";
 
 interface StatusManagementProps {
@@ -30,7 +30,7 @@ export function StatusManagement({
             <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Subscription Status Management</h3>
             <p className="text-xs text-zinc-500 mt-0.5">Control plan renewals, pausing, and service closures.</p>
           </div>
-          <StatusBadge status={subscriptionStatus as any} />
+          <StatusBadge status={subscriptionStatus as SubscriptionStatus} />
         </div>
       </div>
 
