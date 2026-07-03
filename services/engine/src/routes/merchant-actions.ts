@@ -94,7 +94,7 @@ merchantActionsRouter.post('/:id/mark-recovered', async (req: Request, res: Resp
     const wrapper = new SubscriptionWrapper({ repo });
     await wrapper.processEvent({
       subscriptionId: sub.id,
-      event: { type: 'PAYMENT_RECORDED', actor: 'merchant', reason: reason ?? 'Manual recovery by merchant' },
+      event: { type: 'PAYMENT_RECORDED' },
       idempotencyKey: `merchant:recovered:${sub.id}:${Date.now()}`,
     });
 
@@ -219,7 +219,7 @@ merchantActionsRouter.post('/:id/override-state', async (req: Request, res: Resp
       });
     }
 
-    await dispatchWebhookEvent(merchantId, `subscription.${state}`, {
+    await dispatchWebhookEvent(merchantId, `subscription.${state}` as any, {
       subscriptionId: sub.id,
       previousState: sub.state,
       reason: reason ?? `Manual override`,

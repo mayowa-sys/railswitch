@@ -70,11 +70,7 @@ export async function dispatchWebhookEvent(
       .where(eq(WebhookEndpointsTable.merchant_id, merchantId));
 
     for (const endpoint of endpoints) {
-      if (!endpoint.is_active) continue;
-
-      // Check if endpoint subscribes to this event type
-      const subscriptions = (endpoint.subscriptions as string[]) ?? [];
-      if (subscriptions.length > 0 && !subscriptions.includes(event)) continue;
+      if (endpoint.status !== 'active') continue;
 
       deliverWebhook(endpoint.url, payload, endpoint.id, merchantId).catch((err) => {
         logger.error('Webhook delivery failed', err as Error, { event, endpointId: endpoint.id });

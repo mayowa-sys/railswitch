@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
       const plans = plansRes.data ?? [];
       const invoices = invRes.data ?? [];
 
-      const planMap = new Map(plans.map((p: any) => [p.id, p]));
+      const planMap = new Map<string, any>(plans.map((p: any) => [p.id, p]));
       const activeSubs = subs.filter((s: any) => s.state === "active" || s.state === "charging");
       const cancelledSubs = subs.filter((s: any) => s.state === "cancelled");
 

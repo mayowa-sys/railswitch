@@ -224,7 +224,7 @@ export class RailOrchestrator {
 
     const portalLink = generatePortalLink(customer.id, input.merchantId);
     const msg = paymentFailedEmail({
-      customerName: customer.name,
+      customerName: customer.name ?? 'Customer',
       planName: plan.name,
       amount: input.amount,
       portalLink,
@@ -246,7 +246,7 @@ export class RailOrchestrator {
 
     if (!customer || !plan) return;
 
-    const msg = paymentRecoveredEmail({ customerName: customer.name, planName: plan.name, amount: input.amount });
+    const msg = paymentRecoveredEmail({ customerName: customer.name ?? 'Customer', planName: plan.name, amount: input.amount });
     msg.to = customer.email;
     await email.send(msg);
   }
@@ -260,7 +260,7 @@ export class RailOrchestrator {
     if (!customer) return;
 
     const portalLink = generatePortalLink(customer.id, input.merchantId);
-    const msg = subscriptionCancelledEmail({ customerName: customer.name, planName: 'Your', portalLink });
+    const msg = subscriptionCancelledEmail({ customerName: customer.name ?? 'Customer', planName: 'Your', portalLink });
     msg.to = customer.email;
     await email.send(msg);
   }
@@ -279,7 +279,7 @@ export class RailOrchestrator {
 
     const portalLink = generatePortalLink(customer.id, input.merchantId);
     const msg = dunningReminderEmail({
-      customerName: customer.name,
+      customerName: customer.name ?? 'Customer',
       planName: plan.name,
       amount: input.amount,
       portalLink,

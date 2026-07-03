@@ -36,7 +36,7 @@ export function getEmailTransport(): EmailTransport {
     _transport = {
       send: async (msg) => {
         try {
-          const nodemailer = await import('nodemailer');
+          const nodemailer = await (Function('return import("nodemailer")')() as Promise<any>);
           const transport = nodemailer.default.createTransport({
             host: process.env.SMTP_HOST,
             port: Number(process.env.SMTP_PORT ?? 587),
