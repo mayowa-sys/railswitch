@@ -659,6 +659,13 @@ if [ -n "${REG_MER:-}" ] && [ "$REG_MER" != "FAIL" ]; then
   echo "  ✅ Test merchant cleaned"
 fi
 
+# Re-seed demo data if seed subscriptions were destroyed
+SEED_SUBS=$($PSQL -t "SELECT COUNT(*) FROM subscriptions WHERE merchant_id='$MID' AND plan_id IN (SELECT id FROM plans WHERE merchant_id='$MID' AND name IN ('Basic','Pro','Elite','Corporate','Basic (Legacy)'));" 2>/dev/null | tr -d ' ')
+if [ "${SEED_SUBS:-0}" -lt 200 ]; then
+  echo "  ↻ Re-seeding demo data (only ${SEED_SUBS:-0} seed subs survived)..."
+  python3 scripts/seed-demo.py 2>&1 | tail -5
+fi
+
 # ============================================================================
 # SUMMARY
 # ============================================================================
