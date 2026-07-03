@@ -30,7 +30,7 @@ const MOCK_API_KEY = "sk_test_mockmerchanta";
 
 // Hardcoded demo API key — the real key for demo@railswitch.dev
 // This account has 3 plans, 4 customers, 4 subscriptions pre-seeded.
-const DEMO_API_KEY = "sk_test_mer_HfDzRi_p6G___5GjJ2qsjwpi1eRVU0Hw-2GvTEc";
+const DEMO_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
 
 function loadUserFromStorage(): AuthUser | null {
   if (typeof localStorage === "undefined") return null;

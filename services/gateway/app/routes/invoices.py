@@ -7,6 +7,14 @@ from app.engine_client import (
 from app.envelope import Envelope
 
 router = APIRouter(prefix="/v1/invoices", tags=["invoices"])
+@router.post("")
+async def create_invoice(
+    payload: dict,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.create_invoice(payload)
+    return Envelope(data=result)
+
 
 
 @router.get("")

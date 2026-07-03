@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Zap, Shield, Landmark, CreditCard, ArrowRight, Loader2, AlertCircle, Dumbbell, Heart, Users, Clock, Building } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const FITCORE_API_KEY = "sk_test_mer_HfDzRi_p6G___5GjJ2qsjwpi1eRVU0Hw-2GvTEc";
+const FITCORE_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
 
 const PLANS = [
   { id: "starter", name: "Basic", price: "₦9,900", amountKobo: 990000, features: ["Access to 1 location", "Open gym floor", "Locker room access", "1 group class/week", "Mobile app check-in"], color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", border: "border-emerald-200", icon: "Dumbbell" },
@@ -115,6 +115,18 @@ export default function StorefrontPage() {
         if (!subId) throw new Error("Membership setup failed");
 
         setPaymentRef(subId);
+        
+        // Create first invoice immediately (charge at signup)
+        await fetch(API + "/v1/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+          body: JSON.stringify({
+            subscription_id: subId,
+            amount: selectedPlan.amountKobo,
+            due_date: new Date().toISOString()
+          })
+        }).catch(() => {});
+        
         setStep("success");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

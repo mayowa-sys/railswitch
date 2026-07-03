@@ -23,7 +23,7 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   "cascade": <RefreshCw className="size-3.5" />,
 };
 
-const DEMO_API_KEY = "sk_test_mer_HfDzRi_p6G___5GjJ2qsjwpi1eRVU0Hw-2GvTEc";
+const DEMO_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
 const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const INTERNAL_AUTH = "local-dev-shared-secret";
 

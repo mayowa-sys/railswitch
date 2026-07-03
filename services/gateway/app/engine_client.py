@@ -322,6 +322,10 @@ class EngineClient:
 
     # =========== INVOICES ==================
 
+    
+    async def create_invoice(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/invoices", json=payload)
+
     async def list_invoices(
         self, starting_after: str | None, ending_before: str | None, limit: int
     ) -> tuple[list[Invoice], bool]:

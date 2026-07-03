@@ -3,6 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
+import { InvoicesTable } from '../schema/invoices.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
@@ -85,6 +86,22 @@ subscriptionsRouter.post('/', async (req: Request, res: Response) => {
       trial_ends_at: trial_end ? new Date(trial_end) : null,
       next_billing_at: periodEnd,
     }).returning();
+
+    // Create initial invoice — customer is charged immediately at signup
+    try {
+      await db.insert(InvoicesTable).values({
+        subscription_id: subscription.id,
+        merchant_id: req.merchantId,
+        amount: String(plan.amount),
+        currency: 'NGN',
+        status: 'paid',
+        description: plan.name + ' - First Month',
+        due_date: new Date(),
+        paid_at: new Date(),
+      });
+    } catch (invErr) {
+      console.error('[subscriptions] invoice creation error:', invErr);
+    }
 
     res.status(201).json(subscription);
   } catch (err) {
