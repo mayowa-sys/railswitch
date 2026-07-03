@@ -1,8 +1,8 @@
 import { pgTable, uuid, text, decimal, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { MerchantsTable } from "./merchants.schema";
-import { SubscriptionsTable } from "./subscriptions.schema";
-import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy";
+import { MerchantsTable } from "./merchants.schema.js";
+import { SubscriptionsTable } from "./subscriptions.schema.js";
+import { merchantIsolationPolicy } from "../utils/merchant_isolation_policy.js";
 
 export const CreditSourceEnum = pgEnum("credit_source", ["downgrade", "pause_credit", "trial_credit"]);
 

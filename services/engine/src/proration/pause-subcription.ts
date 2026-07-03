@@ -1,9 +1,9 @@
 import { eq, sql } from "drizzle-orm";
-import { db } from "../db/client";
-import * as ProrationHelper from "./proration-helper";
-import { GlobalLogger } from "../utils/logger";
-import { SubscriptionsTable } from "../schema/subscriptions.schema";
-import { CreditsTable } from "../schema/credits.schema";
+import { db } from "../db/client.js";
+import * as ProrationHelper from "./proration-helper.js";
+import { GlobalLogger } from "../utils/logger.js";
+import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
+import { CreditsTable } from "../schema/credits.schema.js";
 
 const pauseLogger = new GlobalLogger("Proration-Pause");
 
