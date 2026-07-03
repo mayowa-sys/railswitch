@@ -89,13 +89,12 @@ async function main() {
   for (const [planKey, count] of activeDist) {
     for (let i = 0; i < count; i++) {
       const idx = cursor + i;
-      const monthsAgo = rng(0, 8);
-      const start = daysAgo(30 * monthsAgo);
-      const periodStart = daysAgo(rng(1, 25));
-      const periodEnd = daysFromNow(rng(5, 25));
+      const monthsAgo = rng(1, 10);
+      const periodStart = daysAgo(30 * monthsAgo + rng(0, 10));
+      const periodEnd = daysFromNow(rng(10, 25));
       await c.query(
         `INSERT INTO subscriptions (id, merchant_id, customer_id, plan_id, state, version, current_period_start, current_period_end, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, 'active', 1, $5, $6, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, 'active', 1, $5, $6, NOW() - INTERVAL '${monthsAgo} months', NOW())`,
         [uid(), MID, customers[idx], plans[planKey], periodStart, periodEnd]
       );
     }
@@ -108,13 +107,12 @@ async function main() {
   for (let i = 0; i < 10; i++) {
     const idx = cursor + i;
     const monthsAgo = rng(2, 10);
-    const start = daysAgo(30 * monthsAgo);
-    const periodStart = daysAgo(rng(1, 25));
-    const periodEnd = daysFromNow(rng(5, 25));
+    const periodStart = daysAgo(30 * monthsAgo + rng(0, 10));
+    const periodEnd = daysFromNow(rng(10, 25));
     const subId = uid();
     await c.query(
       `INSERT INTO subscriptions (id, merchant_id, customer_id, plan_id, state, version, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'cancelled', 1, $5, $6, false, NOW(), NOW())`,
+       VALUES ($1, $2, $3, $4, 'cancelled', 1, $5, $6, false, NOW() - INTERVAL '${monthsAgo} months', NOW())`,
       [subId, MID, customers[idx], pick([plans.basic, plans.pro]), periodStart, periodEnd]
     );
   }
@@ -125,12 +123,11 @@ async function main() {
   for (let i = 0; i < 5; i++) {
     const idx = cursor + i;
     const monthsAgo = rng(1, 6);
-    const start = daysAgo(30 * monthsAgo);
-    const periodStart = daysAgo(rng(1, 25));
-    const periodEnd = daysFromNow(rng(5, 25));
+    const periodStart = daysAgo(30 * monthsAgo + rng(0, 10));
+    const periodEnd = daysFromNow(rng(10, 25));
     await c.query(
       `INSERT INTO subscriptions (id, merchant_id, customer_id, plan_id, state, version, current_period_start, current_period_end, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'paused', 1, $5, $6, NOW(), NOW())`,
+       VALUES ($1, $2, $3, $4, 'paused', 1, $5, $6, NOW() - INTERVAL '${monthsAgo} months', NOW())`,
       [uid(), MID, customers[idx], pick([plans.pro, plans.elite]), periodStart, periodEnd]
     );
   }
