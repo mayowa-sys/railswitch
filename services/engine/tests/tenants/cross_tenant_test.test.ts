@@ -16,9 +16,15 @@ import { CustomersTable } from "../../src/schema/customers.schema";
 import { PaymentMethodsTable } from "../../src/schema/payment_methods.schema";
 import { SubscriptionsTable } from "../../src/schema/subscriptions.schema";
 import { InvoicesTable } from "../../src/schema/invoices.schema";
-import { eq, inArray, or, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 const myOwndb = drizzle(process.env.DATABASE_URL!);
+type Tables = typeof CustomersTable | typeof PaymentMethodsTable | typeof InvoicesTable | typeof SubscriptionsTable | typeof PlansTable;
+type Dependency = [string, Tables];
+type FactoryReturnType = {
+  createdId: string;
+  dependencies: Dependency[];
+}
 
 const tenantScopedResources = [
   { endpoint: "/internal/v1/plans", resourceType: "plan" },
@@ -42,7 +48,7 @@ async function createTestMerchant(name: string, email: string) {
   return merchant;
 }
 
-async function createPlan(merchant: typeof MerchantsTable.$inferSelect) {
+async function createPlan(merchant: typeof MerchantsTable.$inferSelect): Promise<FactoryReturnType> {
   const [plan] = await myOwndb
     .insert(PlansTable)
     .values({
@@ -58,7 +64,7 @@ async function createPlan(merchant: typeof MerchantsTable.$inferSelect) {
   return { createdId: plan.id, dependencies: [] };
 }
 
-async function createCustomer(merchant: typeof MerchantsTable.$inferSelect) {
+async function createCustomer(merchant: typeof MerchantsTable.$inferSelect): Promise<FactoryReturnType> {
   const [customer] = await myOwndb
     .insert(CustomersTable)
     .values({
@@ -73,7 +79,7 @@ async function createCustomer(merchant: typeof MerchantsTable.$inferSelect) {
 
 async function createPaymentMethod(
   merchant: typeof MerchantsTable.$inferSelect,
-) {
+): Promise<FactoryReturnType> {
   const { createdId: customerId, dependencies: cusDep } =
     await createCustomer(merchant);
 
@@ -100,7 +106,7 @@ async function createPaymentMethod(
 
 async function createSubscription(
   merchant: typeof MerchantsTable.$inferSelect,
-) {
+): Promise<FactoryReturnType> {
   const { createdId: customerId, dependencies: cusDep } =
     await createCustomer(merchant);
   const { createdId: planId, dependencies: planDep } =
@@ -127,7 +133,7 @@ async function createSubscription(
   };
 }
 
-async function createInvoice(merchant: typeof MerchantsTable.$inferSelect) {
+async function createInvoice(merchant: typeof MerchantsTable.$inferSelect): Promise<FactoryReturnType> {
   const { createdId: subscriptionId, dependencies: subDep } =
     await createSubscription(merchant);
   
@@ -148,7 +154,7 @@ async function createInvoice(merchant: typeof MerchantsTable.$inferSelect) {
 
 const resourceFactories: Record<
   string,
-  (merchant: any) => Promise<{ createdId: string; dependencies: any[] }>
+  (merchant: typeof MerchantsTable.$inferSelect) => Promise<FactoryReturnType>
 > = {
   plan: createPlan,
   customer: createCustomer,
@@ -171,7 +177,7 @@ describe.each(tenantScopedResources)(
     let merchantA: typeof MerchantsTable.$inferSelect;
     let merchantB: typeof MerchantsTable.$inferSelect;
     let resourceId: string;
-    let testDependencies: any[] = [];
+    let testDependencies: Dependency[] = [];
 
     beforeAll(async () => {
       merchantA = await createTestMerchant("merchant a", "merchanta@gmail.com");
@@ -185,12 +191,12 @@ describe.each(tenantScopedResources)(
     });
 
     afterEach(async () => {
-      let table = dependencies[resourceType as keyof typeof dependencies];
+      const table = dependencies[resourceType as keyof typeof dependencies];
       await myOwndb.delete(table).where(eq(table.id, resourceId));
 
       for (const d of testDependencies) {
         const depTable = d[1];
-        await myOwndb.delete(depTable as any).where(eq(depTable.id, d[0]));
+        await myOwndb.delete(depTable).where(eq(depTable.id, d[0]));
       }
 
       testDependencies = [];

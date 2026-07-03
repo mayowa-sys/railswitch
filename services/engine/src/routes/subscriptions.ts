@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
