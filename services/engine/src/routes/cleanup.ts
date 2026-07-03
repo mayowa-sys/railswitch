@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
@@ -20,6 +20,8 @@ cleanupRouter.post('/playground', async (req: Request, res: Response) => {
       res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'customer_id, plan_id, and subscription_id are required' } });
       return;
     }
+
+    await db.execute(sql`SET LOCAL app.current_merchant_id = ${req.merchantId}`);
 
     // Verify all belong to this merchant
     const [sub] = await db.select().from(SubscriptionsTable).where(

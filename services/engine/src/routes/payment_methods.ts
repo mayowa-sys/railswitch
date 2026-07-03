@@ -75,16 +75,19 @@ paymentMethodsRouter.get('/', async (req: Request, res: Response) => {
 
 paymentMethodsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [pm] = await db
-      .select()
-      .from(PaymentMethodsTable)
-      .where(
-        and(
-          eq(PaymentMethodsTable.id, req.params.id),
-          eq(PaymentMethodsTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const [pm] = await db.transaction(async (tx) => {
+      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      return tx
+        .select()
+        .from(PaymentMethodsTable)
+        .where(
+          and(
+            eq(PaymentMethodsTable.id, req.params.id),
+            eq(PaymentMethodsTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
+    });
 
     if (!pm) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Payment method not found' } });

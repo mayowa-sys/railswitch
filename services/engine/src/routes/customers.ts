@@ -46,16 +46,19 @@ customersRouter.get('/', async (req: Request, res: Response) => {
 
 customersRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [customer] = await db
-      .select()
-      .from(CustomersTable)
-      .where(
-        and(
-          eq(CustomersTable.id, req.params.id),
-          eq(CustomersTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const [customer] = await db.transaction(async (tx) => {
+      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      return tx
+        .select()
+        .from(CustomersTable)
+        .where(
+          and(
+            eq(CustomersTable.id, req.params.id),
+            eq(CustomersTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
+    });
 
     if (!customer) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Customer not found' } });

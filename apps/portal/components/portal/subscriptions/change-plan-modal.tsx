@@ -19,6 +19,7 @@ interface ChangePlanModalProps {
   selectedPlanId: string;
   onSelectPlan: (planId: string) => void;
   previewLoading: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   previewData: Record<string, any> | null;
   applying: boolean;
   success: boolean;

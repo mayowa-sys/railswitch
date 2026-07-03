@@ -46,9 +46,16 @@
     },
     {
       "idx": 6,
-      "version": "6",
-      "when": 1751352960000,
-      "tag": "0006_add_credit_sources",
+      "version": "7",
+      "when": 1782989735681,
+      "tag": "0006_engine_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782991962569,
+      "tag": "0007_tidy_johnny_storm",
       "breakpoints": true
     }
   ]

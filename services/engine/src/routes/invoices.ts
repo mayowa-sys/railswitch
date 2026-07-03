@@ -25,34 +25,41 @@ invoicesRouter.get('/', async (req: Request, res: Response) => {
 
 invoicesRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [invoice] = await db
-      .select()
-      .from(InvoicesTable)
-      .where(
-        and(
-          eq(InvoicesTable.id, req.params.id),
-          eq(InvoicesTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      const [invoice] = await tx
+        .select()
+        .from(InvoicesTable)
+        .where(
+          and(
+            eq(InvoicesTable.id, req.params.id),
+            eq(InvoicesTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
 
-    if (!invoice) {
+      if (!invoice) return null;
+
+      const chargeAttempts = await tx
+        .select()
+        .from(ChargeAttempts)
+        .where(
+          and(
+            eq(ChargeAttempts.invoice_id, req.params.id),
+            eq(ChargeAttempts.merchant_id, req.merchantId),
+          ),
+        )
+        .orderBy(desc(ChargeAttempts.attempted_at));
+
+      return { ...invoice, charge_attempts: chargeAttempts };
+    });
+
+    if (!result) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Invoice not found' } });
       return;
     }
 
-    const chargeAttempts = await db
-      .select()
-      .from(ChargeAttempts)
-      .where(
-        and(
-          eq(ChargeAttempts.invoice_id, req.params.id),
-          eq(ChargeAttempts.merchant_id, req.merchantId),
-        ),
-      )
-      .orderBy(desc(ChargeAttempts.attempted_at));
-
-    res.json({ ...invoice, charge_attempts: chargeAttempts });
+    res.json(result);
   } catch (err) {
     console.error('[invoices] get error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get invoice' } });

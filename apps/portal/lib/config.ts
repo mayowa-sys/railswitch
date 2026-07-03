@@ -8,7 +8,10 @@ export interface PortalCustomer {
 }
 export const PORTAL_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "http://localhost:3100";
-export const PORTAL_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
+export const PORTAL_API_KEY = process.env.NEXT_PUBLIC_PORTAL_API_KEY ?? "";
+if (!PORTAL_API_KEY) {
+  console.warn("[portal] NEXT_PUBLIC_PORTAL_API_KEY not set — API calls may fail");
+}
 
 export function getPortalToken(): string | null {
   if (typeof window === 'undefined') return null;

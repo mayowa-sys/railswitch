@@ -297,7 +297,7 @@ class EngineClient:
         body = await self._request(
             "PATCH",
             f"/internal/v1/plans/{plan_id}",
-            json=payload.model_dump(exclude_none=True),
+            json=payload.model_dump(exclude_none=True, mode='json'),
         )
         return Plan.model_validate(body)
 

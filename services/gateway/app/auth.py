@@ -20,11 +20,14 @@ class ApiKeyRecord:
     mode: str
 
 
-MOCK_KEYS = {
-    "sk_test_mockmerchanta": ApiKeyRecord("merchant_a", "test"),
-    "sk_live_mockmerchantb": ApiKeyRecord("merchant_b", "live"),
-}
+_USE_MOCK_KEYS = os.getenv("RAILSWITCH_USE_MOCK_KEYS", "").lower() in ("1", "true", "yes")
 
+MOCK_KEYS: dict[str, ApiKeyRecord] = {}
+if _USE_MOCK_KEYS:
+    MOCK_KEYS = {
+        "sk_test_mockmerchanta": ApiKeyRecord("merchant_a", "test"),
+        "sk_live_mockmerchantb": ApiKeyRecord("merchant_b", "live"),
+    }
 
 
 async def get_portal_merchant(request: Request) -> str | None:
@@ -35,7 +38,9 @@ async def get_portal_merchant(request: Request) -> str | None:
     
     try:
         # Verify token locally
-        secret = os.getenv("PORTAL_SECRET", "railswitch-portal-secret-dev")
+        secret = os.getenv("PORTAL_SECRET")
+        if not secret:
+            raise Exception("PORTAL_SECRET not set")
         payload_b64, sig = token.split(".")
         payload = base64.urlsafe_b64decode(payload_b64 + "=" * (4 - len(payload_b64) % 4))
         expected_sig = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()

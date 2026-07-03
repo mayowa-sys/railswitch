@@ -270,7 +270,7 @@ class BillingService {
     if (result.status === "paid") {
       await this.handleSuccessfulPayment(data.subscriptionId, invoice.id, plan);
     } else {
-      await this.handleFailedPayment(data.subscriptionId, invoice.id);
+      await this.handleFailedPayment(data.subscriptionId, invoice.id, data.merchantId);
     }
   }
 
@@ -332,7 +332,7 @@ class BillingService {
     );
   }
 
-  private async handleFailedPayment(subId: string, invoiceId: string) {
+  private async handleFailedPayment(subId: string, invoiceId: string, merchantId: string) {
     const [subscription] = await db
       .select()
       .from(SubscriptionsTable)

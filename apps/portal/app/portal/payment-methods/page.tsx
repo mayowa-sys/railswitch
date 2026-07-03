@@ -19,8 +19,22 @@ export default function PaymentMethodsPage() {
   const [success, setSuccess] = useState(false);
 
   const fetchMethods = () => {
-    api.paymentMethods.list("")
-      .then((data) => { setMethods(data); setLoading(false); })
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    if (!token) { setLoading(false); return; }
+    
+    // Resolve token to get customer ID first
+    fetch(`http://localhost:8000/v1/portal/resolve?token=${token}`)
+      .then(r => r.json())
+      .then(d => {
+        const custId = d.data?.customer?.id || '';
+        if (custId) {
+          api.paymentMethods.list(custId)
+            .then((data) => { setMethods(data); setLoading(false); })
+            .catch(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
       .catch(() => setLoading(false));
   };
 

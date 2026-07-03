@@ -126,16 +126,19 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
 
 subscriptionsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [subscription] = await db
-      .select()
-      .from(SubscriptionsTable)
-      .where(
-        and(
-          eq(SubscriptionsTable.id, req.params.id),
-          eq(SubscriptionsTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const [subscription] = await db.transaction(async (tx) => {
+      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      return tx
+        .select()
+        .from(SubscriptionsTable)
+        .where(
+          and(
+            eq(SubscriptionsTable.id, req.params.id),
+            eq(SubscriptionsTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
+    });
 
     if (!subscription) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Subscription not found' } });

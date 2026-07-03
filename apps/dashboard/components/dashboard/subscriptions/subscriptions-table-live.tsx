@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SearchFilterBar } from "@/components/shared/search-filter-bar";
@@ -51,6 +51,11 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
   const [page, setPage] = useState(0);
   const pageSize = 20;
 
+  const handleSearchChange = (val: string) => { setSearch(val); setPage(0); };
+  const handleStatusFilterChange = (val: string) => { setStatusFilter(val); setPage(0); };
+  const handlePlanFilterChange = (val: string) => { setPlanFilter(val); setPage(0); };
+  const handleClearFilters = () => { setSearch(""); setStatusFilter(""); setPlanFilter(""); setPage(0); };
+
   const formatNaira = (n: number) => `₦${n.toLocaleString()}`;
 
   const filtered = useMemo(() => {
@@ -68,8 +73,6 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const pagedData = filtered.slice(page * pageSize, (page + 1) * pageSize);
-
-  useEffect(() => { setPage(0); }, [search, statusFilter, planFilter]);
 
   const pageNumbers = useMemo(() => {
     const pages: (number | "...")[] = [];
@@ -151,13 +154,13 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
 
   return (
     <>
-      <SearchFilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search customer name or email…"
+      <SearchFilterBar searchValue={search} onSearchChange={handleSearchChange} searchPlaceholder="Search customer name or email…"
         filters={[
-          { key: "status", placeholder: "All statuses", options: STATUS_OPTIONS, value: statusFilter, onChange: setStatusFilter },
-          { key: "plan", placeholder: "All plans", options: planOptions, value: planFilter, onChange: setPlanFilter },
+          { key: "status", placeholder: "All statuses", options: STATUS_OPTIONS, value: statusFilter, onChange: handleStatusFilterChange },
+          { key: "plan", placeholder: "All plans", options: planOptions, value: planFilter, onChange: handlePlanFilterChange },
         ]}
         hasActiveFilters={hasFilters}
-        onClearAll={() => { setSearch(""); setStatusFilter(""); setPlanFilter(""); }}
+        onClearAll={handleClearFilters}
       />
       <div className="mt-4">
         <DataTable columns={columns}         data={pagedData} rowKey={(row) => row.id} onRowClick={setSelected}

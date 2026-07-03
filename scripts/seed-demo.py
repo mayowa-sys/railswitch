@@ -5,9 +5,9 @@ Creates a clean demo environment with proper plan names, backdated customers, an
 import subprocess, json, random, datetime, sys
 
 H = "http://localhost:8000"
-MID = "mer_GxcWEznOTk"
+MID = ""
+K = ""
 
-K = "sk_test_mer_GxcWEznOTk__FTfhQ2_wRH563JIFwhQeczbqD9Y"
 def api(method, path, body=None):
     args = ["curl", "-s", "-X", method, f"{H}{path}", "-H", "Content-Type: application/json", "-H", f"Authorization: Bearer {K}"]
     if body: args += ["-d", json.dumps(body)]
@@ -18,23 +18,37 @@ def api(method, path, body=None):
 # ── Register or get existing demo account ──
 reg = api("POST", "/v1/auth/register", {"name":"FitCore Nigeria","email":"demo@railswitch.dev","password":"demo123456","company":"FitCore Nigeria"})
 if reg.get("data"):
-    K = "sk_test_mer_GxcWEznOTk__FTfhQ2_wRH563JIFwhQeczbqD9Y"
+    K = reg["data"]["api_key"]
     MID = reg["data"]["merchant"]["id"]
     print(f"Registered FitCore: {MID}")
 else:
-    # Get existing key from DB
     res = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",
         "SELECT id FROM merchants WHERE email='demo@railswitch.dev';"], capture_output=True, text=True)
     MID = res.stdout.strip()
-    # Get API key
     key_res = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",
-        f"SELECT 'sk_test_' || id || '__' || substr(key_hash,1,20) FROM api_keys WHERE merchant_id='{MID}' LIMIT 1;"], capture_output=True, text=True)
-    K = "sk_test_mer_GxcWEznOTk__FTfhQ2_wRH563JIFwhQeczbqD9Y"
+        f"SELECT 'sk_test_' || merchant_id || '__' || substr(key_hash,1,20) FROM api_keys WHERE merchant_id='{MID}' LIMIT 1;"], capture_output=True, text=True)
+    K = key_res.stdout.strip()
     print(f"Using existing: {MID}")
 
 # ── Clean ──
 print("Cleaning...")
-tables = ["credits","payment_methods","processed_events","audit_log","webhook_delivery_attempts","webhook_events","webhook_endpoints","invoices","subscriptions","customers","plans"]
+# Break circular FK between subscriptions.current_invoice_id → invoices
+subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",
+    f"UPDATE subscriptions SET current_invoice_id = NULL WHERE merchant_id='{MID}';"], capture_output=True)
+tables = [
+    "charge_attempts",           # FK → invoices
+    "audit_log",                 # FK → subscriptions
+    "credits",                   # FK → subscriptions
+    "processed_events",          # FK → subscriptions
+    "webhook_delivery_attempts", # FK → webhook_events, webhook_endpoints
+    "webhook_events",
+    "webhook_endpoints",
+    "payment_methods",           # FK → customers
+    "invoices",                  # FK → subscriptions
+    "subscriptions",             # FK → customers, plans
+    "customers",
+    "plans",
+]
 for t in tables:
     subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"DELETE FROM {t} WHERE merchant_id='{MID}' OR merchant_id IS NULL;"], capture_output=True)
 

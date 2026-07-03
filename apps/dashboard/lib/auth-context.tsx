@@ -28,9 +28,9 @@ interface AuthContextValue extends AuthState {
 const STORAGE_KEY = "railswitch_auth";
 const MOCK_API_KEY = "sk_test_mockmerchanta";
 
-// Hardcoded demo API key — the real key for demo@railswitch.dev
-// This account has 3 plans, 4 customers, 4 subscriptions pre-seeded.
-const DEMO_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
+// Demo API key for demo@railswitch.dev auto-login
+// Override via NEXT_PUBLIC_DEMO_API_KEY env var
+const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
 
 function loadUserFromStorage(): AuthUser | null {
   if (typeof localStorage === "undefined") return null;

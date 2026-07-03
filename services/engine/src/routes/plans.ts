@@ -50,16 +50,19 @@ plansRouter.get('/', async (req: Request, res: Response) => {
 
 plansRouter.get('/:id', async (req: Request, res: Response) => {
   try {
-    const [plan] = await db
-      .select()
-      .from(PlansTable)
-      .where(
-        and(
-          eq(PlansTable.id, req.params.id),
-          eq(PlansTable.merchant_id, req.merchantId),
-        ),
-      )
-      .limit(1);
+    const [plan] = await db.transaction(async (tx) => {
+      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      return tx
+        .select()
+        .from(PlansTable)
+        .where(
+          and(
+            eq(PlansTable.id, req.params.id),
+            eq(PlansTable.merchant_id, req.merchantId),
+          ),
+        )
+        .limit(1);
+    });
 
     if (!plan) {
       res.status(404).json({ error: { code: 'RESOURCE_NOT_FOUND', message: 'Plan not found' } });

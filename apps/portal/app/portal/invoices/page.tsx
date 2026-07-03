@@ -13,7 +13,7 @@ function InvoicesContent() {
 
   useEffect(() => {
     api.invoices.list().then((data) => {
-      setInvoices(data.filter((i) => i.subscription_id === ""));
+      setInvoices(data);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

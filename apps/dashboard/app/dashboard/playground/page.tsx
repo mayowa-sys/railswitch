@@ -23,9 +23,8 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   "cascade": <RefreshCw className="size-3.5" />,
 };
 
-const DEMO_API_KEY = "sk_test_mer_Jrh7prq25H__LdcbgIggue0HbHscrLYO3zhZy1g";
 const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const INTERNAL_AUTH = "local-dev-shared-secret";
+const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
 
 const TEST_CARDS = [
   { label: "Success (5060...666)", key: "success" },
