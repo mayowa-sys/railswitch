@@ -205,8 +205,16 @@ for sub in subs:
         due = (started + datetime.timedelta(days=30*m)).strftime("%Y-%m-%dT%H:%M:%SZ")
         paid = (started + datetime.timedelta(days=30*m+1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         inv_id = f"inv_{sub['id'][:8]}_{m}"
+        # 85% paid, 10% uncollectible, 5% pending_retry — realistic failure rate for demo
+        r = random.random()
+        if r < 0.85:
+            inv_status = 'paid'; paid_at = f"'{paid}'"
+        elif r < 0.95:
+            inv_status = 'uncollectible'; paid_at = 'NULL'
+        else:
+            inv_status = 'pending_retry'; paid_at = 'NULL'
         subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",
-            f"INSERT INTO invoices (id, subscription_id, merchant_id, amount, currency, status, due_date, paid_at, created_at) VALUES ('{inv_id}', '{sub['id']}', '{MID}', {amount}, 'NGN', 'paid', '{due}', '{paid}', '{due}') ON CONFLICT DO NOTHING;"], capture_output=True)
+            f"INSERT INTO invoices (id, subscription_id, merchant_id, amount, currency, status, due_date, paid_at, created_at) VALUES ('{inv_id}', '{sub['id']}', '{MID}', {amount}, 'NGN', '{inv_status}', '{due}', {paid_at}, '{due}') ON CONFLICT DO NOTHING;"], capture_output=True)
 
 print("  Invoice history generated")
 
