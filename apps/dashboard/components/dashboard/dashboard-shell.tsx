@@ -14,6 +14,8 @@ import {
   ArrowUpRight,
   Settings2,
   LogOut,
+  Webhook,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +34,8 @@ const NAV_ITEMS = [
   { label: "Plans", icon: FileText, href: "/dashboard/plans" },
   { label: "Subscriptions", icon: Zap, href: "/dashboard/subscriptions" },
   { label: "Customers", icon: Users, href: "/dashboard/customers" },
+  { label: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
+  { label: "Webhooks", icon: Webhook, href: "/dashboard/webhooks" },
   { label: "Audit Log", icon: BookOpen, href: "/dashboard/audit-log" },
   { label: "Settings", icon: Settings2, href: "/dashboard/settings" },
 ];

@@ -267,6 +267,20 @@ class EngineClient:
             "POST", f"/internal/v1/subscriptions/{sub_id}/preview", json=body
         )
 
+    # ── Merchant Actions ──
+
+    async def get_subscription_detail(self, sub_id: str) -> dict:
+        return await self._request("GET", f"/internal/v1/actions/{sub_id}")
+
+    async def mark_subscription_recovered(self, sub_id: str, reason: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/mark-recovered", json={"reason": reason})
+
+    async def send_subscription_reminder(self, sub_id: str, channel: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/send-reminder", json={"channel": channel})
+
+    async def override_subscription_state(self, sub_id: str, state: str, reason: str | None = None) -> dict:
+        return await self._request("POST", f"/internal/v1/actions/{sub_id}/override-state", json={"state": state, "reason": reason})
+
     async def update_subscription(
         self, sub_id: str, payload: UpdateSubscriptionRequest
     ) -> SubscriptionResponse:

@@ -20,8 +20,12 @@ const TEST_CARDS = [
   { label: "Decline Card", number: "5060 6666 6666 6666 674", key: "insufficient" },
 ];
 
-// Real Nomba VA details — this would be dynamically generated in production
-const VA_DETAILS = { accountNumber: "7038059983", bankName: "Nombank MFB" };
+interface VADetails {
+  accountNumber: string;
+  bankName: string;
+  amount: number;
+  reference: string;
+}
 
 export default function StorefrontPage() {
   const [step, setStep] = useState<"plans" | "payment" | "processing" | "success" | "va_fallback">("plans");
@@ -35,8 +39,9 @@ export default function StorefrontPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentRef, setPaymentRef] = useState("");
+  const [vaDetails, setVaDetails] = useState<VADetails | null>(null);
 
-  const resetForm = () => { setName(""); setEmail(""); setPhone(""); setCardNumber(""); setCardExpiry(""); setCardCvv(""); setError(""); };
+  const resetForm = () => { setName(""); setEmail(""); setPhone(""); setCardNumber(""); setCardExpiry(""); setCardCvv(""); setError(""); setVaDetails(null); };
 
   const handleSelectPlan = (plan: (typeof PLANS)[0]) => { setSelectedPlan(plan); resetForm(); setStep("payment"); };
 
@@ -75,8 +80,72 @@ export default function StorefrontPage() {
     const isDeclined = cardNumber.includes("674");
 
     if (isDeclined) {
-      // Card declined — don't create subscription yet. Show VA.
-      await new Promise((r) => setTimeout(r, 1500)); // Simulate processing
+      // Card declined — create subscription via API to get real VA details
+      try {
+        const key = FITCORE_API_KEY;
+
+        // Create customer
+        const custRes = await fetch(API + "/v1/customers", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+          body: JSON.stringify({ name, email, phone }),
+        });
+        const custData = await custRes.json();
+        const customerId = custData.data?.id;
+
+        // Find or create plan
+        const plansRes = await fetch(API + "/v1/plans", {
+          headers: { Authorization: "Bearer " + key },
+        });
+        const plansData = await plansRes.json();
+        let planId = plansData.data?.find((p: any) => p.name === selectedPlan.name)?.id;
+        if (!planId) {
+          const planCreate = await fetch(API + "/v1/plans", {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+            body: JSON.stringify({ name: selectedPlan.name, description: "FitCore " + selectedPlan.name, amount: selectedPlan.amountKobo, currency: "NGN", interval: "monthly", interval_count: 1 }),
+          });
+          const planCreateData = await planCreate.json();
+          planId = planCreateData.data?.id;
+        }
+
+        // Create subscription
+        const subRes = await fetch(API + "/v1/subscriptions", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+          body: JSON.stringify({ customer_id: customerId, plan_id: planId, start_date: new Date().toISOString() }),
+        });
+        const subData = await subRes.json();
+        const subId = subData.data?.id;
+        setPaymentRef(subId ?? "FTCORE-" + Date.now().toString(36).toUpperCase());
+
+        // Create invoice
+        const invRes = await fetch(API + "/v1/invoices", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+          body: JSON.stringify({ subscription_id: subId, amount: selectedPlan.amountKobo, due_date: new Date().toISOString() }),
+        });
+        const invData = await invRes.json();
+
+        // Get fallback methods (VA details)
+        const fallbackRes = await fetch(API + "/v1/invoices/" + invData.data?.id + "/fallback", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+        });
+        const fallbackData = await fallbackRes.json();
+        const va = fallbackData.fallback_methods?.find((m: any) => m.type === "virtual_account");
+
+        setVaDetails({
+          accountNumber: va?.account_number ?? "7038059983",
+          bankName: va?.bank_name ?? "Nombank MFB",
+          amount: selectedPlan.amountKobo,
+          reference: subId ?? ref,
+        });
+      } catch (err) {
+        // Fallback to static details if API fails
+        setVaDetails({
+          accountNumber: "7038059983",
+          bankName: "Nombank MFB",
+          amount: selectedPlan.amountKobo,
+          reference: ref,
+        });
+      }
+      await new Promise((r) => setTimeout(r, 1500));
       setStep("va_fallback");
     } else {
       // Card approved — create the actual subscription via RailSwitch
@@ -293,7 +362,7 @@ export default function StorefrontPage() {
         )}
 
         {/* ========== VA FALLBACK PAGE ========== */}
-        {step === "va_fallback" && selectedPlan && (
+        {step === "va_fallback" && selectedPlan && vaDetails && (
           <div className="max-w-lg mx-auto py-12">
             <button onClick={() => setStep("payment")} className="text-sm text-zinc-500 hover:text-zinc-700 mb-6 flex items-center gap-1"><ArrowRight className="size-3 rotate-180" /> Back</button>
 
@@ -307,11 +376,11 @@ export default function StorefrontPage() {
                 <div className="text-center space-y-3">
                   <div>
                     <p className="text-xs text-amber-600 font-medium">Account Number</p>
-                    <p className="text-4xl font-extrabold font-mono tracking-widest text-amber-800">{VA_DETAILS.accountNumber}</p>
+                    <p className="text-4xl font-extrabold font-mono tracking-widest text-amber-800">{vaDetails.accountNumber}</p>
                   </div>
                   <div>
                     <p className="text-xs text-amber-600 font-medium">Bank</p>
-                    <p className="text-lg font-bold text-amber-800">{VA_DETAILS.bankName}</p>
+                    <p className="text-lg font-bold text-amber-800">{vaDetails.bankName}</p>
                   </div>
                   <div>
                     <p className="text-xs text-amber-600 font-medium">Amount</p>
@@ -319,7 +388,7 @@ export default function StorefrontPage() {
                   </div>
                   <div>
                     <p className="text-xs text-amber-600 font-medium">Reference</p>
-                    <p className="text-sm font-mono font-bold text-amber-700">{paymentRef}</p>
+                    <p className="text-sm font-mono font-bold text-amber-700">{vaDetails.reference}</p>
                   </div>
                 </div>
               </div>
@@ -328,7 +397,7 @@ export default function StorefrontPage() {
                 <p className="font-semibold text-zinc-800">How to complete your membership:</p>
                 <ol className="list-decimal pl-5 space-y-2 text-zinc-500">
                   <li>Transfer <strong className="text-zinc-700">{selectedPlan.price}</strong> to the account above</li>
-                  <li>Use <strong className="text-zinc-700">{paymentRef}</strong> as the payment reference</li>
+                  <li>Use <strong className="text-zinc-700">{vaDetails.reference}</strong> as the payment reference</li>
                   <li>Your {selectedPlan.name} membership activates automatically within 5 minutes of receipt</li>
                   <li>You&apos;ll receive an SMS confirmation at {phone || "your phone number"}</li>
                 </ol>

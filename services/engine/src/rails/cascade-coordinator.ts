@@ -17,8 +17,10 @@ import { nextRetryAt } from './retry-timing.js';
 import type { DunningPolicy, SubscriptionContext } from '../state-machines/subscription.js';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
+import { InvoicesTable } from '../schema/invoices.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { eq } from 'drizzle-orm';
+import { dispatchWebhookEvent } from '../webhooks/webhook-dispatcher.js';
 
 export interface CascadeCoordinatorDeps {
   billingHandler: BillingHandler;
@@ -110,11 +112,23 @@ export class CascadeCoordinator {
 
     if (sub.state === 'retrying') {
       await this.scheduleRetry(subscriptionId, invoiceId, amount, sub.retry_count, policy);
+      await dispatchWebhookEvent(sub.merchant_id, 'cascade.retrying', { subscriptionId, invoiceId, retryCount: sub.retry_count });
     } else if (sub.state === 'va_fallback') {
       await this.initiateVAFallback(subscriptionId, invoiceId, amount, sub.merchant_id);
+      await dispatchWebhookEvent(sub.merchant_id, 'cascade.va_fallback', { subscriptionId, invoiceId });
     } else if (sub.state === 'whatsapp_fallback') {
       await this.initiateWhatsAppFallback(subscriptionId, invoiceId);
+      await dispatchWebhookEvent(sub.merchant_id, 'cascade.whatsapp_fallback', { subscriptionId, invoiceId });
     }
+
+    // Send payment failed email
+    const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, invoiceId)).limit(1);
+    await this.orchestrator.sendPaymentFailedEmail({
+      customerId: sub.customer_id,
+      merchantId: sub.merchant_id,
+      invoiceId,
+      amount: invoice ? Number(invoice.amount) : amount,
+    }).catch(err => this.logger.error('Failed to send payment failed email', err as Error, { subscriptionId }));
   }
 
   /**
@@ -226,6 +240,14 @@ export class CascadeCoordinator {
         vaId: va.vaId,
         accountNumber: va.accountNumber,
       });
+
+      await dispatchWebhookEvent(sub.merchant_id, 'cascade.va_fallback', {
+        subscriptionId,
+        invoiceId,
+        vaAccountNumber: va.accountNumber,
+        bankName: 'Nomba',
+        expiresAt: va.expiresAt,
+      });
     } catch (err) {
       this.logger.error('VA creation failed', err as Error, { subscriptionId });
     }
@@ -317,6 +339,21 @@ export class CascadeCoordinator {
       });
 
       this.logger.info('Subscription moved to past_due', { subscriptionId });
+
+      await dispatchWebhookEvent(merchantId, 'cascade.past_due', { subscriptionId });
+
+      // Send dunning reminder email
+      const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, subscriptionId)).limit(1);
+      if (sub) {
+        const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, sub.current_invoice_id ?? '')).limit(1);
+        await this.orchestrator.sendDunningReminder({
+          customerId: sub.customer_id,
+          merchantId,
+          invoiceId: sub.current_invoice_id ?? '',
+          amount: invoice ? Number(invoice.amount) : 0,
+          dayNumber: 3,
+        }).catch(err => this.logger.error('Failed to send dunning email', err as Error, { subscriptionId }));
+      }
     } catch (err) {
       this.logger.error('Grace expiry handling failed', err as Error, { subscriptionId });
     }

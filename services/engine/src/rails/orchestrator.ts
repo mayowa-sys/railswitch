@@ -23,10 +23,13 @@
 import type { NombaClient } from './nomba-client.js';
 import type { SubscriptionContext } from '../state-machines/subscription.js';
 import { getWhatsAppService } from './whatsapp-service.js';
+import { getEmailTransport, paymentFailedEmail, paymentRecoveredEmail, subscriptionCancelledEmail, dunningReminderEmail } from './email-service.js';
+import { generatePortalLink } from '../routes/portal.js';
 import { db } from '../db/client.js';
 import { CustomersTable } from '../schema/customers.schema.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
+import { PlansTable } from '../schema/plans.schema.js';
 import { eq } from 'drizzle-orm';
 
 export interface OrchestratorLogger {
@@ -183,12 +186,15 @@ export class RailOrchestrator {
       .where(eq(InvoicesTable.id, input.invoiceId))
       .limit(1);
 
+    const portalLink = generatePortalLink(customer.id, customer.merchant_id);
+
     const sent = await wa.sendRecoveryMessage({
       to: customer?.phone ?? '2348000000000',
       accountNumber: subscription?.va_id ?? undefined,
       bankName: 'Nomba',
       amount: invoice ? Number(invoice.amount) : undefined,
       reference: input.invoiceId,
+      paymentLink: portalLink,
     });
 
     this.logger.info(sent ? 'WhatsApp recovery sent' : 'WhatsApp recovery failed to send', {
@@ -202,6 +208,85 @@ export class RailOrchestrator {
   async revokePaymentMethod(tokenId: string) {
     this.logger.info('revokePaymentMethod', { tokenId });
     await this.nomba.revokeCardToken(tokenId);
+  }
+
+  /**
+   * Send payment failed email to customer.
+   */
+  async sendPaymentFailedEmail(input: { customerId: string; merchantId: string; invoiceId: string; amount: number }) {
+    const email = getEmailTransport();
+    const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, input.customerId)).limit(1);
+    const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, input.invoiceId)).limit(1);
+    const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, invoice?.subscription_id ?? '')).limit(1);
+    const [plan] = await db.select().from(PlansTable).where(eq(PlansTable.id, sub?.plan_id ?? '')).limit(1);
+
+    if (!customer || !plan) return;
+
+    const portalLink = generatePortalLink(customer.id, input.merchantId);
+    const msg = paymentFailedEmail({
+      customerName: customer.name,
+      planName: plan.name,
+      amount: input.amount,
+      portalLink,
+      vaNumber: sub?.va_id ?? undefined,
+    });
+    msg.to = customer.email;
+    await email.send(msg);
+  }
+
+  /**
+   * Send payment recovered email to customer.
+   */
+  async sendPaymentRecoveredEmail(input: { customerId: string; merchantId: string; invoiceId: string; amount: number }) {
+    const email = getEmailTransport();
+    const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, input.customerId)).limit(1);
+    const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, input.invoiceId)).limit(1);
+    const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, invoice?.subscription_id ?? '')).limit(1);
+    const [plan] = await db.select().from(PlansTable).where(eq(PlansTable.id, sub?.plan_id ?? '')).limit(1);
+
+    if (!customer || !plan) return;
+
+    const msg = paymentRecoveredEmail({ customerName: customer.name, planName: plan.name, amount: input.amount });
+    msg.to = customer.email;
+    await email.send(msg);
+  }
+
+  /**
+   * Send subscription cancelled email.
+   */
+  async sendSubscriptionCancelledEmail(input: { customerId: string; merchantId: string }) {
+    const email = getEmailTransport();
+    const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, input.customerId)).limit(1);
+    if (!customer) return;
+
+    const portalLink = generatePortalLink(customer.id, input.merchantId);
+    const msg = subscriptionCancelledEmail({ customerName: customer.name, planName: 'Your', portalLink });
+    msg.to = customer.email;
+    await email.send(msg);
+  }
+
+  /**
+   * Send dunning reminder email.
+   */
+  async sendDunningReminder(input: { customerId: string; merchantId: string; invoiceId: string; amount: number; dayNumber: number }) {
+    const email = getEmailTransport();
+    const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, input.customerId)).limit(1);
+    const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, input.invoiceId)).limit(1);
+    const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, invoice?.subscription_id ?? '')).limit(1);
+    const [plan] = await db.select().from(PlansTable).where(eq(PlansTable.id, sub?.plan_id ?? '')).limit(1);
+
+    if (!customer || !plan) return;
+
+    const portalLink = generatePortalLink(customer.id, input.merchantId);
+    const msg = dunningReminderEmail({
+      customerName: customer.name,
+      planName: plan.name,
+      amount: input.amount,
+      portalLink,
+      dayNumber: input.dayNumber,
+    });
+    msg.to = customer.email;
+    await email.send(msg);
   }
 
   /**

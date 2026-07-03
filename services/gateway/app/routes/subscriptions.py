@@ -16,6 +16,19 @@ class PreviewSubscriptionRequest(BaseModel):
     effective_date: str | None = None
 
 
+class MarkRecoveredRequest(BaseModel):
+    reason: str | None = None
+
+
+class SendReminderRequest(BaseModel):
+    channel: str | None = None
+
+
+class OverrideStateRequest(BaseModel):
+    state: str
+    reason: str | None = None
+
+
 router = APIRouter(prefix="/v1/subscriptions", tags=["subscriptions"])
 
 
@@ -94,4 +107,42 @@ async def cancel_sub(
     subscription_id: str, engine: EngineClient = Depends(get_engine_client)
 ) -> Envelope:
     result = await engine.cancel_subscription(subscription_id)
+    return Envelope(data=result)
+
+
+@router.get("/{subscription_id}/detail")
+async def get_subscription_detail(
+    subscription_id: str, engine: EngineClient = Depends(get_engine_client)
+) -> Envelope:
+    result = await engine.get_subscription_detail(subscription_id)
+    return Envelope(data=result)
+
+
+@router.post("/{subscription_id}/mark-recovered")
+async def mark_recovered(
+    subscription_id: str,
+    payload: MarkRecoveredRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.mark_subscription_recovered(subscription_id, payload.reason)
+    return Envelope(data=result)
+
+
+@router.post("/{subscription_id}/send-reminder")
+async def send_reminder(
+    subscription_id: str,
+    payload: SendReminderRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.send_subscription_reminder(subscription_id, payload.channel)
+    return Envelope(data=result)
+
+
+@router.post("/{subscription_id}/override-state")
+async def override_state(
+    subscription_id: str,
+    payload: OverrideStateRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.override_subscription_state(subscription_id, payload.state, payload.reason)
     return Envelope(data=result)

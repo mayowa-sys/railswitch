@@ -8,11 +8,17 @@ import { CustomersTable } from '../schema/customers.schema.js';
 export const portalRouter = Router();
 
 const PORTAL_SECRET = process.env.PORTAL_SECRET || 'railswitch-portal-secret-dev';
+const PORTAL_URL = process.env.PORTAL_URL || 'http://localhost:3100';
 
-function signToken(customerId: string, merchantId: string): string {
+export function signToken(customerId: string, merchantId: string): string {
   const payload = Buffer.from(JSON.stringify({ customerId, merchantId, exp: Date.now() + 7 * 86400000 }));
   const sig = crypto.createHmac('sha256', PORTAL_SECRET).update(payload).digest('hex');
   return `${payload.toString('base64url')}.${sig}`;
+}
+
+export function generatePortalLink(customerId: string, merchantId: string): string {
+  const token = signToken(customerId, merchantId);
+  return `${PORTAL_URL}/portal?token=${token}`;
 }
 
 export function verifyToken(token: string): { customerId: string; merchantId: string } | null {
