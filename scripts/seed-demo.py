@@ -1,6 +1,12 @@
 """
 RailSwitch Demo Seeder — FitCore Nigeria
-Creates a clean demo environment with proper plan names, backdated customers, and multi-month invoice history.
+
+Creates a realistic demo environment:
+  - 275 subscriptions (255 active, 10 cancelled, 5 paused, 5 trialing)
+  - 5 cascade-state subs showcasing payment recovery
+  - ~97% recovery rate, ~3.6% churn
+  - ₦10.3M MRR / ₦123M ARR
+  - 6 months of realistic invoice history
 """
 import subprocess, json, random, datetime, sys
 
@@ -15,6 +21,13 @@ def api(method, path, body=None):
     try: return json.loads(result.stdout)
     except: print(f"API ERROR: {result.stdout[:200]}", file=sys.stderr); return {}
 
+def psql(sql):
+    return subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",sql], capture_output=True, text=True)
+
+def psql_t(sql):
+    r = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",sql], capture_output=True, text=True)
+    return r.stdout.strip()
+
 # ── Register or get existing demo account ──
 reg = api("POST", "/v1/auth/register", {"name":"FitCore Nigeria","email":"demo@railswitch.dev","password":"demo123456","company":"FitCore Nigeria"})
 if reg.get("data"):
@@ -22,206 +35,248 @@ if reg.get("data"):
     MID = reg["data"]["merchant"]["id"]
     print(f"Registered FitCore: {MID}")
 else:
-    res = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",
-        "SELECT id FROM merchants WHERE email='demo@railswitch.dev';"], capture_output=True, text=True)
-    MID = res.stdout.strip()
-    key_res = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",
-        f"SELECT 'sk_test_' || merchant_id || '__' || substr(key_hash,1,20) FROM api_keys WHERE merchant_id='{MID}' LIMIT 1;"], capture_output=True, text=True)
-    K = key_res.stdout.strip()
+    MID = psql_t("SELECT id FROM merchants WHERE email='demo@railswitch.dev';")
+    K = psql_t(f"SELECT 'sk_test_' || merchant_id || '__' || substr(key_hash,1,20) FROM api_keys WHERE merchant_id='{MID}' LIMIT 1;")
     print(f"Using existing: {MID}")
 
 # ── Clean ──
 print("Cleaning...")
-# Break circular FK between subscriptions.current_invoice_id → invoices
-subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",
-    f"UPDATE subscriptions SET current_invoice_id = NULL WHERE merchant_id='{MID}';"], capture_output=True)
-tables = [
-    "charge_attempts",           # FK → invoices
-    "audit_log",                 # FK → subscriptions
-    "credits",                   # FK → subscriptions
-    "processed_events",          # FK → subscriptions
-    "webhook_delivery_attempts", # FK → webhook_events, webhook_endpoints
-    "webhook_events",
-    "webhook_endpoints",
-    "payment_methods",           # FK → customers
-    "invoices",                  # FK → subscriptions
-    "subscriptions",             # FK → customers, plans
-    "customers",
-    "plans",
-]
-for t in tables:
-    subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"DELETE FROM {t} WHERE merchant_id='{MID}' OR merchant_id IS NULL;"], capture_output=True)
+psql(f"UPDATE subscriptions SET current_invoice_id = NULL WHERE merchant_id='{MID}';")
+for t in ["charge_attempts","audit_log","credits","processed_events",
+          "webhook_delivery_attempts","webhook_events","webhook_endpoints",
+          "payment_methods","invoices","subscriptions","customers","plans"]:
+    psql(f"DELETE FROM {t} WHERE merchant_id='{MID}' OR merchant_id IS NULL;")
 
-# ── 4 Core Plans + 1 Legacy ──
+# ══════════════════════════════════════════════════════════════════════════════
+# PLANS
+# ══════════════════════════════════════════════════════════════════════════════
 plans = {}
 plan_data = [
-    ("Basic", "Perfect for individuals starting their fitness journey.", 990000),
-    ("Pro", "For dedicated members who want full access and training.", 2990000),
-    ("Elite", "Premium experience with personal training and recovery.", 7990000),
-    ("Corporate", "Complete wellness solution for your entire team.", 24900000),
+    ("Basic",     "Perfect for individuals starting their fitness journey.",  990000),
+    ("Pro",       "For dedicated members who want full access and training.", 2990000),
+    ("Elite",     "Premium experience with personal training and recovery.",  7990000),
+    ("Corporate", "Complete wellness solution for your entire team.",         24900000),
 ]
 for name, desc, amount in plan_data:
     r = api("POST", "/v1/plans", {"name":name,"description":desc,"amount":amount,"currency":"NGN","interval":"monthly","interval_count":1})
     plans[name.lower()] = r["data"]["id"]
-    print(f"  {name}: {plans[name.lower()]} (N{amount/100:,.0f}/mo)")
+    print(f"  {name}: {plans[name.lower()]} (₦{amount/100:,.0f}/mo)")
 
-# Legacy
+# Legacy (archived, not shown on storefront)
 r = api("POST", "/v1/plans", {"name":"Basic (Legacy)","description":"Grandfathered plan.","amount":490000,"currency":"NGN","interval":"monthly","interval_count":1})
-subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"UPDATE plans SET is_active = false WHERE id = '{r['data']['id']}';"], capture_output=True)
+psql(f"UPDATE plans SET is_active = false WHERE id = '{r['data']['id']}';")
 plans["legacy"] = r["data"]["id"]
 
-# ── 250 Customers ──
-first_names = ["Adeola","Chinedu","Fatima","Emeka","Blessing","Tunde","Ngozi","Yusuf","Grace","David","Ifeoma","Musa","Sarah","Obinna","Zainab","Kelechi","Aisha","John","Adaobi","Oluwaseun","Chinaza","Ibrahim","Folake","Uche","Hauwa","Seyi","Nneka","Tobi","Moji","Ebuka","Chiamaka","Yemi","Bimpe","Bayo","Ronke","Sola","Lola","Femi","Dapo","Wale","Amara","Chuka","Efe","Gbenga","Halima","Ifeanyi","Jumoke","Kola","Lara","Moses"]
-last_names = ["Ibrahim","Okonkwo","Bello","Nwosu","Adeyemi","Bakare","Eze","Mohammed","Oluwole","Chukwu","Abdullahi","Johnson","Okafor","Usman","Madu","Bala","Peters","Obi","Adebayo","Musa","Abubakar","Nwachukwu","Ogunleye","Akpan","Ekong","Oladipo","Balogun","Ajayi","Lawal","Nwankwo","Ogunbanjo","Bankole","Alabi","Suleiman","Danjuma","Okoro","Adesina","Onyeka","Taiwo","Kehinde","Idris","Garba","Emenike","Olamide","Somto","Chibueze","Nnamdi","Oluwadare","Titilayo","Abiola"]
+# ══════════════════════════════════════════════════════════════════════════════
+# CUSTOMERS — 280 diverse Nigerian names
+# ══════════════════════════════════════════════════════════════════════════════
+first_names = [
+    "Adeola","Chinedu","Fatima","Emeka","Blessing","Tunde","Ngozi","Yusuf",
+    "Grace","David","Ifeoma","Musa","Sarah","Obinna","Zainab","Kelechi",
+    "Aisha","John","Adaobi","Oluwaseun","Chinaza","Ibrahim","Folake","Uche",
+    "Hauwa","Seyi","Nneka","Tobi","Moji","Ebuka","Chiamaka","Yemi","Bimpe",
+    "Bayo","Ronke","Sola","Lola","Femi","Dapo","Wale","Amara","Chuka","Efe",
+    "Gbenga","Halima","Ifeanyi","Jumoke","Kola","Lara","Moses","Olga",
+    "Chidinma","Temitope","Akin","Bola","Doris","Emmanuel","Funke","Gideon",
+    "Helen","Ifeanyichukwu","Joseph","Kemi","Linda","Michael","Ngozika","Olumide",
+    "Priscilla","Quadri","Rasheedat","Sade","Toyin","Udo","Victoria","Wunmi",
+    "Xavier","Yinka","Zainab","Abel","Blessing","Cynthia","Daniel","Esther",
+    "Frank","Gloria","Henry","Ife","James","Kunle","Lydia","Matthew",
+    "Nneka","Ola","Patrick","Rita","Sunday","Titilayo","Uchenna","Vincent"
+]
+last_names = [
+    "Ibrahim","Okonkwo","Bello","Nwosu","Adeyemi","Bakare","Eze","Mohammed",
+    "Oluwole","Chukwu","Abdullahi","Johnson","Okafor","Usman","Madu","Bala",
+    "Peters","Obi","Adebayo","Musa","Abubakar","Nwachukwu","Ogunleye","Akpan",
+    "Ekong","Oladipo","Balogun","Ajayi","Lawal","Nwankwo","Ogunbanjo","Bankole",
+    "Alabi","Suleiman","Danjuma","Okoro","Adesina","Onyeka","Taiwo","Kehinde",
+    "Idris","Garba","Emenike","Olamide","Somto","Chibueze","Nnamdi","Oluwadare",
+    "Titilayo","Abiola","Fashola","Amoo","Oyewole","Olaniyan","Akinwale","Oyedele"
+]
 used_names = set()
 customers = []
-for i in range(250):
+for i in range(280):
     while True:
         name = f"{random.choice(first_names)} {random.choice(last_names)}"
         if name not in used_names: used_names.add(name); break
     email = f"user{i}@demo.dev"
     d = api("POST", "/v1/customers", {"name": name, "email": email})
     customers.append(d["data"]["id"])
-    if (i+1) % 50 == 0: print(f"  {i+1}/250 customers")
+    if (i+1) % 50 == 0: print(f"  {i+1}/280 customers")
 
-# ── Backdate customers across 12 months ──
+# Backdate customers across 12 months
 for cid in customers:
     days_ago = random.randint(5, 365)
     created = (datetime.datetime.now() - datetime.timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
-    subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"UPDATE customers SET created_at = '{created}' WHERE id = '{cid}';"], capture_output=True)
-print("  Customers backdated")
+    psql(f"UPDATE customers SET created_at = '{created}' WHERE id = '{cid}';")
+print("  Customers backdated across 12 months")
 
-# ── 250 Subscriptions ──
-# Distribution: 233 active + 5 cancelled + 3 paused + 2 trialing + 3 retrying + 2 va_fallback + 1 whatsapp_fallback + 1 past_due = 250
-plan_keys = list(plans.keys())[:4]  # basic, pro, elite, corporate
-dist = [("basic",85), ("pro",78), ("elite",43), ("corporate",27)]  # 233 active
-for plan_key, count in dist:
+# ══════════════════════════════════════════════════════════════════════════════
+# SUBSCRIPTIONS — 275 total
+#
+# 255 active (120 basic + 85 pro + 35 elite + 15 corporate)
+#  10 cancelled
+#   5 paused
+#   5 trialing
+#    = 275
+# ══════════════════════════════════════════════════════════════════════════════
+print("Creating subscriptions...")
+
+# 255 active — plan distribution favorable to product (most on Basic/Pro)
+active_dist = [("basic",120), ("pro",85), ("elite",35), ("corporate",15)]
+cursor = 0
+for plan_key, count in active_dist:
     for i in range(count):
-        idx = sum(d[1] for d in dist if d[0] < plan_key) + i
-        if idx >= len(customers): break
+        idx = cursor + i
         months_ago = random.randint(0, 8)
         start = (datetime.datetime.now() - datetime.timedelta(days=30*months_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
         api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": plans[plan_key], "start_date": start})
+    cursor += count
+print(f"  255 active subs created")
 
-# 5 cancelled
-for i, reason in enumerate(["Switched to competitor","Budget constraints","No longer needed","Moving","Business closed"]):
-    idx = 233 + i
-    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["basic"], plans["pro"]]), "start_date": (datetime.datetime.now() - datetime.timedelta(days=180)).strftime("%Y-%m-%dT%H:%M:%SZ")})
+# 10 cancelled — realistic churn reasons
+cancel_reasons = [
+    "Switched to competitor","Budget constraints","No longer needed","Moving to new city",
+    "Business closed","Relocating abroad","Found alternative","Too expensive",
+    "Poor experience","Personal reasons"
+]
+for i, reason in enumerate(cancel_reasons):
+    idx = cursor + i
+    months_ago = random.randint(2, 10)
+    start = (datetime.datetime.now() - datetime.timedelta(days=30*months_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["basic"], plans["pro"]]), "start_date": start})
     subs = api("GET", "/v1/subscriptions")["data"]
     sub = [s for s in subs if s["customer_id"] == customers[idx]]
     if sub: api("POST", f"/v1/subscriptions/{sub[0]['id']}/cancel", {"reason": reason})
+cursor += 10
+print(f"  10 cancelled subs created")
 
-# 3 paused
-for i in range(3):
-    idx = 238 + i
-    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["pro"], plans["elite"]]), "start_date": (datetime.datetime.now() - datetime.timedelta(days=120)).strftime("%Y-%m-%dT%H:%M:%SZ")})
+# 5 paused — customers taking a break
+for i in range(5):
+    idx = cursor + i
+    months_ago = random.randint(1, 6)
+    start = (datetime.datetime.now() - datetime.timedelta(days=30*months_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["pro"], plans["elite"]]), "start_date": start})
     subs = api("GET", "/v1/subscriptions")["data"]
     sub = [s for s in subs if s["customer_id"] == customers[idx]]
     if sub: api("POST", f"/v1/subscriptions/{sub[0]['id']}/pause", {})
+cursor += 5
+print(f"  5 paused subs created")
 
-# 2 trialing
-for i in range(2):
-    idx = 241 + i
-    trial_end = (datetime.datetime.now() + datetime.timedelta(days=random.randint(3,10))).strftime("%Y-%m-%dT%H:%M:%SZ")
-    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["pro"], plans["elite"]]), "start_date": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"), "trial_end": trial_end})
+# 5 trialing — new prospects
+for i in range(5):
+    idx = cursor + i
+    trial_end = (datetime.datetime.now() + datetime.timedelta(days=random.randint(2, 12))).strftime("%Y-%m-%dT%H:%M:%SZ")
+    api("POST", "/v1/subscriptions", {"customer_id": customers[idx], "plan_id": random.choice([plans["basic"], plans["pro"], plans["elite"]]), "start_date": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"), "trial_end": trial_end})
+cursor += 5
+print(f"  5 trialing subs created")
 
-print(f"  Subscriptions created (active/cancelled/paused/trialing)")
+# ══════════════════════════════════════════════════════════════════════════════
+# CASCADE STATE SUBSCRIPTIONS — 5 subs showcasing payment recovery pipeline
+#
+# These are a tiny fraction (1.8%) of active subs — realistic for a healthy
+# payment system where most failures are temporary and get resolved.
+# ══════════════════════════════════════════════════════════════════════════════
+print("Creating cascade-state subscriptions...")
+CASCADE_CUSTOMERS = customers[cursor:cursor+5]
+plan_amounts_cascade = {plans["basic"]: 990000, plans["pro"]: 2990000, plans["elite"]: 7990000, plans["corporate"]: 24900000}
+CASCADE_CONFIGS = [
+    # (state, plan_key, retry_count, last_failure_reason)
+    ("retrying",          "basic",  2, "Card declined: insufficient funds"),
+    ("retrying",          "pro",    1, "Card declined: do not honor"),
+    ("va_fallback",       "pro",    5, "Card retry limit reached"),
+    ("whatsapp_fallback", "elite",  5, "Virtual account expired"),
+    ("past_due",          "basic",  5, "All recovery channels exhausted"),
+]
 
-# ── Cascade State Subscriptions (via direct SQL) ──
-# These showcase the payment recovery pipeline
-print("  Creating cascade state subscriptions...")
-CASCADE_CUSTOMERS = customers[243:250]  # 7 customers for cascade states
-CASCADE_PLANS = [plans["basic"], plans["pro"], plans["elite"], plans["pro"], plans["basic"], plans["elite"], plans["pro"]]
-CASCADE_STATES = ["retrying", "retrying", "retrying", "va_fallback", "va_fallback", "whatsapp_fallback", "past_due"]
-
-for i, (cust_id, plan_id, state) in enumerate(zip(CASCADE_CUSTOMERS, CASCADE_PLANS, CASCADE_STATES)):
+for i, (state, plan_key, retry_count, last_failure) in enumerate(CASCADE_CONFIGS):
     sub_id = f"sub_cascade_{i+1:03d}"
     start = (datetime.datetime.now() - datetime.timedelta(days=random.randint(15, 60))).strftime("%Y-%m-%dT%H:%M:%SZ")
     period_start = (datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 25))).strftime("%Y-%m-%dT%H:%M:%SZ")
     period_end = (datetime.datetime.now() + datetime.timedelta(days=random.randint(5, 25))).strftime("%Y-%m-%dT%H:%M:%SZ")
-    
-    # Determine retry_count and va_id based on state
-    retry_count = {"retrying": random.randint(1, 3), "va_fallback": 5, "whatsapp_fallback": 5, "past_due": 5}.get(state, 0)
     va_id = f"va_{sub_id}" if state in ("va_fallback", "whatsapp_fallback", "past_due") else None
     va_expires = (datetime.datetime.now() + datetime.timedelta(days=random.randint(-2, 3))).strftime("%Y-%m-%dT%H:%M:%SZ") if va_id else None
-    last_failure = "Card declined: insufficient funds" if state == "retrying" else \
-                   "Virtual account expired" if state in ("va_fallback", "whatsapp_fallback") else \
-                   "All recovery channels exhausted"
-    
-    subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"""
+
+    psql(f"""
         INSERT INTO subscriptions (id, merchant_id, customer_id, plan_id, state, version, retry_count, last_failure_reason, last_failure_retryable, va_id, va_expires_at, current_period_start, current_period_end, created_at, updated_at)
-        VALUES ('{sub_id}', '{MID}', '{cust_id}', '{plan_id}', '{state}', 1, {retry_count}, '{last_failure}', {'true' if state == 'retrying' else 'false'}, {'NULL' if not va_id else f"'{va_id}'"}, {'NULL' if not va_expires else f"'{va_expires}'"}, '{period_start}', '{period_end}', NOW() - INTERVAL '{random.randint(15,60)} days', NOW())
+        VALUES ('{sub_id}', '{MID}', '{CASCADE_CUSTOMERS[i]}', '{plans[plan_key]}', '{state}', 1, {retry_count}, '{last_failure}', {'true' if state == 'retrying' else 'false'}, {'NULL' if not va_id else f"'{va_id}'"}, {'NULL' if not va_expires else f"'{va_expires}'"}, '{period_start}', '{period_end}', NOW() - INTERVAL '{random.randint(15,60)} days', NOW())
         ON CONFLICT DO NOTHING;
-    """], capture_output=True)
-    
-    # Create failed invoice for this subscription
+    """)
+
+    # Failed invoice for this sub
     inv_id = f"inv_cascade_{i+1:03d}"
-    amount = plan_data[[p[0].lower() for p in plan_data].index(
-        next(k for k,v in plans.items() if v == plan_id)
-    )][2]
+    amount = plan_amounts_cascade[plans[plan_key]]
     due_date = (datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 10))).strftime("%Y-%m-%dT%H:%M:%SZ")
-    inv_status = "uncollectible" if state in ("past_due", "whatsapp_fallback") else "pending_retry"
-    
-    subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"""
+    inv_status = "uncollectible" if state == "past_due" else "pending_retry"
+
+    psql(f"""
         INSERT INTO invoices (id, subscription_id, merchant_id, amount, currency, status, due_date, created_at)
         VALUES ('{inv_id}', '{sub_id}', '{MID}', {amount}, 'NGN', '{inv_status}', '{due_date}', NOW() - INTERVAL '{random.randint(1,10)} days')
         ON CONFLICT DO NOTHING;
-    """], capture_output=True)
-    
-    # Link invoice to subscription
-    subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"""
-        UPDATE subscriptions SET current_invoice_id = '{inv_id}' WHERE id = '{sub_id}';
-    """], capture_output=True)
-    
-    # Create charge attempts
+    """)
+    psql(f"UPDATE subscriptions SET current_invoice_id = '{inv_id}' WHERE id = '{sub_id}';")
+
+    # Charge attempts
     for attempt in range(retry_count):
         attempt_date = (datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 8), hours=random.randint(0, 23))).strftime("%Y-%m-%dT%H:%M:%SZ")
-        subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",f"""
+        psql(f"""
             INSERT INTO charge_attempts (id, invoice_id, merchant_id, attempted_at, status, reason)
-            VALUES ('ch_cascade_{i+1:03d}_{attempt+1}', '{inv_id}', '{MID}', '{attempt_date}', 'failed', 'Card declined: insufficient funds')
+            VALUES ('ch_cascade_{i+1:03d}_{attempt+1}', '{inv_id}', '{MID}', '{attempt_date}', 'failed', '{last_failure}')
             ON CONFLICT DO NOTHING;
-        """], capture_output=True)
+        """)
 
-print(f"  Cascade subscriptions created (3 retrying, 2 va_fallback, 1 whatsapp_fallback, 1 past_due)")
+print(f"  5 cascade subs: 2 retrying, 1 va_fallback, 1 whatsapp_fallback, 1 past_due")
 
-# ── Payment Methods for 80 customers ──
+# ══════════════════════════════════════════════════════════════════════════════
+# PAYMENT METHODS — ~30% of customers have a card on file
+# ══════════════════════════════════════════════════════════════════════════════
 brands = ["visa","mastercard","verve"]
-for i in random.sample(range(250), 80):
+for i in random.sample(range(255), 80):
     api("POST", "/v1/payment-methods", {"customer_id": customers[i], "type":"card", "nomba_token":f"tok_demo_{i}", "last4":str(random.randint(1000,9999)), "brand":random.choice(brands), "is_default":True})
-print("  Payment methods added")
+print("  Payment methods added (80 cards)")
 
-# ── Generate Multi-Month Invoice History ──
+# ══════════════════════════════════════════════════════════════════════════════
+# INVOICE HISTORY — 6 months of realistic payment data
+#
+# 95% paid, 1.5% uncollectible, 3.5% pending_retry (being retried)
+# Recovery rate = 95 / (95 + 1.5) = 98.4%
+# ══════════════════════════════════════════════════════════════════════════════
+print("Generating invoice history...")
 subs = api("GET", "/v1/subscriptions")["data"]
+plan_amounts = {plans["basic"]: 990000, plans["pro"]: 2990000, plans["elite"]: 7990000, plans["corporate"]: 24900000}
+
 for sub in subs:
     if sub["state"] == "trialing": continue
     started = datetime.datetime.fromisoformat(sub["current_period_start"].replace("Z","+00:00"))
     now = datetime.datetime.now(datetime.timezone.utc)
     months_active = max(1, (now.year - started.year) * 12 + (now.month - started.month))
-    amount = plan_data[[p[0].lower() for p in plan_data].index(
-        next(k for k,v in plans.items() if v == sub["plan_id"])
-    )][2] if sub["plan_id"] in plans.values() else 990000
-    
+    amount = plan_amounts.get(sub["plan_id"], 990000)
+
     for m in range(months_active):
         due = (started + datetime.timedelta(days=30*m)).strftime("%Y-%m-%dT%H:%M:%SZ")
         paid = (started + datetime.timedelta(days=30*m+1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         inv_id = f"inv_{sub['id'][:8]}_{m}"
-        # 85% paid, 10% uncollectible, 5% pending_retry — realistic failure rate for demo
+
+        # 95% paid, 1.5% uncollectible, 3.5% pending_retry
         r = random.random()
-        if r < 0.85:
+        if r < 0.95:
             inv_status = 'paid'; paid_at = f"'{paid}'"
-        elif r < 0.95:
+        elif r < 0.965:
             inv_status = 'uncollectible'; paid_at = 'NULL'
         else:
             inv_status = 'pending_retry'; paid_at = 'NULL'
-        subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-c",
-            f"INSERT INTO invoices (id, subscription_id, merchant_id, amount, currency, status, due_date, paid_at, created_at) VALUES ('{inv_id}', '{sub['id']}', '{MID}', {amount}, 'NGN', '{inv_status}', '{due}', {paid_at}, '{due}') ON CONFLICT DO NOTHING;"], capture_output=True)
+
+        psql(f"INSERT INTO invoices (id, subscription_id, merchant_id, amount, currency, status, due_date, paid_at, created_at) VALUES ('{inv_id}', '{sub['id']}', '{MID}', {amount}, 'NGN', '{inv_status}', '{due}', {paid_at}, '{due}') ON CONFLICT DO NOTHING;")
 
 print("  Invoice history generated")
 
-# ── Verify ──
+# ══════════════════════════════════════════════════════════════════════════════
+# VERIFY
+# ══════════════════════════════════════════════════════════════════════════════
 subs = api("GET", "/v1/subscriptions")["data"]
 custs = api("GET", "/v1/customers")["data"]
 plans_list = api("GET", "/v1/plans")["data"]
+
 st = {}
 for s in subs: st[s["state"]] = st.get(s["state"],0) + 1
 active = [s for s in subs if s["state"]=="active"]
@@ -232,23 +287,44 @@ for s in active:
     pname = next((p["name"] for p in plans_list if p["id"]==s["plan_id"]), "?")
     plan_dist[pname] = plan_dist.get(pname,0) + 1
 
-# Count cascade subs (from API — may not show internal states, so also count from DB)
-cascade_count_result = subprocess.run(["docker","exec","infra-postgres-1","psql","-U","railswitch","-d","railswitch","-t","-c",
-    f"SELECT COUNT(*) FROM subscriptions WHERE merchant_id='{MID}' AND state IN ('retrying','va_fallback','whatsapp_fallback','past_due');"],
-    capture_output=True, text=True)
-cascade_count = int(cascade_count_result.stdout.strip() or "0")
+cascade_count = int(psql_t(f"SELECT COUNT(*) FROM subscriptions WHERE merchant_id='{MID}' AND state IN ('retrying','va_fallback','whatsapp_fallback','past_due');") or "0")
 
-print(f"\n═══ FITCORE NIGERIA DEMO ═══")
-print(f"Merchant: {MID}")
-print(f"Customers: {len(custs)}")
-print(f"Plans: {len(plans_list)}")
-print(f"Subscriptions: {len(subs) + cascade_count} — {st}")
-print(f"Active: {len(active)}")
-print(f"Cascade: {cascade_count} in recovery pipeline")
-print(f"MRR: N{mrr/100:,.0f}")
-print(f"ARR: N{mrr*12/100:,.0f}")
-print(f"Plans: {plan_dist}")
-print(f"Churn: {st.get('cancelled',0)}/{len(subs) + cascade_count} = {round(st.get('cancelled',0)/(len(subs) + cascade_count)*100,1)}%")
-print(f"\nLogin: demo@railswitch.dev / demo123456")
-print(f"Dashboard: http://localhost:3000/dashboard")
-print(f"Storefront: http://localhost:3200")
+# Invoice stats
+inv_stats = {}
+for row in psql(f"SELECT status, COUNT(*) as c FROM invoices WHERE merchant_id='{MID}' GROUP BY status;").stdout.strip().split("\n"):
+    if "|" in row:
+        parts = [x.strip() for x in row.split("|") if x.strip()]
+        if len(parts) == 2 and parts[0] != "status":
+            try: inv_stats[parts[0]] = int(parts[1])
+            except: pass
+
+paid = inv_stats.get("paid", 0)
+uncollectible = inv_stats.get("uncollectible", 0)
+pending = inv_stats.get("pending_retry", 0)
+recovery = round(paid / (paid + uncollectible) * 100, 1) if (paid + uncollectible) > 0 else 0
+total_inv = paid + uncollectible + pending
+
+print(f"\n{'═'*50}")
+print(f"  FITCORE NIGERIA — DEMO ENVIRONMENT")
+print(f"{'═'*50}")
+print(f"  Merchant:        {MID}")
+print(f"  Customers:       {len(custs)}")
+print(f"  Plans:           {len(plans_list)} (4 active + 1 legacy)")
+print(f"  Subscriptions:   {sum(st.values())} total")
+print(f"    Active:        {st.get('active',0)} ({plan_dist})")
+print(f"    Cancelled:     {st.get('cancelled',0)} ({round(st.get('cancelled',0)/sum(st.values())*100,1)}% churn)")
+print(f"    Paused:        {st.get('paused',0)}")
+print(f"    Trialing:      {st.get('trialing',0)}")
+print(f"    Cascade:       {cascade_count} (retrying={st.get('retrying',0)}, va={st.get('va_fallback',0)}, whatsapp={st.get('whatsapp_fallback',0)}, past_due={st.get('past_due',0)})")
+print(f"  Invoices:        {total_inv} total")
+print(f"    Paid:          {paid} ({round(paid/total_inv*100,1)}%)")
+print(f"    Uncollectible: {uncollectible} ({round(uncollectible/total_inv*100,1)}%)")
+print(f"    Pending retry: {pending} ({round(pending/total_inv*100,1)}%)")
+print(f"  Recovery Rate:   {recovery}%")
+print(f"  MRR:             ₦{mrr/100:,.0f}")
+print(f"  ARR:             ₦{mrr*12/100:,.0f}")
+print(f"{'═'*50}")
+print(f"  Login:   demo@railswitch.dev / demo123456")
+print(f"  Dashboard: http://localhost:3000/dashboard")
+print(f"  Storefront: http://localhost:3200")
+print(f"{'═'*50}")
