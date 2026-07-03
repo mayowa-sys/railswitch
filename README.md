@@ -5,7 +5,6 @@
 [![Frontend CI](https://github.com/mayowa-sys/railswitch/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/mayowa-sys/railswitch/actions/workflows/frontend-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> **Recurring billing for a country where cards fail.**
 > **Stripe collects recurring revenue. RailSwitch recovers it.**
 
 A multi-tenant subscriptions engine built on Nomba. When a card charge fails, RailSwitch automatically cascades through smarter retries, a one-time virtual account, a USSD push, and a WhatsApp message until the customer pays. The subscription stays alive. The merchant keeps the revenue.
@@ -32,11 +31,9 @@ Past due → eventual cancel
 
 Each rail is independent. Each emits webhooks. The state machine guarantees one cycle, one charge — no double-billing even under concurrent webhook delivery.
 
-See [`docs/architecture.md`](docs/architecture.md) for the full system design.
-
 ---
 
-## Architecture at a glance
+## Architecture
 
 Two services, one shared Postgres database:
 
@@ -51,29 +48,31 @@ Plus:
 | `apps/portal` | Customer self-service portal (Next.js) |
 | `apps/storefront` | Demo storefront for live presentations |
 | `apps/docs` | Mintlify docs site |
-| `packages/sdk-node` | TypeScript SDK (`railswitch` on npm) |
+| `packages/sdk-node` | TypeScript SDK (`@railswitch/node` on npm) |
 | `packages/sdk-python` | Python SDK (`railswitch` on PyPI) |
 
 ---
 
 ## What's built
 
-**Engine — pre-window foundation complete (91 tests):**
+**Engine — core complete (96 unit tests + 113 integration tests):**
 
-- XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded, visualizable via `/debug/subscription-machine`
+- XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
-- Real Nomba client — OAuth 2.0, tokenized card charges, virtual account creation via sandbox API
+- Real Nomba client — OAuth 2.0, tokenized card charges, virtual account creation
 - Smart retry timing — payday-aware, liquidity-window optimization, exponential backoff with jitter
-- **Cascade coordinator** — Card → Retry → VA → WhatsApp → Past Due with real Nomba VAs (5 verified in sandbox)
-- **Portal token system** — HMAC-SHA256 signed tokens for customer self-service access
-- BillingHandler — bridges orchestrator to state machine (`bill()` + `retry()`), idempotent
-- BullMQ billing scheduler with trial-to-paid conversion (requires Redis, dev-only until production Redis)
+- Cascade coordinator — Card → Retry → VA → WhatsApp → Past Due with real Nomba VAs
+- Portal token system — HMAC-SHA256 signed tokens for customer self-service access
+- BillingHandler — bridges orchestrator to state machine, idempotent
+- BullMQ billing scheduler with trial-to-paid conversion
 - Internal API routes at `/internal/v1/*` — plans, customers, subscriptions, invoices, payment methods, auth, webhooks CRUD
-- Proration preview endpoint — plan-change proration (upgrade/downgrade), verified against brief example (₦3,333 credit / ₦10,000 charge / ₦6,667 net)
-- Drizzle production repository — FOR UPDATE, version checks, merchant isolation via `set_config()`
+- Proration preview endpoint — plan-change proration (upgrade/downgrade)
+- Drizzle production repository — FOR UPDATE, version checks, merchant isolation
 - Immutable audit log with no-delete/no-update Postgres policies
 - Outbound webhook delivery — HMAC-SHA256 signing, 9-step exponential backoff, replay support
-- Inbound Nomba webhook ingress — signature verification (gateway), engine handler stub (window phase)
+- Inbound Nomba webhook ingress — signature verification + engine handler
+- **RLS infrastructure** — `engine_user` Postgres role, `setRLSContext` middleware, per-request `app.current_merchant_id` GUC
+- **Cross-tenant isolation tests** — 5 tests verifying merchants cannot access each other's resources
 
 **Gateway — pytest suite:**
 
@@ -85,22 +84,15 @@ Plus:
 
 **Frontend:**
 
-- Merchant dashboard — 12 routes, auth context, plans + customers from real API (rest mock)
-- Customer portal — 5 pages, recovery banner, proration preview (mock mode)
-- Both with mock/real dual-mode via `NEXT_PUBLIC_MOCK_API`
-
-**Window-phase work (July 1–7) — Nomba integration:**
-
-- Day 1: Sandbox + Charge API + tokenized cards + webhook callback
-- Days 2–4: Per-cycle VA generation, inbound webhook handlers, WhatsApp Cloud API, USSD (if available)
-- Days 5–6: SDK publishing (`@railswitch/node` + `railswitch`), Mintlify docs, sandbox playground
-- Day 7: Demo, submission
+- Merchant dashboard — 12 routes, real API integration, plans/customers/subscriptions from live data
+- Customer portal — 5 pages, token-based access, subscription management, invoice history
+- Demo storefront — FitCore Nigeria demo with 250 customers, ₦13.1M MRR
 
 ---
 
 ## Quickstart
 
-**Requirements:** Docker Desktop, Node 20+, Python 3.12, Git.
+**Requirements:** Docker Desktop, Node 20+, Python 3.12+, Git.
 
 ```bash
 git clone https://github.com/mayowa-sys/railswitch.git
@@ -122,53 +114,49 @@ Verify:
 ```bash
 curl http://localhost:8000/health
 curl http://localhost:3001/health
-curl http://localhost:3001/status
 ```
 
-**Engine development (hot reload):**
+**Seed demo data:**
 
 ```bash
-cd services/engine && npm install && npm run dev
+python3 scripts/seed-demo.py
 ```
 
-**Gateway development:**
+Creates FitCore Nigeria demo: 250 customers, 5 plans, 250 subscriptions, ₦13.1M MRR.
 
-```bash
-cd services/gateway
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-**Dashboard:**
-
-```bash
-cd apps/dashboard && npm install && npm run dev
-```
-
-**Docs site:**
-
-```bash
-cd apps/docs && npx -p node@20 -- mintlify dev --port 3002
-```
+Login: `demo@railswitch.dev` / `demo123456`
 
 ---
 
 ## Running tests
 
-**Engine (vitest — 91 tests):**
+**Engine (vitest — 96 unit tests):**
 
 ```bash
 cd services/engine && npm test
 ```
 
-**Gateway (pytest — pytest suite):**
+**Engine cross-tenant tests (5 tests):**
+
+```bash
+cd services/engine && npx vitest run tests/tenants/
+```
+
+**Gateway (pytest):**
 
 ```bash
 cd services/gateway && source .venv/bin/activate && pytest
 ```
 
-**Full CI gate (run before pushing):**
+**Integration test (113 tests, 18 sections):**
+
+```bash
+bash test_integration.sh
+```
+
+Covers: auth, plans, customers, subscriptions, invoices, payment methods, audit, webhooks, portal, engine internals, storefront, Nomba webhooks, error handling, cascade DB verification, metrics, SDK, and cleanup.
+
+**Full CI gate:**
 
 ```bash
 # Engine
@@ -181,17 +169,11 @@ cd services/gateway && ruff check app/ && mypy app/ && pytest
 cd apps/dashboard && npm run lint && npm run build
 ```
 
-**Integration test (hits all 27 endpoints live):**
-
-```bash
-bash test_integration.sh
-```
-
 ---
 
 ## API
 
-The public REST API lives at the gateway. Stripe-style conventions: `Authorization: Bearer sk_live_...`, `Idempotency-Key` header on writes, error envelope `{ data, error, meta }`, cursor pagination via `starting_after` / `ending_before`.
+Public REST API at the gateway. Stripe-style conventions: `Authorization: Bearer sk_live_...`, `Idempotency-Key` header on writes, error envelope `{ data, error, meta }`, cursor pagination.
 
 | Resource | Methods |
 |---|---|
@@ -203,16 +185,16 @@ The public REST API lives at the gateway. Stripe-style conventions: `Authorizati
 | Payment Methods | `POST`, `GET list`, `GET by id`, `DELETE` |
 | Webhooks | `POST /endpoints`, `GET list`, `GET by id`, `PATCH`, `DELETE`, events, deliveries, replay |
 
-Full contract at [`docs/internal-api.md`](docs/internal-api.md). OpenAPI spec auto-generated at `http://localhost:8000/openapi.json`.
+OpenAPI spec: `http://localhost:8000/openapi.json`
 
 ---
 
 ## SDKs
 
-**TypeScript (`railswitch` on npm):**
+**TypeScript (`@railswitch/node` on npm):**
 
 ```typescript
-import { RailSwitch } from "railswitch";
+import { RailSwitch } from "@railswitch/node";
 const client = new RailSwitch({ apiKey: "sk_test_..." });
 const subscription = await client.subscriptions.create({
   customerId: "cus_abc",
@@ -220,7 +202,7 @@ const subscription = await client.subscriptions.create({
 });
 ```
 
-**Python (`railswitch`):**
+**Python (`railswitch` on PyPI):**
 
 ```python
 from railswitch import RailSwitch
@@ -230,8 +212,6 @@ subscription = client.subscriptions.create(
     plan_id="plan_pro",
 )
 ```
-
-Both published to their respective registries.
 
 ---
 
@@ -243,7 +223,7 @@ Both published to their respective registries.
 | [`docs/engine-schema-contract.md`](docs/engine-schema-contract.md) | Locked SQL contract the wrapper depends on |
 | [`docs/internal-api.md`](docs/internal-api.md) | Internal HTTP contract between gateway and engine |
 | [`SECURITY.md`](SECURITY.md) | Auth model, RLS, PCI compliance, webhook security, threat model |
-| [`apps/docs/`](apps/docs) | Mintlify docs site — quickstart, concepts, SDKs, webhooks, API reference |
+| [Docs site](https://railswitch.mintlify.site) | Quickstart, concepts, SDKs, webhooks, API reference |
 
 ---
 
@@ -253,16 +233,12 @@ Both published to their respective registries.
 |---|---|
 | Daniel (@Amaryllis750) | Engine data layer: schema, billing cycles, proration, multi-tenancy, audit log |
 | Mayowa (@mayowa-sys) | Rails: state machine, Nomba integration, multi-rail cascade, retry intelligence |
-| Gbemi (@OluwagbeminiyiA) | Gateway, both SDKs, docs site, outbound webhooks, security note |
-| Tomiwa (@moloruntomiwa31) | Frontend apps + demo storefront + demo video |
+| Gbemi (@OluwagbeminiyiA) | Gateway, both SDKs, docs site, outbound webhooks, security |
+| Tomiwa (@moloruntomiwa31) | Frontend apps, demo storefront, demo video |
 
 ---
 
 ## Contributing
-
-This is a hackathon project on a fixed timeline. The team is closed for the build window.
-
-After Demo Day, contributions welcome. Workflow:
 
 1. Branch from `main`: `git checkout -b your-feature`
 2. Write code + tests

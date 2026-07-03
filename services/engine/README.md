@@ -184,3 +184,20 @@ Generated via `npx drizzle-kit generate` and applied via `npx drizzle-kit migrat
 | `0005_conscious_scarlet_witch` | Add `processed_events` table + unique constraint |
 | `0006_rich_magneto` | Add `trial_ends_at`, `current_period_start/end`, billing timestamps |
 | `0007_condemned_ben_urich` | Add `name`/`description`/`metadata`/`is_active` on plans, `name`/`updated_at` on customers, `currency`/`description`/`metadata` on invoices, `type`/`metadata` on payment_methods, `refunded` state, `cancel_at_period_end` on subscriptions |
+| `0006_engine_user` | Create `engine_user` Postgres role for RLS-scoped access |
+| `0007_tidy_johnny_storm` | Add `pause_credit` and `trial_credit` to `credit_source` enum |
+
+## RLS Infrastructure
+
+Row-level security is enforced at multiple layers:
+
+1. **`engine_user` Postgres role** — Created by migration `0006_engine_user`. Non-superuser role subject to RLS policies. Available via `ENGINE_USER_URL` in `.env`.
+2. **`setRLSContext` middleware** (`src/middleware/rls.ts`) — Sets `app.current_merchant_id` GUC via `SELECT set_config()` per request. Applied to all merchant-scoped routes.
+3. **Portal skip** — `extractMerchantId` middleware skips RLS for `GET /internal/v1/portal/resolve` (token-based auth).
+4. **Cross-tenant tests** (`tests/tenants/cross_tenant_test.test.ts`) — 5 tests verifying merchants cannot access each other's plans, customers, subscriptions, invoices, or payment methods.
+
+## Test counts
+
+- **Unit tests (vitest):** 96 — state machine, wrapper, billing handler, orchestrator, retry timing, proration, utils
+- **Cross-tenant tests:** 5 — RLS isolation across all resource types
+- **Integration tests (bash):** 113 — full API coverage including auth, CRUD, lifecycle, portal, webhooks, error handling
