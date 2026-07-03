@@ -116,6 +116,7 @@ class Invoice(BaseModel):
     status: str
     description: str | None = None
     due_date: datetime
+    paid_at: datetime | None = None
     metadata: dict[str, Any]
     created_at: datetime
 
