@@ -45,7 +45,7 @@ export default function SubscriptionsPage() {
         state: s.state,
         amount: Number(planMap.get(s.plan_id)?.amount ?? 0) / 100,
         nextBillingDate: s.current_period_end ?? new Date().toISOString(),
-        cascadeHistory: [],
+        cascadeHistory: (s as any).cascade_history ?? [],
       })) as LiveSubscription[]);
       setLoading(false);
     }).catch(() => setLoading(false));

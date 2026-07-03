@@ -95,14 +95,14 @@ last_names = [
 ]
 used_names = set()
 customers = []
-for i in range(280):
+for i in range(285):
     while True:
         name = f"{random.choice(first_names)} {random.choice(last_names)}"
         if name not in used_names: used_names.add(name); break
     email = f"user{i}@demo.dev"
     d = api("POST", "/v1/customers", {"name": name, "email": email})
     customers.append(d["data"]["id"])
-    if (i+1) % 50 == 0: print(f"  {i+1}/280 customers")
+    if (i+1) % 50 == 0: print(f"  {i+1}/285 customers")
 
 # Backdate customers across 12 months
 for cid in customers:
@@ -172,20 +172,25 @@ cursor += 5
 print(f"  5 trialing subs created")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CASCADE STATE SUBSCRIPTIONS — 5 subs showcasing payment recovery pipeline
+# CASCADE STATE SUBSCRIPTIONS — 10 subs showcasing payment recovery pipeline
 #
-# These are a tiny fraction (1.8%) of active subs — realistic for a healthy
+# These are a small fraction of active subs — realistic for a healthy
 # payment system where most failures are temporary and get resolved.
 # ══════════════════════════════════════════════════════════════════════════════
 print("Creating cascade-state subscriptions...")
-CASCADE_CUSTOMERS = customers[cursor:cursor+5]
+CASCADE_CUSTOMERS = customers[cursor:cursor+10]
 plan_amounts_cascade = {plans["basic"]: 990000, plans["pro"]: 2990000, plans["elite"]: 7990000, plans["corporate"]: 24900000}
 CASCADE_CONFIGS = [
     # (state, plan_key, retry_count, last_failure_reason)
     ("retrying",          "basic",  2, "Card declined: insufficient funds"),
     ("retrying",          "pro",    1, "Card declined: do not honor"),
     ("va_fallback",       "pro",    5, "Card retry limit reached"),
+    ("va_fallback",       "basic",  5, "Card retry limit reached"),
     ("whatsapp_fallback", "elite",  5, "Virtual account expired"),
+    ("whatsapp_fallback", "pro",    5, "Virtual account expired"),
+    ("past_due",          "basic",  5, "All recovery channels exhausted"),
+    ("past_due",          "pro",    5, "All recovery channels exhausted"),
+    ("past_due",          "elite",  5, "All recovery channels exhausted"),
     ("past_due",          "basic",  5, "All recovery channels exhausted"),
 ]
 
@@ -225,15 +230,25 @@ for i, (state, plan_key, retry_count, last_failure) in enumerate(CASCADE_CONFIGS
             ON CONFLICT DO NOTHING;
         """)
 
-print(f"  5 cascade subs: 2 retrying, 1 va_fallback, 1 whatsapp_fallback, 1 past_due")
+print(f"  10 cascade subs: 2 retrying, 2 va_fallback, 2 whatsapp_fallback, 4 past_due")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAYMENT METHODS — ~30% of customers have a card on file
+# PAYMENT METHODS — Every customer has at least 1 card, ~30% have 2 cards
 # ══════════════════════════════════════════════════════════════════════════════
 brands = ["visa","mastercard","verve"]
-for i in random.sample(range(255), 80):
-    api("POST", "/v1/payment-methods", {"customer_id": customers[i], "type":"card", "nomba_token":f"tok_demo_{i}", "last4":str(random.randint(1000,9999)), "brand":random.choice(brands), "is_default":True})
-print("  Payment methods added (80 cards)")
+# Every active customer gets a primary card
+active_customer_ids = set()
+for sub in api("GET", "/v1/subscriptions")["data"]:
+    if sub["state"] != "cancelled":
+        active_customer_ids.add(sub["customer_id"])
+
+for i, cid in enumerate(customers[:255]):
+    api("POST", "/v1/payment-methods", {"customer_id": cid, "type":"card", "nomba_token":f"tok_demo_{i}", "last4":str(random.randint(1000,9999)), "brand":random.choice(brands), "is_default":True})
+
+# ~30% of active customers get a second card (expired, different brand)
+for i in random.sample(range(255), 75):
+    api("POST", "/v1/payment-methods", {"customer_id": customers[i], "type":"card", "nomba_token":f"tok_demo_{i}_b", "last4":str(random.randint(1000,9999)), "brand":random.choice(brands), "is_default":False})
+print(f"  Payment methods added ({255} primary + 75 secondary cards)")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INVOICE HISTORY — 6 months of realistic payment data

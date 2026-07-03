@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
+import { ChargeAttempts } from '../schema/charge_attempts.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
 import { handlePlanChange } from '../proration/plan-change.js';
@@ -117,7 +118,49 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
       .from(SubscriptionsTable)
       .where(eq(SubscriptionsTable.merchant_id, req.merchantId));
 
-    res.json({ data: subscriptions, total: subscriptions.length });
+    // For cascade-state subs, fetch charge attempt history
+    const cascadeStates = ['retrying', 'va_fallback', 'whatsapp_fallback', 'past_due'];
+    const cascadeSubs = subscriptions.filter(s => cascadeStates.includes(s.state));
+
+    let cascadeHistoryMap: Record<string, Array<{step: string; status: string; attempted_at: string}>> = {};
+
+    if (cascadeSubs.length > 0) {
+      // Get invoice IDs for cascade subs
+      const invoiceIds = cascadeSubs
+        .filter(s => s.current_invoice_id)
+        .map(s => s.current_invoice_id!);
+
+      if (invoiceIds.length > 0) {
+        const attempts = await db
+          .select()
+          .from(ChargeAttempts)
+          .where(inArray(ChargeAttempts.invoice_id, invoiceIds));
+
+        for (const attempt of attempts) {
+          const subId = cascadeSubs.find(s => s.current_invoice_id === attempt.invoice_id)?.id;
+          if (subId) {
+            if (!cascadeHistoryMap[subId]) cascadeHistoryMap[subId] = [];
+            // Map charge attempt status to cascade step
+            const step = attempt.reason?.includes('virtual account') ? 'virtual_account'
+              : attempt.reason?.includes('ussd') ? 'ussd'
+              : attempt.reason?.includes('whatsapp') ? 'whatsapp'
+              : 'card';
+            cascadeHistoryMap[subId].push({
+              step,
+              status: attempt.status === 'failed' ? 'failed' : 'success',
+              attempted_at: attempt.attempted_at?.toISOString?.() ?? String(attempt.attempted_at),
+            });
+          }
+        }
+      }
+    }
+
+    const enriched = subscriptions.map(s => ({
+      ...s,
+      cascade_history: cascadeHistoryMap[s.id] ?? [],
+    }));
+
+    res.json({ data: enriched, total: enriched.length });
   } catch (err) {
     console.error('[subscriptions] list error:', err);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to list subscriptions' } });

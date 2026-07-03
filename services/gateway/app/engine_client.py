@@ -23,6 +23,12 @@ class CreateSubscriptionRequest(BaseModel):
     metadata: dict[str, Any] = {}
 
 
+class CascadeAttempt(BaseModel):
+    step: str
+    status: str
+    attempted_at: str | None = None
+
+
 class SubscriptionResponse(BaseModel):
     id: str
     merchant_id: str
@@ -36,6 +42,7 @@ class SubscriptionResponse(BaseModel):
     metadata: dict[str, Any] = {}
     created_at: datetime
     updated_at: datetime
+    cascade_history: list[CascadeAttempt] = []
 
 
 class UpdateSubscriptionRequest(BaseModel):

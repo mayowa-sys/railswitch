@@ -93,6 +93,7 @@ export interface GatewaySubscription {
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  cascade_history?: Array<{ step: string; status: string; attempted_at?: string }>;
 }
 
 export interface GatewayCustomer {
