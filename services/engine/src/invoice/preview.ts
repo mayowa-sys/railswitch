@@ -1,8 +1,8 @@
-import { db } from "../db/client";
-import { PlansTable } from "../schema/plans.schema";
-import { SubscriptionsTable } from "../schema/subscriptions.schema";
+import { db } from "../db/client.js";
+import { PlansTable } from "../schema/plans.schema.js";
+import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
 import { eq, and } from "drizzle-orm";
-import { loadPlanChangeInputs, estimateCreditApplication } from "../proration/plan-change";
+import { loadPlanChangeInputs, estimateCreditApplication } from "../proration/plan-change.js";
 
 export interface LineItem {
   plan_name: string;

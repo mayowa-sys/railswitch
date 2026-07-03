@@ -1,16 +1,16 @@
 import Decimal from "decimal.js";
 import { eq, and } from "drizzle-orm";
-import { db } from "../db/client";
-import { nextRetryAt } from "../rails/retry-timing";
-import { CreditsTable } from "../schema/credits.schema";
-import { InvoicesTable } from "../schema/invoices.schema";
-import { PaymentMethodsTable } from "../schema/payment_methods.schema";
-import { PlansTable } from "../schema/plans.schema";
-import { SubscriptionsTable } from "../schema/subscriptions.schema";
-import { DunningPolicy } from "../state-machines/subscription";
-import { getNextBillingDate } from "../utils/interval_util";
-import { BillingHelper} from "../workers/billing.worker";
-import { BillingHandler } from "../rails/billing-handler";
+import { db } from "../db/client.js";
+import { nextRetryAt } from "../rails/retry-timing.js";
+import { CreditsTable } from "../schema/credits.schema.js";
+import { InvoicesTable } from "../schema/invoices.schema.js";
+import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
+import { PlansTable } from "../schema/plans.schema.js";
+import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
+import { DunningPolicy } from "../state-machines/subscription.js";
+import { getNextBillingDate } from "../utils/interval_util.js";
+import { BillingHelper} from "../workers/billing.worker.js";
+import { BillingHandler } from "../rails/billing-handler.js";
 
 export async function getRemainingCredits(subId: string, planId: string) {
   const [sub] = await db

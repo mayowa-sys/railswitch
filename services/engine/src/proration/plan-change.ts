@@ -1,12 +1,12 @@
 import Decimal from "decimal.js";
-import { db } from "../db/client";
-import { PlansTable, type Plan } from "../schema/plans.schema";
+import { db } from "../db/client.js";
+import { PlansTable, type Plan } from "../schema/plans.schema.js";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { SubscriptionsTable } from "../schema/subscriptions.schema";
-import { CreditsTable } from "../schema/credits.schema";
-import { InvoicesTable } from "../schema/invoices.schema";
-import * as ProrationHelper from "./proration-helper";
-import { BillingHandler } from "../rails/billing-handler";
+import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
+import { CreditsTable } from "../schema/credits.schema.js";
+import { InvoicesTable } from "../schema/invoices.schema.js";
+import * as ProrationHelper from "./proration-helper.js";
+import { BillingHandler } from "../rails/billing-handler.js";
 
 export interface AvailableCredit {
   id: string;

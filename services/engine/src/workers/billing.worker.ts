@@ -11,9 +11,9 @@ import { InvoicesTable } from "../schema/invoices.schema.js";
 import { getNextBillingDate } from "../utils/interval_util.js";
 import { createBillingHandler, createCascadeCoordinator } from "../rails/billing-handler-dependencies.js";
 import { nextRetryAt } from "../rails/retry-timing.js";
-import type { DunningPolicy } from "../state-machines/subscription";
-import { CreditsTable } from "../schema/credits.schema";
-import * as ProrationHelper from "../proration/proration-helper";
+import type { DunningPolicy } from "../state-machines/subscription.js";
+import { CreditsTable } from "../schema/credits.schema.js";
+import * as ProrationHelper from "../proration/proration-helper.js";
 
 export interface ChargeSubscriptionData {
   subscriptionId: string;
