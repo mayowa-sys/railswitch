@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { db } from "../db/client";
 import { PlansTable, type Plan } from "../schema/plans.schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { SubscriptionsTable } from "../schema/subscriptions.schema";
 import { CreditsTable } from "../schema/credits.schema";
 import { InvoicesTable } from "../schema/invoices.schema";
@@ -125,7 +125,7 @@ export async function handlePlanChange(
     throw new Error("Current Plan and New Plan cannot be the same");
   }
 
-  db.execute(`SET LOCAL app.current_merchant_id = '${merchantId}'`);
+  db.execute(sql`SELECT set_config('app.current_merchant_id', ${merchantId}, true)`);
 
   const inputs = await loadPlanChangeInputs(
     subscriptionId,

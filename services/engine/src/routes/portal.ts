@@ -26,7 +26,7 @@ export function verifyToken(token: string): { customerId: string; merchantId: st
     const [payloadB64, sig] = token.split('.');
     const payload = Buffer.from(payloadB64, 'base64url');
     const expectedSig = crypto.createHmac('sha256', PORTAL_SECRET).update(payload).digest('hex');
-    if (sig !== expectedSig) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'))) return null;
     
     const data = JSON.parse(payload.toString());
     if (Date.now() > data.exp) return null;

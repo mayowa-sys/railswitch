@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 
 from fastapi import Request, Depends, Header
@@ -30,6 +30,8 @@ class CascadeAttempt(BaseModel):
 
 
 class SubscriptionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     id: str
     merchant_id: str
     customer_id: str

@@ -21,7 +21,7 @@ cleanupRouter.post('/playground', async (req: Request, res: Response) => {
       return;
     }
 
-    await db.execute(sql`SET LOCAL app.current_merchant_id = ${req.merchantId}`);
+    await db.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
 
     // Verify all belong to this merchant
     const [sub] = await db.select().from(SubscriptionsTable).where(

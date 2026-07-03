@@ -16,7 +16,7 @@ export async function applyPauseAdjustments(
   subId: string,
   merchantId: string,
 ): Promise<void> {
-  await db.execute(`SET LOCAL app.current_merchant_id = '${merchantId}'`);
+  await db.execute(sql`SELECT set_config('app.current_merchant_id', ${merchantId}, true)`);
   try {
     const sub = await ProrationHelper.getSubscription(subId);
     if (sub.state !== "paused") {

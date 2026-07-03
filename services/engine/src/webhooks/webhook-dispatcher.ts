@@ -55,9 +55,8 @@ export async function dispatchWebhookEvent(
   try {
     await db.insert(WebhookEventsTable).values({
       merchant_id: merchantId,
-      event_type: event,
+      event: event,
       payload,
-      status: 'pending',
     });
   } catch (err) {
     logger.error('Failed to store webhook event', err as Error, { event, merchantId });

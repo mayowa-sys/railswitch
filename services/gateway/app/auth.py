@@ -44,7 +44,7 @@ async def get_portal_merchant(request: Request) -> str | None:
         payload_b64, sig = token.split(".")
         payload = base64.urlsafe_b64decode(payload_b64 + "=" * (4 - len(payload_b64) % 4))
         expected_sig = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-        if sig != expected_sig:
+        if not hmac.compare_digest(sig, expected_sig):
             return None
         
         data = json.loads(payload)

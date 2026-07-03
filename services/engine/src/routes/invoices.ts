@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
 import { ChargeAttempts } from '../schema/charge_attempts.schema.js';
@@ -29,7 +29,7 @@ invoicesRouter.get('/', async (req: Request, res: Response) => {
 invoicesRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const result = await db.transaction(async (tx) => {
-      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      await tx.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
       const [invoice] = await tx
         .select()
         .from(InvoicesTable)

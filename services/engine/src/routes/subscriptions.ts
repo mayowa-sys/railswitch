@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
-import { ChargeAttempts } from '../schema/charge_attempts.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
 import { handlePlanChange } from '../proration/plan-change.js';
@@ -122,28 +121,27 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
     const cascadeStates = ['retrying', 'va_fallback', 'whatsapp_fallback', 'past_due'];
     const cascadeSubs = subscriptions.filter(s => cascadeStates.includes(s.state));
 
-    let cascadeHistoryMap: Record<string, Array<{step: string; status: string; attempted_at: string}>> = {};
+    const cascadeHistoryMap: Record<string, Array<{step: string; status: string; attempted_at: string}>> = {};
 
     if (cascadeSubs.length > 0) {
-      // Get invoice IDs for cascade subs
       const invoiceIds = cascadeSubs
         .filter(s => s.current_invoice_id)
         .map(s => s.current_invoice_id!);
 
       if (invoiceIds.length > 0) {
-        const attempts = await db
-          .select()
-          .from(ChargeAttempts)
-          .where(inArray(ChargeAttempts.invoice_id, invoiceIds));
-
-        for (const attempt of attempts) {
+        const result = await db.execute(
+          sql`SELECT * FROM charge_attempts WHERE invoice_id IN (${sql.join(invoiceIds.map(id => sql`${id}`), sql`, `)}) AND merchant_id = ${req.merchantId} ORDER BY attempted_at ASC`,
+        );
+        const rows = (result as any).rows ?? [];
+        for (const attempt of rows) {
           const subId = cascadeSubs.find(s => s.current_invoice_id === attempt.invoice_id)?.id;
           if (subId) {
             if (!cascadeHistoryMap[subId]) cascadeHistoryMap[subId] = [];
-            // Map charge attempt status to cascade step
             const step = attempt.reason?.includes('virtual account') ? 'virtual_account'
               : attempt.reason?.includes('ussd') ? 'ussd'
               : attempt.reason?.includes('whatsapp') ? 'whatsapp'
+              : attempt.reason?.includes('Card declined') ? 'card_retry'
+              : attempt.reason?.includes('Card retry') ? 'card_retry'
               : 'card';
             cascadeHistoryMap[subId].push({
               step,
@@ -170,7 +168,7 @@ subscriptionsRouter.get('/', async (req: Request, res: Response) => {
 subscriptionsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const [subscription] = await db.transaction(async (tx) => {
-      await tx.execute(`SET LOCAL app.current_merchant_id='${req.merchantId}'`);
+      await tx.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
       return tx
         .select()
         .from(SubscriptionsTable)
