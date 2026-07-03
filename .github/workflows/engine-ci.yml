@@ -15,6 +15,11 @@ defaults:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env: 
+      DATABASE_URL: postgres://railswitch:railswitch_dev@localhost:5432/railswitch
+      ENGINE_USER_URL: postgres://engine_user:railswitch_dev@localhost:5432/railswitch
+      INTERNAL_AUTH_SECRET: local-dev-shared-secret
+      PORT: '3002'
 
     services:
       postgres:
