@@ -8,6 +8,7 @@ import { api, type GatewayPaymentMethod } from "@/lib/api-client";
 import { Plus, Shield, Loader2 } from "lucide-react";
 // 
 export default function PaymentMethodsPage() {
+  const [customerId, setCustomerId] = useState("");
   const [methods, setMethods] = useState<GatewayPaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -22,12 +23,14 @@ export default function PaymentMethodsPage() {
     const token = new URLSearchParams(window.location.search).get('token') || '';
     if (!token) { setLoading(false); return; }
     
+    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
     // Resolve token to get customer ID first
-    fetch(`http://localhost:8000/v1/portal/resolve?token=${token}`)
+    fetch(`${API}/v1/portal/resolve?token=${token}`)
       .then(r => r.json())
       .then(d => {
         const custId = d.data?.customer?.id || '';
         if (custId) {
+          setCustomerId(custId);
           api.paymentMethods.list(custId)
             .then((data) => { setMethods(data); setLoading(false); })
             .catch(() => setLoading(false));
@@ -57,7 +60,7 @@ export default function PaymentMethodsPage() {
     if (!cardName || cardNumber.length < 15 || cardExpiry.length < 5 || cardCvv.length < 3) return;
     setTokenizing(true);
     try {
-      await api.paymentMethods.create({ customer_id: "temp", type: "card", nomba_token: `tok_${Date.now()}`, last4: cardNumber.replace(/\s/g, "").slice(-4), brand: cardNumber.startsWith("5") ? "mastercard" : cardNumber.startsWith("4") ? "visa" : "verve", is_default: methods.length === 0 });
+      await api.paymentMethods.create({ customer_id: customerId, type: "card", nomba_token: `tok_${Date.now()}`, last4: cardNumber.replace(/\s/g, "").slice(-4), brand: cardNumber.startsWith("5") ? "mastercard" : cardNumber.startsWith("4") ? "visa" : "verve", is_default: methods.length === 0 });
       setSuccess(true);
       fetchMethods();
     } catch {}

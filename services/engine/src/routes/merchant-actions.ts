@@ -105,7 +105,7 @@ merchantActionsRouter.post('/:id/mark-recovered', async (req: Request, res: Resp
     });
 
     // Send recovery email
-    const orchestrator = new RailOrchestrator({ nomba: null as any });
+    const orchestrator = new RailOrchestrator({ nomba: { createVirtualAccount: async () => ({}) as any } });
     const [invoice] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, sub.current_invoice_id ?? '')).limit(1);
     await orchestrator.sendPaymentRecoveredEmail({
       customerId: sub.customer_id,
@@ -142,7 +142,7 @@ merchantActionsRouter.post('/:id/send-reminder', async (req: Request, res: Respo
     const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, sub.customer_id)).limit(1);
     const [plan] = await db.select().from(PlansTable).where(eq(PlansTable.id, sub.plan_id)).limit(1);
 
-    const orchestrator = new RailOrchestrator({ nomba: null as any });
+    const orchestrator = new RailOrchestrator({ nomba: { createVirtualAccount: async () => ({}) as any } });
     const amount = invoice ? Number(invoice.amount) : 0;
     const dayNumber = sub.retry_count;
 

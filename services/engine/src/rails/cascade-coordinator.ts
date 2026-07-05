@@ -160,7 +160,7 @@ export class CascadeCoordinator {
         subscriptionId,
         invoiceId,
         amount,
-        merchantId: 'cascade',
+        merchantId,
       },
       { delay: delayMs },
     );
