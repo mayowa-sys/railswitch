@@ -44,7 +44,7 @@ describe('applyPauseAdjustments', () => {
     );
   });
 
-  it('stores paused_at and banks unused credits for a paused subscription', async () => {
+  it('stores paused_at for a paused subscription', async () => {
     const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.update).mockImplementation(mockUpdate as any);
@@ -52,12 +52,10 @@ describe('applyPauseAdjustments', () => {
       state: 'paused',
       plan_id: 'plan_1',
     } as typeof SubscriptionsTable.$inferSelect);
-    vi.mocked(ProrationHelper.getRemainingCredits).mockResolvedValue(1500);
 
     await applyPauseAdjustments('sub_1', 'mer_1');
 
     expect(db.execute).toHaveBeenCalled();
     expect(mockUpdate).toHaveBeenCalled();
-    expect(db.insert).toHaveBeenCalled();
   });
 });

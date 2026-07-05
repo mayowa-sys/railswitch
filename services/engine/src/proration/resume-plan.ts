@@ -21,12 +21,12 @@ export async function applyResumeAdjustments(
 
   try {
     const sub = await ProrationHelper.getSubscription(subId);
-    if (sub.state !== "active") {
-      throw new Error("Subscription must be in active state to apply resume adjustments");
-    }
     if (!sub.paused_at) {
       resumeLogger.info("Subscription was not paused — no adjustments needed");
       return;
+    }
+    if (sub.state !== "active" && sub.state !== "paused") {
+      throw new Error(`Subscription must be active or paused to resume, got: ${sub.state}`);
     }
     if (!sub.next_billing_at) {
       throw new Error("Subscription does not have next_billing_at property");

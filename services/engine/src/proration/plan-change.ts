@@ -141,7 +141,17 @@ export async function handlePlanChange(
       source: "downgrade",
     });
 
-    await db.update(SubscriptionsTable).set({ plan_id: newPlanId });
+    await db.update(SubscriptionsTable).set({ plan_id: newPlanId }).where(eq(SubscriptionsTable.id, subscriptionId));
+    return;
+  }
+
+  // If subscription is paused, defer billing — just update the plan.
+  // Billing will happen when the customer resumes.
+  if (inputs.subscription.state === 'paused') {
+    await db.update(SubscriptionsTable).set({
+      plan_id: newPlanId,
+      retry_count: 0,
+    }).where(eq(SubscriptionsTable.id, subscriptionId));
     return;
   }
 
@@ -158,7 +168,7 @@ export async function handlePlanChange(
       await db.update(SubscriptionsTable).set({
         plan_id: newPlanId,
         retry_count: 0,
-      });
+      }).where(eq(SubscriptionsTable.id, subscriptionId));
       return;
     }
   }
@@ -186,7 +196,7 @@ export async function handlePlanChange(
     current_invoice_id: invoice.id,
     plan_id: newPlanId,
     retry_count: 0,
-  });
+  }).where(eq(SubscriptionsTable.id, subscriptionId));
 
   await ProrationHelper.handlePayments(
     subscriptionId,

@@ -8,6 +8,8 @@ import { MerchantsTable } from '../schema/merchants.schema.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { DrizzleSubscriptionRepository } from '../db/drizzle-repository.js';
 import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
+import { applyPauseAdjustments } from '../proration/pause-subcription.js';
+import { applyResumeAdjustments } from '../proration/resume-plan.js';
 
 export const portalRouter = Router();
 
@@ -171,6 +173,10 @@ portalRouter.post('/v1/portal/subscription/pause', async (req: Request, res: Res
       idempotencyKey: `portal:pause:${sub.id}:${Date.now()}`,
     });
 
+    await applyPauseAdjustments(sub.id, auth.merchantId).catch(err =>
+      console.error('[portal] pause adjustments error:', err)
+    );
+
     res.json({ subscription: { ...sub, status: 'paused' } });
   } catch (err) {
     console.error('[portal] pause error:', err);
@@ -199,6 +205,10 @@ portalRouter.post('/v1/portal/subscription/resume', async (req: Request, res: Re
       event: { type: 'RESUME_REQUESTED', actor: 'customer' },
       idempotencyKey: `portal:resume:${sub.id}:${Date.now()}`,
     });
+
+    await applyResumeAdjustments(sub.id, auth.merchantId).catch(err =>
+      console.error('[portal] resume adjustments error:', err)
+    );
 
     res.json({ subscription: { ...sub, status: 'active' } });
   } catch (err) {

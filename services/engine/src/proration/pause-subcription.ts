@@ -3,7 +3,6 @@ import { db } from "../db/client.js";
 import * as ProrationHelper from "./proration-helper.js";
 import { GlobalLogger } from "../utils/logger.js";
 import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
-import { CreditsTable } from "../schema/credits.schema.js";
 
 const pauseLogger = new GlobalLogger("Proration-Pause");
 
@@ -23,22 +22,12 @@ export async function applyPauseAdjustments(
       throw new Error("Subscription must be in paused state to apply adjustments");
     }
 
-    const unusedCredit = await ProrationHelper.getRemainingCredits(subId, sub.plan_id).catch(() => 0);
-
     await db
       .update(SubscriptionsTable)
       .set({ paused_at: new Date() })
       .where(eq(SubscriptionsTable.id, subId));
 
-    if (unusedCredit > 0) {
-      await db.insert(CreditsTable).values({
-        amount: `${Math.round(unusedCredit * 100) / 100}`,
-        merchant_id: merchantId,
-        subscription_id: subId,
-        source: "pause_credit",
-      });
-      pauseLogger.info("Pause credit banked", { subId, creditAmount: unusedCredit });
-    }
+    pauseLogger.info("Pause adjustments applied", { subId });
   } catch (err) {
     if (err instanceof Error) {
       pauseLogger.error(
