@@ -61,10 +61,13 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const fetchNotifications = () => {
       Promise.all([
         fetch(`${API}/v1/subscriptions?limit=5`, { headers: { Authorization: `Bearer ${user.apiKey}` } }).then(r => r.json()),
+        fetch(`${API}/v1/customers`, { headers: { Authorization: `Bearer ${user.apiKey}` } }).then(r => r.json()),
         fetch(`${API}/v1/webhooks/deliveries?limit=5`, { headers: { Authorization: `Bearer ${user.apiKey}` } }).then(r => r.json()),
-      ]).then(([subsData, webhooksData]) => {
+      ]).then(([subsData, customersData, webhooksData]) => {
         const items: Array<{id: string; title: string; body: string; time: string; type: string}> = [];
         const subs = subsData.data || [];
+        const customers = customersData.data || [];
+        const customerMap = new Map<string, any>(customers.map((c: any) => [c.id, c]));
         const recentSubs = subs.filter((s: any) => {
           const created = new Date(s.created_at).getTime();
           return Date.now() - created < 86400000;
@@ -73,7 +76,10 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           items.push({
             id: 'subs-batch',
             title: `${recentSubs.length} new subscriber${recentSubs.length > 1 ? 's' : ''}`,
-            body: recentSubs.slice(0, 3).map((s: any) => s.id.slice(0, 12)).join(', ') + (recentSubs.length > 3 ? ` +${recentSubs.length - 3} more` : ''),
+            body: recentSubs.slice(0, 3).map((s: any) => {
+              const cust = customerMap.get(s.customer_id);
+              return cust?.name || cust?.email?.split('@')[0] || s.customer_id.slice(0, 12);
+            }).join(', ') + (recentSubs.length > 3 ? ` +${recentSubs.length - 3} more` : ''),
             time: new Date(recentSubs[0].created_at).toLocaleString('en-NG', { hour: '2-digit', minute: '2-digit' }),
             type: 'subscription'
           });
