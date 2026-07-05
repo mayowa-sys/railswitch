@@ -101,7 +101,7 @@ export class DrizzleSubscriptionRepository implements SubscriptionRepository {
         last_failure_retryable: context.lastFailureRetryable ?? null,
         va_id: context.vaId ?? null,
         va_expires_at: context.vaExpiresAt ? new Date(context.vaExpiresAt) : null,
-        current_invoice_id: context.currentInvoiceId ?? null,
+        current_invoice_id: context.currentInvoiceId || null,
       })
       .where(
         and(

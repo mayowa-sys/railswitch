@@ -75,7 +75,7 @@ async def _forward_to_engine(payload: bytes, request_id: str) -> None:
     internal_secret = os.getenv("INTERNAL_AUTH_SECRET", "")
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{engine_url}/internal/v1/webhooks/nomba",
                 content=payload,
@@ -92,6 +92,12 @@ async def _forward_to_engine(payload: bytes, request_id: str) -> None:
                     resp.status_code,
                     resp.text,
                 )
+            else:
+                logger.info(
+                    "engine processed webhook request_id=%s status=%d",
+                    request_id,
+                    resp.status_code,
+                )
     except httpx.RequestError as exc:
         logger.error(
             "engine unreachable for webhook request_id=%s: %s",
@@ -103,13 +109,10 @@ async def _forward_to_engine(payload: bytes, request_id: str) -> None:
 @router.post("/nomba")
 async def nomba_webhook(
     request: Request,
-    background_tasks: BackgroundTasks,
 ) -> dict[str, str]:
     """Receive a Nomba webhook, verify its signature, and forward it to the engine.
 
-    We return 200 immediately to Nomba (preventing retries) and forward the
-    payload to the engine in a background task.  If the engine is down the
-    webhook is dropped — Nomba will not retry.
+    We forward synchronously so the caller knows the webhook was fully processed.
     """
     payload = await request.body()
 
@@ -149,6 +152,6 @@ async def nomba_webhook(
         request_id,
     )
 
-    background_tasks.add_task(_forward_to_engine, payload, request_id)
+    await _forward_to_engine(payload, request_id)
 
     return {"status": "accepted"}

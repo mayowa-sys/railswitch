@@ -161,11 +161,25 @@ async function handlePaymentSuccess(
     const message = (transaction.message ?? transaction.responseMessage ?? 'Payment failed') as string;
     const retryable = ['insufficient_funds', 'network_error', 'limit_exceeded', '51', '52', '54', '61', '91'].includes(responseCode);
 
+    // Ensure we have an invoice — FK on current_invoice_id requires it
+    if (!invoice) {
+      const amount = Number(eventData.amount ?? 0);
+      const [newInvoice] = await db.insert(InvoicesTable).values({
+        merchant_id: subscription.merchant_id,
+        subscription_id: subscription.id,
+        amount: String(amount || 0),
+        currency: 'NGN',
+        status: 'open',
+        due_date: new Date(),
+      }).returning();
+      invoice = newInvoice;
+    }
+
     // Step 1: Move subscription to charging state (if not already there)
     if (subscription.state === 'active') {
       await wrapper.processEvent({
         subscriptionId: subscription.id,
-        event: { type: 'CYCLE_BOUNDARY_REACHED', invoiceId: invoice?.id ?? '' },
+        event: { type: 'CYCLE_BOUNDARY_REACHED', invoiceId: invoice.id },
         idempotencyKey: `webhook:cycle:${requestId}`,
       }).catch(err => logger.warn('Failed to transition to charging', err as Error));
     }
