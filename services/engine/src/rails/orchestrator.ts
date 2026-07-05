@@ -186,7 +186,7 @@ export class RailOrchestrator {
       .where(eq(InvoicesTable.id, input.invoiceId))
       .limit(1);
 
-    const portalLink = generatePortalLink(customer.id, customer.merchant_id);
+    const portalLink = customer ? generatePortalLink(customer.id, customer.merchant_id) : '';
 
     const sent = await wa.sendRecoveryMessage({
       to: customer?.phone ?? '2348000000000',
@@ -259,8 +259,11 @@ export class RailOrchestrator {
     const [customer] = await db.select().from(CustomersTable).where(eq(CustomersTable.id, input.customerId)).limit(1);
     if (!customer) return;
 
+    const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.customer_id, input.customerId)).limit(1);
+    const [plan] = sub ? await db.select().from(PlansTable).where(eq(PlansTable.id, sub.plan_id)).limit(1) : [null];
+
     const portalLink = generatePortalLink(customer.id, input.merchantId);
-    const msg = subscriptionCancelledEmail({ customerName: customer.name ?? 'Customer', planName: 'Your', portalLink });
+    const msg = subscriptionCancelledEmail({ customerName: customer.name ?? 'Customer', planName: plan?.name ?? 'Your', portalLink });
     msg.to = customer.email;
     await email.send(msg);
   }

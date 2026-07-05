@@ -62,7 +62,6 @@ export function WebhooksTab() {
     ]).then(([eps, dels, evts]) => {
       setEndpoints(eps);
       setDeliveries(dels.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-      setDeliveries(dels.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       setEvents(evts);
       setLoading(false);
     }).catch(() => setLoading(false));

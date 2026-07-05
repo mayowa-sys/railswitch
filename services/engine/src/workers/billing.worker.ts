@@ -360,13 +360,16 @@ class BillingService {
 
     // Schedule cascade coordinator to handle the failure
     if (BillingsQueue) {
+      const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, subId)).limit(1);
+      const [inv] = await db.select().from(InvoicesTable).where(eq(InvoicesTable.id, invoiceId)).limit(1);
+      const amount = inv ? Number(inv.amount) : 0;
       await BillingsQueue.add(
         'cascade_retry',
         {
           subscriptionId: subId,
           invoiceId,
-          amount: 0, // amount will be resolved from the plan in the coordinator
-          merchantId: subscription.merchant_id,
+          amount,
+          merchantId: sub?.merchant_id ?? subscription.merchant_id,
         },
         { delay: shouldRetry ? nextAttempt.getTime() - Date.now() : 5000 },
       );

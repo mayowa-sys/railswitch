@@ -21,12 +21,15 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const token = searchParams.get('token') || '';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
-  const merchantName = "FitCore Nigeria";
+  const [merchantName, setMerchantName] = useState("Merchant");
 
   useEffect(() => {
     if (!token) return;
     resolveToken(token).then(data => {
-      if (data) setCustomer(data.customer as unknown as PortalCustomer);
+      if (data) {
+        setCustomer(data.customer as unknown as PortalCustomer);
+        setMerchantName(data.merchant_name ?? "Merchant");
+      }
     }).catch(() => {});
   }, [token]);
 

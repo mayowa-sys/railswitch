@@ -125,7 +125,7 @@ export async function handlePlanChange(
     throw new Error("Current Plan and New Plan cannot be the same");
   }
 
-  db.execute(sql`SELECT set_config('app.current_merchant_id', ${merchantId}, true)`);
+  await db.execute(sql`SELECT set_config('app.current_merchant_id', ${merchantId}, true)`);
 
   const inputs = await loadPlanChangeInputs(
     subscriptionId,
