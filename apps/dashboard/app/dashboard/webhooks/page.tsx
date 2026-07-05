@@ -8,8 +8,8 @@ import { Loader2 } from "lucide-react";
 interface WebhookEndpoint {
   id: string;
   url: string;
-  is_active: boolean;
-  subscriptions: string[];
+  status: string;
+  subscriptions?: string[];
   secret?: string;
   created_at: string;
 }
@@ -80,12 +80,13 @@ export default function WebhooksPage() {
   const toggleEndpoint = async (id: string, isActive: boolean) => {
     if (!user?.apiKey) return;
     const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const newStatus = isActive ? "inactive" : "active";
     await fetch(`${API}/v1/webhooks/endpoints/${id}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${user.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ is_active: !isActive }),
+      body: JSON.stringify({ status: newStatus }),
     });
-    setEndpoints(endpoints.map(e => e.id === id ? { ...e, is_active: !isActive } : e));
+    setEndpoints(endpoints.map(e => e.id === id ? { ...e, status: newStatus } : e));
   };
 
   const deleteEndpoint = async (id: string) => {
@@ -155,19 +156,19 @@ export default function WebhooksPage() {
               <div key={ep.id} className="px-6 py-4 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`inline-block w-2 h-2 rounded-full ${ep.is_active ? "bg-emerald-500" : "bg-zinc-300"}`} />
+                    <span className={`inline-block w-2 h-2 rounded-full ${ep.status === "active" ? "bg-emerald-500" : "bg-zinc-300"}`} />
                     <span className="text-sm font-mono truncate">{ep.url}</span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    {ep.subscriptions.length > 0 ? ep.subscriptions.join(", ") : "All events"}
+                    {ep.subscriptions && ep.subscriptions.length > 0 ? ep.subscriptions.join(", ") : "All events"}
                   </p>
                   {ep.secret && (
                     <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">Secret: {ep.secret.slice(0, 12)}...</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 ml-4">
-                  <button onClick={() => toggleEndpoint(ep.id, ep.is_active)} className="text-[11px] text-zinc-500 hover:underline">
-                    {ep.is_active ? "Disable" : "Enable"}
+                  <button onClick={() => toggleEndpoint(ep.id, ep.status === "active")} className="text-[11px] text-zinc-500 hover:underline">
+                    {ep.status === "active" ? "Disable" : "Enable"}
                   </button>
                   <button onClick={() => deleteEndpoint(ep.id)} className="text-[11px] text-red-500 hover:underline">Delete</button>
                 </div>
