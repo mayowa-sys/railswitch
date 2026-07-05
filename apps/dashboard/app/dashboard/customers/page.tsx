@@ -108,7 +108,15 @@ export default function CustomersPage() {
         pmByCust[pm.customer_id].push(pm);
       }
 
-      const mapped: LiveCustomer[] = rawCustomers.map((c) => {
+      // Filter out test/demo accounts — only show real seed customers
+      const TEST_EMAILS = new Set(["livetest@email.com", "judge@demo.com", "decline@email.com", "demo@video.test", "final@demo.test", "testing@email.com"]);
+      const realCustomers = rawCustomers.filter((c) => {
+        if (TEST_EMAILS.has(c.email)) return false;
+        if (c.email.startsWith("test_") && c.email.endsWith("@playground.dev")) return false;
+        return true;
+      });
+
+      const mapped: LiveCustomer[] = realCustomers.map((c) => {
         const custSubs = subsByCust[c.id] || [];
         const sub = custSubs[0];
         const plan = sub ? planMap.get(sub.plan_id) : null;
