@@ -137,7 +137,7 @@ portalRouter.get('/v1/portal/subscription', async (req: Request, res: Response) 
       .where(eq(SubscriptionsTable.customer_id, auth.customerId))
       .limit(1);
 
-    if (!sub) {
+    if (!sub || sub.merchant_id !== auth.merchantId) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No subscription found' } });
       return;
     }
@@ -158,7 +158,7 @@ portalRouter.post('/v1/portal/subscription/pause', async (req: Request, res: Res
       .where(eq(SubscriptionsTable.customer_id, auth.customerId))
       .limit(1);
 
-    if (!sub) {
+    if (!sub || sub.merchant_id !== auth.merchantId) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No subscription found' } });
       return;
     }
@@ -187,7 +187,7 @@ portalRouter.post('/v1/portal/subscription/resume', async (req: Request, res: Re
       .where(eq(SubscriptionsTable.customer_id, auth.customerId))
       .limit(1);
 
-    if (!sub) {
+    if (!sub || sub.merchant_id !== auth.merchantId) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No subscription found' } });
       return;
     }
@@ -216,7 +216,7 @@ portalRouter.post('/v1/portal/subscription/cancel', async (req: Request, res: Re
       .where(eq(SubscriptionsTable.customer_id, auth.customerId))
       .limit(1);
 
-    if (!sub) {
+    if (!sub || sub.merchant_id !== auth.merchantId) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No subscription found' } });
       return;
     }

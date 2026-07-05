@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { createStatusHandler } from './status/route.js';
 import { probePostgres, probeRedis } from './status/probes.js';
 import { requireInternalAuth } from './middleware/auth.js';
@@ -28,8 +30,17 @@ const pkg = JSON.parse(
 ) as { version: string };
 
 export const app = express();
-app.use(express.json());
+app.use(helmet());
+app.use(express.json({ limit: '10kb' }));
 app.use(requestId);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts, please try again later' } },
+});
 
 // Public endpoints — no auth required.
 app.get('/health', (_req: Request, res: Response) => {
@@ -60,7 +71,7 @@ app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, 
 app.use('/internal/v1/webhooks', requireInternalAuth, webhooksRouter);
 
 // Auth — internal auth only, no merchant scoping (login/register create/verify merchants).
-app.use('/internal/v1/auth', requireInternalAuth, authRouter);
+app.use('/internal/v1/auth', requireInternalAuth, authLimiter, authRouter);
 app.use('/internal/v1/audit-logs', requireInternalAuth, extractMerchantId, setRLSContext, auditRouter);
 
 // Webhook management — gateway-only, CRUD + delivery logs.

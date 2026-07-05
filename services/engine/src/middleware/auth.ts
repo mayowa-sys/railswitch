@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import crypto from 'node:crypto';
 
 export function requireInternalAuth(req: Request, res: Response, next: NextFunction): void {
   const auth = req.headers['x-internal-auth'];
@@ -10,7 +11,14 @@ export function requireInternalAuth(req: Request, res: Response, next: NextFunct
     return;
   }
 
-  if (!auth || auth !== expected) {
+  if (!auth || typeof auth !== 'string') {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid internal auth secret' } });
+    return;
+  }
+
+  const authBuf = Buffer.from(auth, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (authBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(authBuf, expectedBuf)) {
     res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid internal auth secret' } });
     return;
   }

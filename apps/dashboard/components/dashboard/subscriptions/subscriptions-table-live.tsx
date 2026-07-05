@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SearchFilterBar } from "@/components/shared/search-filter-bar";
+import { SubscriptionDetailDrawerLive } from "@/components/dashboard/subscriptions/subscription-detail-drawer-live";
 import { CreditCard, RefreshCcw, Landmark, Hash, MessageCircle } from "lucide-react";
 
 interface LiveSubscription {
@@ -193,6 +194,12 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
           </div>
         )}
       </div>
+      <SubscriptionDetailDrawerLive
+        subscription={selected}
+        plans={plans}
+        customers={customers}
+        onClose={() => setSelected(null)}
+      />
     </>
   );
 }

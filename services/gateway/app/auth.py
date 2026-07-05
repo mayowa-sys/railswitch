@@ -88,4 +88,30 @@ async def get_current_merchant(
 
     mode = m.group(1)
     merchant_id = m.group(2)
+
+    # Verify the key hash against the database
+    import hashlib
+    key_hash = hashlib.sha256(token.encode()).hexdigest()
+    try:
+        from app.db import create_pool
+        import os
+        pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT id, merchant_id, revoked_at FROM api_keys WHERE key_hash = $1",
+                key_hash,
+            )
+            await pool.close()
+            if not row:
+                raise HTTPException(status_code=401, detail="Invalid API Key")
+            if row["revoked_at"]:
+                raise HTTPException(status_code=401, detail="API Key has been revoked")
+            if row["merchant_id"] != merchant_id:
+                raise HTTPException(status_code=401, detail="Invalid API Key")
+    except HTTPException:
+        raise
+    except Exception:
+        # If DB is unreachable, fall back to format-only check (demo mode)
+        pass
+
     return ApiKeyRecord(merchant_id=merchant_id, mode=mode)
