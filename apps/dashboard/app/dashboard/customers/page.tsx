@@ -109,10 +109,12 @@ export default function CustomersPage() {
       }
 
       // Filter out test/demo accounts — only show real seed customers
-      const TEST_EMAILS = new Set(["livetest@email.com", "judge@demo.com", "decline@email.com", "demo@video.test", "final@demo.test", "testing@email.com"]);
       const realCustomers = rawCustomers.filter((c) => {
-        if (TEST_EMAILS.has(c.email)) return false;
-        if (c.email.startsWith("test_") && c.email.endsWith("@playground.dev")) return false;
+        if (c.email.startsWith('[deleted]')) return false;
+        if (c.email.startsWith('test_')) return false;
+        if (c.email.includes('playground.dev')) return false;
+        if (['livetest@email.com','judge@demo.com','decline@email.com','demo@video.test','final@demo.test','testing@email.com'].includes(c.email)) return false;
+        if (c.email.startsWith('webhook_test') || c.email.startsWith('cascade_test')) return false;
         return true;
       });
 

@@ -11,9 +11,19 @@ import { api, type GatewayPlan } from "@/lib/api-client";
 import { type Plan as MockPlan } from "@/lib/mock-data";
 
 function computePlans(rawPlans: GatewayPlan[], rawSubs: { plan_id: string; state: string }[]): MockPlan[] {
+  // Filter out test/playground plans
+  const testPlanNames = new Set(["Test plan for cascade simulation", "Playground test plan", "Test plan for VA simulation"]);
+  const filteredPlans = rawPlans.filter((p) => {
+    if (p.name.startsWith('[deleted]')) return false;
+    if (p.name.startsWith('Test ')) return false;
+    if (testPlanNames.has(p.name)) return false;
+    if (p.name === 'Cascade Plan') return false;
+    return true;
+  });
+
   const subCounts: Record<string, number> = {};
   for (const s of rawSubs) { subCounts[s.plan_id] = (subCounts[s.plan_id] || 0) + 1; }
-  return rawPlans.map((p) => ({
+  return filteredPlans.map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description ?? "",
