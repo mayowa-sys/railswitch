@@ -111,7 +111,7 @@ export class CascadeCoordinator {
     if (!sub) return;
 
     if (sub.state === 'retrying') {
-      await this.scheduleRetry(subscriptionId, invoiceId, amount, sub.retry_count, policy);
+      await this.scheduleRetry(subscriptionId, invoiceId, amount, sub.retry_count, policy, sub.merchant_id);
       await dispatchWebhookEvent(sub.merchant_id, 'cascade.retrying', { subscriptionId, invoiceId, retryCount: sub.retry_count });
     } else if (sub.state === 'va_fallback') {
       await this.initiateVAFallback(subscriptionId, invoiceId, amount, sub.merchant_id);
@@ -140,6 +140,7 @@ export class CascadeCoordinator {
     amount: number,
     retryCount: number,
     policy: DunningPolicy,
+    merchantId: string,
   ) {
     if (!BillingsQueue) {
       this.logger.warn('BullMQ not available, cannot schedule retry', { subscriptionId });
