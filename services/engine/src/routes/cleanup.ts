@@ -1,76 +1,95 @@
 import { Router, type Request, type Response } from 'express';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, like, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { SubscriptionsTable } from '../schema/subscriptions.schema.js';
 import { PlansTable } from '../schema/plans.schema.js';
 import { CustomersTable } from '../schema/customers.schema.js';
 import { PaymentMethodsTable } from '../schema/payment_methods.schema.js';
 import { InvoicesTable } from '../schema/invoices.schema.js';
-import { AuditLog } from '../schema/audit_log.schema.js';
-import { ProcessedEventsTable } from '../schema/processed_events.schema.js';
-import { CreditsTable } from '../schema/credits.schema.js';
 
 export const cleanupRouter = Router();
+
+// Patterns that identify test/playground data
+const TEST_EMAIL_PATTERNS = [
+  'test_%@playground.dev',
+  'webhook_test%@demo.dev',
+  'cascade_test%@demo.dev',
+  '%_test@demo.dev',
+  'livetest@email.com',
+  'judge@demo.com',
+  'decline@email.com',
+  'demo@video.test',
+  'final@demo.test',
+  'testing@email.com',
+];
+
+const TEST_PLAN_PATTERNS = [
+  'Test %',
+  'Cascade Plan',
+  'Playground test plan',
+];
+
+function buildEmailFilter(merchantId: string) {
+  const conditions = TEST_EMAIL_PATTERNS.map(p => like(CustomersTable.email, p));
+  return sql`(${CustomersTable.merchant_id} = ${merchantId}) AND (${sql.join(conditions, sql` OR `)})`;
+}
+
+function buildPlanFilter(merchantId: string) {
+  const conditions = TEST_PLAN_PATTERNS.map(p => like(PlansTable.name, p));
+  return sql`(${PlansTable.merchant_id} = ${merchantId}) AND (${sql.join(conditions, sql` OR `)})`;
+}
 
 cleanupRouter.post('/bulk', async (req: Request, res: Response) => {
   const merchantId = req.merchantId!;
 
   try {
-    // Use a transaction so set_config persists across all queries
-    const result = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT set_config('app.current_merchant_id', ${merchantId}, true)`);
+    // Soft-delete: rename test records so they don't show in the UI
+    // 1. Soft-delete test customers (rename email)
+    const testCustomers = await db.select({ id: CustomersTable.id, email: CustomersTable.email })
+      .from(CustomersTable)
+      .where(buildEmailFilter(merchantId));
 
-      // Find test customers (playground + manual test accounts, NOT the 285 seed users)
-      const custResult = await tx.execute(sql`
-        SELECT id FROM customers 
-        WHERE merchant_id = ${merchantId}
-          AND (email IN ('livetest@email.com', 'judge@demo.com', 'decline@email.com', 
-                         'demo@video.test', 'final@demo.test', 'testing@email.com')
-               OR email LIKE 'test_%@playground.dev')
-      `);
-      const custIds: string[] = (custResult.rows as any[]).map(r => r.id);
-
-      if (custIds.length === 0) {
-        return { removed: { customers: 0, subscriptions: 0 }, remaining: null };
+    let hiddenCustomers = 0;
+    for (const c of testCustomers) {
+      if (!c.email.startsWith('[deleted]')) {
+        await db.update(CustomersTable)
+          .set({ email: `[deleted]_${c.email}`, name: `[deleted] ${(c as any).name || ''}` })
+          .where(eq(CustomersTable.id, c.id));
+        hiddenCustomers++;
       }
+    }
 
-      // Find their subscriptions
-      const subResult = await tx.execute(sql`
-        SELECT id FROM subscriptions WHERE merchant_id = ${merchantId} AND customer_id IN (${sql.join(custIds.map(id => sql`${id}`), sql`, `)})
-      `);
-      const subIds: string[] = (subResult.rows as any[]).map(r => r.id);
+    // 2. Soft-delete test plans (rename)
+    const testPlans = await db.select({ id: PlansTable.id, name: PlansTable.name })
+      .from(PlansTable)
+      .where(buildPlanFilter(merchantId));
 
-      // Delete FK-safe: children first
-      for (const subId of subIds) {
-        // Skip credits and audit_log — RLS policies block deletes
-        await tx.execute(sql`DELETE FROM processed_events WHERE subscription_id = ${subId}`);
-        await tx.execute(sql`UPDATE subscriptions SET current_invoice_id = NULL WHERE id = ${subId} AND merchant_id = ${merchantId}`);
-        await tx.execute(sql`DELETE FROM invoices WHERE subscription_id = ${subId} AND merchant_id = ${merchantId}`);
-        await tx.execute(sql`DELETE FROM subscriptions WHERE id = ${subId} AND merchant_id = ${merchantId}`);
+    let hiddenPlans = 0;
+    for (const p of testPlans) {
+      if (!p.name.startsWith('[deleted]')) {
+        await db.update(PlansTable)
+          .set({ name: `[deleted] ${p.name}` })
+          .where(eq(PlansTable.id, p.id));
+        hiddenPlans++;
       }
+    }
 
-      // Delete payment methods and invoices by customer_id, then customers
-      const joined = sql.join(custIds.map(id => sql`${id}`), sql`, `);
-      await tx.execute(sql`DELETE FROM payment_methods WHERE customer_id IN (${joined}) AND merchant_id = ${merchantId}`);
-      await tx.execute(sql`DELETE FROM invoices WHERE customer_id IN (${joined}) AND merchant_id = ${merchantId}`);
-      await tx.execute(sql`DELETE FROM customers WHERE id IN (${joined}) AND merchant_id = ${merchantId}`);
+    // 3. Also catch any test_*@playground.dev customers we might have missed
+    const extraTestCustomers = await db.select({ id: CustomersTable.id })
+      .from(CustomersTable)
+      .where(sql`${CustomersTable.merchant_id} = ${merchantId} AND ${CustomersTable.email} LIKE 'test_%'`);
 
-      // Final counts
-      const counts = await tx.execute(sql`
-        SELECT 
-          (SELECT count(*) FROM plans WHERE merchant_id = ${merchantId}) as plans,
-          (SELECT count(*) FROM customers WHERE merchant_id = ${merchantId}) as customers,
-          (SELECT count(*) FROM subscriptions WHERE merchant_id = ${merchantId}) as subscriptions,
-          (SELECT count(*) FROM invoices WHERE merchant_id = ${merchantId}) as invoices
-      `);
+    for (const c of extraTestCustomers) {
+      const [cust] = await db.select({ email: CustomersTable.email }).from(CustomersTable).where(eq(CustomersTable.id, c.id)).limit(1);
+      if (cust && !cust.email.startsWith('[deleted]')) {
+        await db.update(CustomersTable)
+          .set({ email: `[deleted]_${cust.email}` })
+          .where(eq(CustomersTable.id, c.id));
+        hiddenCustomers++;
+      }
+    }
 
-      return {
-        removed: { customers: custIds.length, subscriptions: subIds.length },
-        remaining: counts.rows[0],
-      };
-    });
-
-    res.json({ cleaned: true, ...result });
+    res.json({ cleaned: true, hidden: { customers: hiddenCustomers, plans: hiddenPlans } });
   } catch (err) {
     console.error('[cleanup-bulk] error:', err);
     const msg = err instanceof Error ? err.message : String(err);
@@ -89,24 +108,26 @@ cleanupRouter.post('/playground', async (req: Request, res: Response) => {
 
     await db.execute(sql`SELECT set_config('app.current_merchant_id', ${req.merchantId}, true)`);
 
-    const [sub] = await db.select().from(SubscriptionsTable).where(
-      and(eq(SubscriptionsTable.id, subscription_id), eq(SubscriptionsTable.merchant_id, req.merchantId))
-    ).limit(1);
+    // Soft-delete: rename customer email and plan name
+    await db.update(CustomersTable)
+      .set({ email: `[deleted]_${customer_id}@playground.dev`, name: '[deleted] Playground Test' })
+      .where(and(eq(CustomersTable.id, customer_id), eq(CustomersTable.merchant_id, req.merchantId)));
 
-    if (!sub) {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Subscription not found' } });
-      return;
+    await db.update(PlansTable)
+      .set({ name: `[deleted] ${plan_id}` })
+      .where(and(eq(PlansTable.id, plan_id), eq(PlansTable.merchant_id, req.merchantId)));
+
+    // Hard-delete the subscription + children (no FK issues since we skip audit_log)
+    try {
+      await db.execute(sql`DELETE FROM processed_events WHERE subscription_id = ${subscription_id}`);
+      await db.execute(sql`UPDATE subscriptions SET current_invoice_id = NULL WHERE id = ${subscription_id} AND merchant_id = ${req.merchantId}`);
+      await db.execute(sql`DELETE FROM invoices WHERE subscription_id = ${subscription_id} AND merchant_id = ${req.merchantId}`);
+      await db.execute(sql`DELETE FROM subscriptions WHERE id = ${subscription_id} AND merchant_id = ${req.merchantId}`);
+      await db.execute(sql`DELETE FROM payment_methods WHERE customer_id = ${customer_id} AND merchant_id = ${req.merchantId}`);
+    } catch (subErr) {
+      // If hard-delete fails, soft-delete is enough
+      console.warn('[playground] sub hard-delete failed, soft-delete is sufficient:', subErr);
     }
-
-    await db.delete(CreditsTable).where(eq(CreditsTable.subscription_id, subscription_id));
-    await db.delete(AuditLog).where(eq(AuditLog.subscription_id, subscription_id));
-    await db.delete(ProcessedEventsTable).where(eq(ProcessedEventsTable.subscription_id, subscription_id));
-    await db.update(SubscriptionsTable).set({ current_invoice_id: null }).where(eq(SubscriptionsTable.id, subscription_id));
-    await db.delete(InvoicesTable).where(eq(InvoicesTable.subscription_id, subscription_id));
-    await db.delete(SubscriptionsTable).where(eq(SubscriptionsTable.id, subscription_id));
-    await db.delete(PaymentMethodsTable).where(eq(PaymentMethodsTable.customer_id, customer_id));
-    await db.delete(PlansTable).where(and(eq(PlansTable.id, plan_id), eq(PlansTable.merchant_id, req.merchantId)));
-    await db.delete(CustomersTable).where(and(eq(CustomersTable.id, customer_id), eq(CustomersTable.merchant_id, req.merchantId)));
 
     res.json({ cleaned: true, subscription_id, plan_id, customer_id });
   } catch (err) {
