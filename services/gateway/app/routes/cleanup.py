@@ -17,3 +17,10 @@ async def cleanup_playground(
 ) -> Envelope:
     result = await engine.cleanup_playground(payload.model_dump())
     return Envelope(data=result)
+
+@router.post("/bulk")
+async def cleanup_bulk(
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.cleanup_bulk()
+    return Envelope(data=result)
