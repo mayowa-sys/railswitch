@@ -3,153 +3,113 @@
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { useAuth } from "@/lib/auth-context";
-import {
-  TrendingUp, TrendingDown, Users, CreditCard, AlertTriangle,
-  CheckCircle2, XCircle, Clock, RefreshCw, ArrowUpRight,
-} from "lucide-react";
-
-interface AnalyticsData {
-  mrr: number;
-  arr: number;
-  activeSubscribers: number;
-  churnRate: string;
-  recoveryRate: string;
-  totalRevenue: number;
-  planDistribution: { name: string; count: number; revenue: number; pct: number }[];
-  stateDistribution: { state: string; count: number; color: string }[];
-  monthlyRevenue: { month: string; revenue: number; short: string }[];
-  paymentHealth: {
-    totalCharges: number;
-    successful: number;
-    failed: number;
-    retrying: number;
-    pastDue: number;
-    avgRecoveryTime: string;
-  };
-  mrrByStatus: { label: string; amount: number; color: string }[];
-}
-
-const STATE_COLORS: Record<string, string> = {
-  active: "bg-emerald-500",
-  paused: "bg-amber-500",
-  cancelled: "bg-red-500",
-  trialing: "bg-blue-500",
-  retrying: "bg-orange-500",
-  va_fallback: "bg-purple-500",
-  whatsapp_fallback: "bg-cyan-500",
-  past_due: "bg-rose-500",
-  charging: "bg-indigo-500",
-};
-
-const SKIP_PLANS = new Set(["Test cpfg", "Test jjgw"]);
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mrr, setMrr] = useState(0);
+  const [arr, setArr] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [churnRate, setChurnRate] = useState("0.0");
+  const [recoveryRate, setRecoveryRate] = useState("100.0");
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [customerCount, setCustomerCount] = useState(0);
+  const [monthlyData, setMonthlyData] = useState<{ label: string; revenue: number }[]>([]);
+  const [planData, setPlanData] = useState<{ name: string; count: number; revenue: number }[]>([]);
+  const [stateData, setStateData] = useState<{ state: string; count: number; color: string }[]>([]);
+  const [mrrBreakdown, setMrrBreakdown] = useState<{ label: string; amount: number; color: string }[]>([]);
+  const [healthData, setHealthData] = useState({ paid: 0, failed: 0, retrying: 0, pastDue: 0 });
 
   useEffect(() => {
     const key = user?.apiKey ?? "";
     if (!key) return;
-
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    const opts = { headers: { Authorization: `Bearer ${key}` } };
+    const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+    const h = { headers: { Authorization: `Bearer ${key}` } };
 
     Promise.all([
-      fetch(`${API}/v1/subscriptions`, opts).then(r => r.json()),
-      fetch(`${API}/v1/plans`, opts).then(r => r.json()),
-      fetch(`${API}/v1/invoices`, opts).then(r => r.json()),
-    ]).then(([subsRes, plansRes, invRes]) => {
-      const subs: any[] = subsRes.data ?? [];
-      const plans: any[] = (plansRes.data ?? []).filter((p: any) => !SKIP_PLANS.has(p.name));
-      const invoices: any[] = invRes.data ?? [];
+      fetch(`${API}/v1/subscriptions`, h).then(r => r.json()),
+      fetch(`${API}/v1/plans`, h).then(r => r.json()),
+      fetch(`${API}/v1/invoices`, h).then(r => r.json()),
+      fetch(`${API}/v1/customers`, h).then(r => r.json()),
+    ]).then(([sRes, pRes, iRes, cRes]) => {
+      const subs: any[] = sRes.data ?? [];
+      const plans: any[] = pRes.data ?? [];
+      const invoices: any[] = iRes.data ?? [];
+      const customers: any[] = cRes.data ?? [];
 
       const planMap = new Map(plans.map(p => [p.id, p]));
-      const activeSubs = subs.filter(s => s.state === "active");
-      const cancelledSubs = subs.filter(s => s.state === "cancelled");
+      const active = subs.filter(s => s.state === "active");
+      const cancelled = subs.filter(s => s.state === "cancelled");
 
-      // MRR from active subs only
-      const mrr = activeSubs.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100;
+      // MRR
+      const m = active.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100;
+      setMrr(m);
+      setArr(m * 12);
+      setActiveCount(active.length);
+      setCustomerCount(customers.length);
 
-      // Plan distribution (active subs only, exclude test plans)
-      const planDist: Record<string, { count: number; revenue: number }> = {};
-      for (const s of activeSubs) {
-        const plan = planMap.get(s.plan_id);
-        if (!plan || SKIP_PLANS.has(plan.name)) continue;
-        const name = plan.name;
-        if (!planDist[name]) planDist[name] = { count: 0, revenue: 0 };
-        planDist[name].count++;
-        planDist[name].revenue += Number(plan.amount ?? 0) / 100;
-      }
-      const planDistribution = Object.entries(planDist)
-        .map(([name, v]) => ({ name, ...v, pct: activeSubs.length > 0 ? Math.round((v.count / activeSubs.length) * 100) : 0 }))
-        .sort((a, b) => b.revenue - a.revenue);
+      // Churn
+      setChurnRate(subs.length > 0 ? ((cancelled.length / subs.length) * 100).toFixed(1) : "0.0");
 
-      // State distribution
-      const stateDist: Record<string, number> = {};
-      for (const s of subs) stateDist[s.state] = (stateDist[s.state] ?? 0) + 1;
-      const stateDistribution = Object.entries(stateDist)
-        .map(([state, count]) => ({ state, count, color: STATE_COLORS[state] ?? "bg-zinc-400" }))
-        .sort((a, b) => b.count - a.count);
-
-      // Recovery rate (paid vs uncollectible)
+      // Recovery
       const paid = invoices.filter(i => i.status === "paid").length;
       const uncollectible = invoices.filter(i => i.status === "uncollectible").length;
-      const totalFailed = paid + uncollectible;
-      const recoveryRate = totalFailed > 0 ? ((paid / totalFailed) * 100).toFixed(1) : "100.0";
+      const total = paid + uncollectible;
+      setRecoveryRate(total > 0 ? ((paid / total) * 100).toFixed(1) : "100.0");
+      setTotalRevenue(invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100);
 
-      // Payment health
-      const failedInvoices = invoices.filter(i => i.status === "uncollectible" || i.status === "open");
-      const retryingSubs = subs.filter(s => s.state === "retrying" || s.state === "va_fallback" || s.state === "whatsapp_fallback");
-      const pastDueSubs = subs.filter(s => s.state === "past_due");
+      // Health
+      const retrying = subs.filter(s => ["retrying", "va_fallback", "whatsapp_fallback"].includes(s.state));
+      const pastDue = subs.filter(s => s.state === "past_due");
+      setHealthData({ paid, failed: uncollectible, retrying: retrying.length, pastDue: pastDue.length });
 
-      // Monthly revenue (last 6 months)
-      const monthlyRevenue: { month: string; revenue: number; short: string }[] = [];
+      // Monthly revenue (12 months)
+      const months: { label: string; revenue: number }[] = [];
       const now = new Date();
-      for (let i = 5; i >= 0; i--) {
+      for (let i = 11; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const short = d.toLocaleString("en-NG", { month: "short" });
-        const monthStr = `${short} ${d.getFullYear()}`;
-        const monthPaid = invoices.filter(inv => {
+        const label = d.toLocaleString("en-NG", { month: "short", year: "2-digit" });
+        const monthInvs = invoices.filter(inv => {
           if (inv.status !== "paid" || !inv.paid_at) return false;
-          const paidDate = new Date(inv.paid_at);
-          return paidDate.getMonth() === d.getMonth() && paidDate.getFullYear() === d.getFullYear();
+          const pd = new Date(inv.paid_at);
+          return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
         });
-        const revenue = monthPaid.reduce((sum, inv) => sum + Number(inv.amount ?? 0), 0) / 100;
-        monthlyRevenue.push({ month: monthStr, revenue, short });
+        const rev = monthInvs.reduce((sum, inv) => sum + Number(inv.amount ?? 0), 0) / 100;
+        months.push({ label, revenue: rev });
       }
+      setMonthlyData(months);
 
-      // Total revenue
-      const totalRevenue = invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100;
+      // Plan distribution (active only)
+      const pd: Record<string, { count: number; revenue: number }> = {};
+      for (const s of active) {
+        const p = planMap.get(s.plan_id);
+        if (!p) continue;
+        if (!pd[p.name]) pd[p.name] = { count: 0, revenue: 0 };
+        pd[p.name].count++;
+        pd[p.name].revenue += Number(p.amount) / 100;
+      }
+      setPlanData(Object.entries(pd).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue));
 
-      // MRR by subscription status
+      // State distribution
+      const sd: Record<string, number> = {};
+      for (const s of subs) sd[s.state] = (sd[s.state] ?? 0) + 1;
+      const stateColors: Record<string, string> = {
+        active: "#10b981", paused: "#f59e0b", cancelled: "#ef4444", trialing: "#3b82f6",
+        retrying: "#f97316", va_fallback: "#8b5cf6", whatsapp_fallback: "#06b6d4", past_due: "#f43f5e",
+      };
+      setStateData(Object.entries(sd).map(([state, count]) => ({
+        state, count, color: stateColors[state] ?? "#71717a",
+      })).sort((a, b) => b.count - a.count));
+
+      // MRR breakdown
       const mrrByStatus = [
-        { label: "Collected (Active)", amount: mrr, color: "bg-emerald-500" },
-        { label: "In Recovery", amount: retryingSubs.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "bg-orange-500" },
-        { label: "Past Due", amount: pastDueSubs.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "bg-rose-500" },
-        { label: "Paused", amount: subs.filter(s => s.state === "paused").reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "bg-amber-500" },
-      ];
+        { label: "Collected", amount: m, color: "#10b981" },
+        { label: "In Recovery", amount: retrying.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "#f97316" },
+        { label: "Past Due", amount: pastDue.reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "#f43f5e" },
+        { label: "Paused", amount: subs.filter(s => s.state === "paused").reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100, color: "#f59e0b" },
+      ].filter(s => s.amount > 0);
+      setMrrBreakdown(mrrByStatus);
 
-      setData({
-        mrr,
-        arr: mrr * 12,
-        activeSubscribers: activeSubs.length,
-        churnRate: subs.length > 0 ? ((cancelledSubs.length / subs.length) * 100).toFixed(1) : "0.0",
-        recoveryRate,
-        totalRevenue,
-        planDistribution,
-        stateDistribution,
-        monthlyRevenue,
-        paymentHealth: {
-          totalCharges: invoices.length,
-          successful: paid,
-          failed: uncollectible,
-          retrying: retryingSubs.length,
-          pastDue: pastDueSubs.length,
-          avgRecoveryTime: "2.1 days",
-        },
-        mrrByStatus,
-      });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user?.apiKey]);
@@ -158,156 +118,135 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Analytics" description="Subscription analytics and revenue insights." />
-        <div className="text-center py-12 text-sm text-zinc-400">Loading analytics...</div>
+        <div className="flex items-center justify-center py-24 text-sm text-zinc-400">Loading analytics...</div>
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Analytics" description="Subscription analytics and revenue insights." />
-        <div className="text-center py-12 text-sm text-zinc-400">Failed to load analytics.</div>
-      </div>
-    );
-  }
-
-  const maxRevenue = Math.max(...data.monthlyRevenue.map(m => m.revenue), 1);
-  const maxMrrStatus = Math.max(...data.mrrByStatus.map(s => s.amount), 1);
+  const maxMonthly = Math.max(...monthlyData.map(m => m.revenue), 1);
+  const maxPlanRevenue = Math.max(...planData.map(p => p.revenue), 1);
+  const maxMrrStatus = Math.max(...mrrBreakdown.map(s => s.amount), 1);
+  const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(0)}k` : n.toFixed(0);
 
   return (
     <div className="space-y-6">
       <PageHeader title="Analytics" description="Subscription analytics and revenue insights." />
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">MRR</p>
-            <TrendingUp className="size-4 text-emerald-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">₦{Math.round(data.mrr).toLocaleString()}</p>
-          <p className="text-[11px] text-zinc-400 mt-1">ARR: ₦{Math.round(data.arr).toLocaleString()}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Active Subscribers</p>
-            <Users className="size-4 text-blue-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{data.activeSubscribers.toLocaleString()}</p>
-          <p className="text-[11px] text-zinc-400 mt-1">{data.churnRate}% churn rate</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Recovery Rate</p>
-            <RefreshCw className="size-4 text-violet-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{data.recoveryRate}%</p>
-          <p className="text-[11px] text-zinc-400 mt-1">{data.paymentHealth.successful} of {data.paymentHealth.totalCharges} charges paid</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Total Revenue</p>
-            <CreditCard className="size-4 text-amber-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums">₦{Math.round(data.totalRevenue).toLocaleString()}</p>
-          <p className="text-[11px] text-zinc-400 mt-1">All-time collected invoices</p>
-        </div>
+      {/* KPI Row */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="MRR" value={`₦${Math.round(mrr).toLocaleString()}`} sub={`ARR: ₦${Math.round(arr).toLocaleString()}`} accent="indigo" />
+        <KpiCard label="Active Subscribers" value={String(activeCount)} sub={`${churnRate}% churn`} accent="emerald" />
+        <KpiCard label="Recovery Rate" value={`${recoveryRate}%`} sub={`${healthData.paid} of ${healthData.paid + healthData.failed} charges`} accent="violet" />
+        <KpiCard label="Total Revenue" value={`₦${Math.round(totalRevenue).toLocaleString()}`} sub={`${healthData.paid + healthData.failed} paid invoices`} accent="amber" />
       </div>
 
-      {/* Payment Health Row */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="size-4 text-emerald-500" />
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Successful Charges</p>
-          </div>
-          <p className="text-2xl font-bold tabular-nums">{data.paymentHealth.successful}</p>
-          <div className="mt-2 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(data.paymentHealth.successful / Math.max(data.paymentHealth.totalCharges, 1)) * 100}%` }} />
-          </div>
-        </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="size-4 text-orange-500" />
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">In Recovery</p>
-          </div>
-          <p className="text-2xl font-bold tabular-nums text-orange-600 dark:text-orange-400">{data.paymentHealth.retrying}</p>
-          <p className="text-[11px] text-zinc-400 mt-2">Subscriptions retrying via cascade</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <XCircle className="size-4 text-red-500" />
-            <p className="text-xs text-zinc-400 uppercase tracking-wider font-medium">Past Due</p>
-          </div>
-          <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{data.paymentHealth.pastDue}</p>
-          <p className="text-[11px] text-zinc-400 mt-2">Exceeded retry limit</p>
-        </div>
+      {/* Health Row */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <HealthCard label="Successful" value={healthData.paid} color="#10b981" total={healthData.paid + healthData.failed} />
+        <HealthCard label="In Recovery" value={healthData.retrying} color="#f97316" />
+        <HealthCard label="Past Due" value={healthData.pastDue} color="#f43f5e" />
+        <HealthCard label="Failed" value={healthData.failed} color="#ef4444" />
       </div>
 
-      {/* Revenue Chart + MRR by Status */}
+      {/* Revenue Chart + MRR Breakdown */}
       <div className="grid gap-4 lg:grid-cols-3">
+        {/* Revenue Trend */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-6">
-          <h3 className="text-sm font-semibold mb-4">Revenue Trend (6 months)</h3>
-          <div className="flex items-end gap-2 h-48">
-            {data.monthlyRevenue.map((m, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
-                <span className="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
-                  ₦{m.revenue >= 1000000 ? `${(m.revenue / 1000000).toFixed(1)}M` : m.revenue >= 1000 ? `${(m.revenue / 1000).toFixed(0)}k` : m.revenue.toFixed(0)}
-                </span>
-                <div
-                  className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-sm transition-all group-hover:from-indigo-500 group-hover:to-indigo-300"
-                  style={{ height: `${Math.max((m.revenue / maxRevenue) * 100, 2)}%` }}
-                />
-                <span className="text-[10px] text-zinc-400 font-medium">{m.short}</span>
+          <h3 className="text-sm font-semibold mb-1">Revenue Trend</h3>
+          <p className="text-xs text-zinc-400 mb-6">Monthly collected revenue (12 months)</p>
+          <div className="relative">
+            {/* Y-axis labels */}
+            <div className="absolute left-0 top-0 bottom-6 w-12 flex flex-col justify-between text-right pr-2">
+              <span className="text-[10px] text-zinc-400 tabular-nums">{fmt(maxMonthly)}</span>
+              <span className="text-[10px] text-zinc-400 tabular-nums">{fmt(maxMonthly * 0.75)}</span>
+              <span className="text-[10px] text-zinc-400 tabular-nums">{fmt(maxMonthly * 0.5)}</span>
+              <span className="text-[10px] text-zinc-400 tabular-nums">{fmt(maxMonthly * 0.25)}</span>
+              <span className="text-[10px] text-zinc-400 tabular-nums">0</span>
+            </div>
+            {/* Grid lines */}
+            <div className="ml-14 relative h-48">
+              {[0, 25, 50, 75, 100].map(pct => (
+                <div key={pct} className="absolute left-0 right-0 border-t border-zinc-100 dark:border-zinc-800" style={{ bottom: `${pct}%` }} />
+              ))}
+              {/* Bars */}
+              <div className="absolute inset-0 flex items-end gap-1">
+                {monthlyData.map((m, i) => {
+                  const h = Math.max((m.revenue / maxMonthly) * 100, 1);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tabular-nums z-10">
+                        ₦{m.revenue.toLocaleString()}
+                      </div>
+                      <div
+                        className="w-full rounded-t-sm transition-colors"
+                        style={{
+                          height: `${h}%`,
+                          background: i === monthlyData.length - 1 ? "#818cf8" : "#6366f1",
+                          opacity: i === monthlyData.length - 1 ? 0.7 : 1,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+            {/* X-axis labels */}
+            <div className="ml-14 flex gap-1 mt-2">
+              {monthlyData.map((m, i) => (
+                <div key={i} className="flex-1 text-center">
+                  <span className="text-[10px] text-zinc-400">{m.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* MRR Breakdown */}
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-6">
-          <h3 className="text-sm font-semibold mb-4">MRR by Status</h3>
-          <div className="space-y-4">
-            {data.mrrByStatus.filter(s => s.amount > 0).map((s) => (
+          <h3 className="text-sm font-semibold mb-1">MRR by Status</h3>
+          <p className="text-xs text-zinc-400 mb-6">How your recurring revenue breaks down</p>
+          <div className="space-y-5">
+            {mrrBreakdown.map(s => (
               <div key={s.label}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs text-zinc-400">{s.label}</span>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-xs text-zinc-500">{s.label}</span>
                   <span className="text-xs font-semibold tabular-nums">₦{Math.round(s.amount).toLocaleString()}</span>
                 </div>
-                <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                  <div className={`${s.color} h-full rounded-full transition-all`} style={{ width: `${(s.amount / maxMrrStatus) * 100}%` }} />
+                <div className="h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${(s.amount / maxMrrStatus) * 100}%`, backgroundColor: s.color }} />
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium">Total MRR</span>
-              <span className="text-sm font-bold tabular-nums">₦{Math.round(data.mrr).toLocaleString()}</span>
-            </div>
+          <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between">
+            <span className="text-xs font-medium text-zinc-500">Total MRR</span>
+            <span className="text-sm font-bold tabular-nums">₦{Math.round(mrr).toLocaleString()}</span>
           </div>
         </div>
       </div>
 
       {/* Plan Distribution */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-6">
-        <h3 className="text-sm font-semibold mb-4">Revenue by Plan</h3>
+        <h3 className="text-sm font-semibold mb-1">Revenue by Plan</h3>
+        <p className="text-xs text-zinc-400 mb-5">Active subscription revenue per plan</p>
         <div className="space-y-3">
-          {data.planDistribution.map((p) => (
-            <div key={p.name} className="group">
-              <div className="flex items-center gap-3">
-                <span className="text-sm w-24 truncate font-medium">{p.name}</span>
-                <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full h-6 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full h-6 flex items-center justify-end pr-2 transition-all"
-                    style={{ width: `${Math.max((p.revenue / data.planDistribution[0].revenue) * 100, 8)}%` }}
-                  >
-                    <span className="text-[10px] text-white font-medium tabular-nums">{p.pct}%</span>
-                  </div>
+          {planData.map(p => (
+            <div key={p.name} className="flex items-center gap-3">
+              <span className="text-sm w-28 truncate font-medium">{p.name}</span>
+              <div className="flex-1 h-7 bg-zinc-100 dark:bg-zinc-800 rounded-md overflow-hidden relative">
+                <div
+                  className="h-full rounded-md flex items-center justify-end pr-2"
+                  style={{
+                    width: `${Math.max((p.revenue / maxPlanRevenue) * 100, 6)}%`,
+                    background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
+                  }}
+                >
+                  <span className="text-[10px] text-white font-medium tabular-nums">
+                    ₦{p.revenue.toLocaleString()}
+                  </span>
                 </div>
-                <span className="text-xs text-zinc-500 w-14 text-right tabular-nums">{p.count} subs</span>
-                <span className="text-xs font-semibold w-24 text-right tabular-nums">₦{Math.round(p.revenue).toLocaleString()}</span>
               </div>
+              <span className="text-xs text-zinc-400 w-16 text-right tabular-nums">{p.count} subs</span>
             </div>
           ))}
         </div>
@@ -315,17 +254,51 @@ export default function AnalyticsPage() {
 
       {/* Subscription States */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-6">
-        <h3 className="text-sm font-semibold mb-4">Subscription Lifecycle</h3>
+        <h3 className="text-sm font-semibold mb-1">Subscription Lifecycle</h3>
+        <p className="text-xs text-zinc-400 mb-5">All subscriptions by current state</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {data.stateDistribution.map((s) => (
+          {stateData.map(s => (
             <div key={s.state} className="rounded-lg border border-zinc-100 dark:border-zinc-800 p-4 text-center relative overflow-hidden">
-              <div className={`absolute top-0 left-0 right-0 h-1 ${s.color}`} />
+              <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: s.color }} />
               <p className="text-2xl font-bold tabular-nums mt-1">{s.count}</p>
               <p className="text-[11px] text-zinc-400 capitalize mt-1 font-medium">{s.state.replace(/_/g, " ")}</p>
             </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
+  const bg: Record<string, string> = {
+    indigo: "from-indigo-600 to-violet-600",
+    emerald: "from-emerald-600 to-teal-600",
+    violet: "from-violet-600 to-purple-600",
+    amber: "from-amber-500 to-orange-500",
+  };
+  return (
+    <div className={`rounded-xl bg-gradient-to-br ${bg[accent] ?? bg.indigo} p-5 text-white shadow-lg`}>
+      <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</p>
+      <p className="mt-2 text-2xl font-extrabold tabular-nums">{value}</p>
+      <p className="text-xs opacity-70 mt-1">{sub}</p>
+    </div>
+  );
+}
+
+function HealthCard({ label, value, color, total }: { label: string; value: number; color: string; total?: number }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] p-5">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+        <span className="text-xs text-zinc-400 uppercase tracking-wider font-medium">{label}</span>
+      </div>
+      <p className="text-2xl font-bold tabular-nums">{value.toLocaleString()}</p>
+      {total !== undefined && (
+        <div className="mt-2 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${(value / Math.max(total, 1)) * 100}%`, backgroundColor: color }} />
+        </div>
+      )}
     </div>
   );
 }
