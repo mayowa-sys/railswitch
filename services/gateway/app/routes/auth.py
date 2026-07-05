@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
-
+from fastapi import APIRouter, Depends, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from pydantic import BaseModel
 
 from app.engine_client import EngineClient, get_engine_client_no_auth
 from app.envelope import Envelope
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 class RegisterRequest(BaseModel):
@@ -21,7 +23,9 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/register")
+@limiter.limit("5/15minutes")
 async def register(
+    request: Request,
     payload: RegisterRequest,
     engine: EngineClient = Depends(get_engine_client_no_auth),
 ) -> Envelope:
@@ -30,7 +34,9 @@ async def register(
 
 
 @router.post("/login")
+@limiter.limit("10/15minutes")
 async def login(
+    request: Request,
     payload: LoginRequest,
     engine: EngineClient = Depends(get_engine_client_no_auth),
 ) -> Envelope:
