@@ -21,6 +21,7 @@ export default function OverviewPage() {
   const [mrr, setMrr] = useState(0);
   const [arr, setArr] = useState(0);
   const [activeSubscribers, setActiveSubscribers] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
   const [churnRate, setChurnRate] = useState("—");
   const [recoveryRate, setRecoveryRate] = useState("—");
   const [fetching, setFetching] = useState(true);
@@ -31,7 +32,12 @@ export default function OverviewPage() {
     const key = user?.apiKey ?? "";
     if (!key) { setFetching(false); return; }
     setFetching(true);
-    Promise.all([api.subscriptions.list(key), api.plans.list(key), api.invoices.list(key)]).then(([subs, plans, invoices]) => {
+    Promise.all([
+      api.subscriptions.list(key),
+      api.plans.list(key),
+      api.invoices.list(key),
+      api.customers.list(key),
+    ]).then(([subs, plans, invoices, customers]) => {
         const planMap = new Map(plans.map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
         const allSubs = subs.map((s) => {
           const plan = planMap.get(s.plan_id);
@@ -46,6 +52,7 @@ export default function OverviewPage() {
         setMrr(m / 100);
         setArr((m * 12) / 100);
         setActiveSubscribers(active.length);
+        setTotalCustomers(customers.length);
         setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
       
       // Compute recovery rate from invoices in terminal states
@@ -77,8 +84,8 @@ export default function OverviewPage() {
           <div className="absolute -right-2 bottom-4 size-20 rounded-full bg-white/5" />
         </div>
 
-        <StatsCard label="Active Subscribers" value={fetching ? "..." : activeSubscribers.toLocaleString()} change="+18.1%" trend="up" icon={Zap} colorConfig={STATS_COLOR_MAP.emerald} />
-        <StatsCard label="Recovery Rate" value={recoveryRate} change="industry avg" trend="up" icon={Activity} colorConfig={STATS_COLOR_MAP.violet} subLabel="Cards recovered / cards failed" />
+        <StatsCard label="Active Subscribers" value={fetching ? "..." : activeSubscribers.toLocaleString()} change={`${totalCustomers} total`} trend="up" icon={Zap} colorConfig={STATS_COLOR_MAP.emerald} />
+        <StatsCard label="Recovery Rate" value={recoveryRate} change={`${totalCustomers} customers`} trend="up" icon={Activity} colorConfig={STATS_COLOR_MAP.violet} subLabel="Cards recovered / cards failed" />
         <StatsCard label="Churn Rate" value={churnRate} change="" trend="down" icon={TrendingDown} colorConfig={STATS_COLOR_MAP.red} subLabel="Monthly subscriber churn" />
       </div>
 
