@@ -4,7 +4,7 @@ import { BillingsQueue } from "../queues/billings.queue.js";
 import { GlobalLogger } from "../utils/logger.js";
 import { db } from "../db/client.js";
 import { SubscriptionsTable } from "../schema/subscriptions.schema.js";
-import { lte, sql, eq, and, gte } from "drizzle-orm";
+import { lte, sql, eq, and, gt } from "drizzle-orm";
 import { Plan, PlansTable } from "../schema/plans.schema.js";
 import { PaymentMethodsTable } from "../schema/payment_methods.schema.js";
 import { InvoicesTable } from "../schema/invoices.schema.js";
@@ -55,7 +55,12 @@ export class BillingHelper {
     return db
       .select()
       .from(SubscriptionsTable)
-      .where(lte(SubscriptionsTable.next_billing_at, sql`now()`));
+      .where(
+        and(
+          lte(SubscriptionsTable.next_billing_at, sql`now()`),
+          eq(SubscriptionsTable.state, 'active'),
+        ),
+      );
   }
 
   async getEndingTrials() {
@@ -215,6 +220,16 @@ class BillingService {
     data: ChargeSubscriptionData,
     billingHandler: BillingHandler,
   ) {
+    // Verify subscription is still in a chargeable state
+    const [sub] = await db.select().from(SubscriptionsTable).where(eq(SubscriptionsTable.id, data.subscriptionId)).limit(1);
+    if (!sub || sub.state !== 'active') {
+      this.logger.info('Subscription not in chargeable state — skipping', {
+        subscriptionId: data.subscriptionId,
+        state: sub?.state ?? 'not_found',
+      });
+      return;
+    }
+
     const plan = await this.billingHelper.getPlanById(data.planId);
     const defaultPaymentMethod =
       await this.billingHelper.getDefaultPaymentMethod(data.customerId);
@@ -231,7 +246,7 @@ class BillingService {
       .where(
         and(
           eq(CreditsTable.subscription_id, data.subscriptionId),
-          gte(CreditsTable.amount, CreditsTable.amount_consumed),
+          gt(CreditsTable.amount, CreditsTable.amount_consumed),
         ),
       );
     const amountToCharge = await ProrationHelper.applyCreditsToCharge(

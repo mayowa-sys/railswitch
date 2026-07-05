@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, gt as drizzleGt } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { nextRetryAt } from "../rails/retry-timing.js";
 import { CreditsTable } from "../schema/credits.schema.js";
@@ -78,13 +78,14 @@ export async function applyCreditsToCharge(
     if (availableCredit.isPositive()) {
       const creditToApply = Decimal.min(availableCredit, remainingCharge);
 
-      // increase amount_consumed
+      const newAmountConsumed = new Decimal(credit.amount_consumed).plus(creditToApply);
+      const isFullyConsumed = newAmountConsumed.gte(credit.amount);
+
       await db
         .update(CreditsTable)
         .set({
-          amount_consumed: new Decimal(credit.amount_consumed)
-            .plus(creditToApply)
-            .toString(),
+          amount_consumed: newAmountConsumed.toString(),
+          ...(isFullyConsumed ? { consumed_at: new Date() } : {}),
         })
         .where(eq(CreditsTable.id, credit.id));
 

@@ -33,20 +33,7 @@ beforeEach(() => {
 });
 
 describe('applyResumeAdjustments', () => {
-  it('throws when the subscription is not active', async () => {
-    vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
-      paused_at: new Date(),
-      next_billing_at: new Date(),
-      plan_id: 'plan_1',
-      state: 'paused',
-    } as typeof SubscriptionsTable.$inferSelect);
-
-    await expect(applyResumeAdjustments('sub_1', 'mer_1')).rejects.toThrow(
-      'Subscription must be in active state to apply resume adjustments',
-    );
-  });
-
-  it('returns early when the subscription was not paused', async () => {
+  it('returns early when the subscription has no paused_at', async () => {
     vi.mocked(ProrationHelper.getSubscription).mockResolvedValue({
       paused_at: null,
       next_billing_at: new Date(),

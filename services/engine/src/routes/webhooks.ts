@@ -152,6 +152,49 @@ async function handlePaymentSuccess(
   const wrapper = new SubscriptionWrapper({ repo });
 
   const amount = Number(eventData.amount ?? invoice?.amount ?? 0);
+  const transaction = (eventData.transaction ?? {}) as Record<string, unknown>;
+  const txStatus = (transaction.status ?? 'SUCCESS') as string;
+
+  if (txStatus !== 'SUCCESS' && txStatus !== 'success') {
+    // Card charge failed — transition to charging first, then fire CHARGE_FAILED
+    const responseCode = (transaction.responseCode ?? transaction.code ?? '') as string;
+    const message = (transaction.message ?? transaction.responseMessage ?? 'Payment failed') as string;
+    const retryable = ['insufficient_funds', 'network_error', 'limit_exceeded', '51', '52', '54', '61', '91'].includes(responseCode);
+
+    // Step 1: Move subscription to charging state (if not already there)
+    if (subscription.state === 'active') {
+      await wrapper.processEvent({
+        subscriptionId: subscription.id,
+        event: { type: 'CYCLE_BOUNDARY_REACHED', invoiceId: invoice?.id ?? '' },
+        idempotencyKey: `webhook:cycle:${requestId}`,
+      }).catch(err => logger.warn('Failed to transition to charging', err as Error));
+    }
+
+    // Step 2: Fire CHARGE_FAILED to trigger cascade
+    const failResult = await wrapper.processEvent({
+      subscriptionId: subscription.id,
+      event: {
+        type: 'CHARGE_FAILED',
+        reason: message,
+        retryable,
+      },
+      idempotencyKey: `webhook:payment_failed:${requestId}`,
+    }).catch(err => {
+      logger.error('Failed to process charge failure', err as Error);
+      return null;
+    });
+
+    if (failResult && !failResult.cached) {
+      logger.info('Charge failed via webhook, cascade initiated', {
+        subscriptionId: subscription.id,
+        reason: message,
+        retryable,
+        newState: failResult.state,
+      });
+    }
+    await recordProcessed(requestId);
+    return;
+  }
 
   // Advance state machine: charge succeeded
   const result = await wrapper.processEvent({

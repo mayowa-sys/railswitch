@@ -183,7 +183,7 @@ merchantActionsRouter.post('/:id/override-state', async (req: Request, res: Resp
     const merchantId = (req as Request & { merchantId: string }).merchantId;
     const { state, reason } = req.body;
 
-    const validStates = ['active', 'paused', 'cancelled', 'past_due'];
+    const validStates = ['active', 'paused', 'cancelled'];
     if (!validStates.includes(state)) {
       res.status(400).json({ error: { code: 'INVALID_STATE', message: `Must be one of: ${validStates.join(', ')}` } });
       return;
