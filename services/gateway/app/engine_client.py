@@ -470,6 +470,9 @@ class EngineClient:
     async def cleanup_playground(self, payload: dict) -> dict:
         return await self._request("POST", "/internal/v1/cleanup/playground", json=payload)
 
+    async def cleanup_bulk(self) -> dict:
+        return await self._request("POST", "/internal/v1/cleanup/bulk")
+
     # =========== PORTAL ===================
     async def create_portal_link(self, customer_id: str) -> dict:
         return await self._request("POST", f"/internal/v1/portal/customers/{customer_id}/portal-link")

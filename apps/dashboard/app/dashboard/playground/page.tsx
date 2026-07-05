@@ -140,11 +140,25 @@ export default function PlaygroundPage() {
         },
       };
 
+      // Build the Nomba signing string: event_type:requestId:userId:walletId:transactionId:type:time:responseCode:timestamp
+      const signingFields = [
+        payload.event_type,
+        payload.requestId,
+        "", // userId
+        "", // walletId
+        "", // transactionId
+        "", // type
+        "", // time
+        payload.data.transaction.responseCode,
+        ts,
+      ];
+      const signingString = signingFields.join(":");
+
+      // Sign with HMAC-SHA256, output as base64 (Nomba format)
       const encoder = new TextEncoder();
-      const body = encoder.encode(JSON.stringify(payload));
       const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const sig = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, body)))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(signingString));
+      const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
 
       const webhookRes = await fetch(`${GATEWAY_URL}/webhooks/nomba`, {
         method: "POST",
@@ -227,11 +241,19 @@ export default function PlaygroundPage() {
         },
       };
 
+      // Build the Nomba signing string
+      const signingFields = [
+        payload.event_type,
+        payload.requestId,
+        "", "", "", "", "", "", // no merchant/transaction fields for VA
+        ts,
+      ];
+      const signingString = signingFields.join(":");
+
       const encoder = new TextEncoder();
-      const body = encoder.encode(JSON.stringify(payload));
       const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const sig = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, body)))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(signingString));
+      const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
 
       const res = await fetch(`${GATEWAY_URL}/webhooks/nomba`, {
         method: "POST",
