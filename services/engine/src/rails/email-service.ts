@@ -30,48 +30,23 @@ let _transport: EmailTransport | null = null;
 export function getEmailTransport(): EmailTransport {
   if (_transport) return _transport;
 
-  // SMTP
-  if (process.env.SMTP_HOST) {
-    // Dynamic import to avoid circular deps
+  // Resend SDK
+  if (process.env.RESEND_API_KEY) {
     _transport = {
       send: async (msg) => {
         try {
-          const nodemailer = await (Function('return import("nodemailer")')() as Promise<any>);
-          const transport = nodemailer.default.createTransport({
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT ?? 587),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+          const { Resend } = await import('resend');
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          await resend.emails.send({
+            from: process.env.SMTP_FROM ?? 'onboarding@resend.dev',
+            to: msg.to,
+            subject: msg.subject,
+            html: msg.html,
+            text: msg.text,
           });
-          await transport.sendMail({ from: process.env.SMTP_FROM ?? 'noreply@railswitch.io', to: msg.to, subject: msg.subject, html: msg.html, text: msg.text });
           return true;
         } catch (err) {
-          console.error('[email] SMTP send failed:', err);
-          return false;
-        }
-      },
-    };
-    return _transport;
-  }
-
-  // SendGrid
-  if (process.env.SENDGRID_API_KEY) {
-    _transport = {
-      send: async (msg) => {
-        try {
-          const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              personalizations: [{ to: [{ email: msg.to }] }],
-              from: { email: process.env.SENDGRID_FROM ?? 'noreply@railswitch.io' },
-              subject: msg.subject,
-              content: [{ type: 'text/html', value: msg.html }, ...(msg.text ? [{ type: 'text/plain', value: msg.text }] : [])],
-            }),
-          });
-          return res.ok;
-        } catch (err) {
-          console.error('[email] SendGrid send failed:', err);
+          console.error('[email] Resend send failed:', err);
           return false;
         }
       },
