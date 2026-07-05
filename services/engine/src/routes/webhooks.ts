@@ -9,6 +9,7 @@ import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
 import { eq } from 'drizzle-orm';
 import { emitWebhooks } from '../webhooks/emitter.js';
 import { GlobalLogger } from '../utils/logger.js';
+import { createCascadeCoordinator } from '../rails/billing-handler-dependencies.js';
 
 export const webhooksRouter = Router();
 const logger = new GlobalLogger('WebhookHandler');
@@ -205,6 +206,15 @@ async function handlePaymentSuccess(
         retryable,
         newState: failResult.state,
       });
+
+      // If transitioned to va_fallback, trigger VA creation
+      if (failResult.state === 'va_fallback') {
+        const coordinator = createCascadeCoordinator(subscription.merchant_id);
+        const invoiceId = invoice?.id ?? failResult.context.currentInvoiceId ?? '';
+        const amount = Number(eventData.amount ?? invoice?.amount ?? 0);
+        coordinator.initiateVAFallback(subscription.id, invoiceId, amount, subscription.merchant_id)
+          .catch(err => logger.warn('Failed to initiate VA fallback', err as Error));
+      }
     }
     await recordProcessed(requestId);
     return;
