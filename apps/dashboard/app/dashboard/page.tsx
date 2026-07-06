@@ -38,7 +38,7 @@ export default function OverviewPage() {
       api.invoices.list(key),
       api.customers.list(key),
     ]).then(([subs, plans, invoices, customers]) => {
-        const planMap = new Map(plans.map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
+        const planMap = new Map(plans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
         const allSubs = subs.map((s) => {
           const plan = planMap.get(s.plan_id);
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };

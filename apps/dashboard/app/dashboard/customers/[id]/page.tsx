@@ -55,7 +55,7 @@ export default function CustomerDetailPage() {
         if (cancelled) return;
         if (!c) { setStatus("not-found"); return; }
 
-        const planMap = new Map(allPlans.map((p) => [p.id, p]));
+        const planMap = new Map(allPlans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, p]));
         const custSubs = allSubs.filter((s) => s.customer_id === id);
 
         // Fetch payment methods
