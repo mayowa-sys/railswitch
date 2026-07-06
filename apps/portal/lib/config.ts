@@ -6,9 +6,9 @@ export interface PortalCustomer {
   phone?: string | null;
   created_at: string;
 }
-export const PORTAL_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "http://localhost:3100";
-export const PORTAL_API_KEY = process.env.NEXT_PUBLIC_PORTAL_API_KEY ?? "";
+export const PORTAL_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3100";
+export const PORTAL_API_KEY = process.env.NEXT_PUBLIC_PORTAL_API_KEY || "";
 if (!PORTAL_API_KEY) {
   console.warn("[portal] NEXT_PUBLIC_PORTAL_API_KEY not set — API calls may fail");
 }

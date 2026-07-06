@@ -22,8 +22,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const key = user?.apiKey ?? "";
-    if (!key) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+    if (!key) { setLoading(false); return; }
+    const API = process.env.NEXT_PUBLIC_API_URL || "";
     const h = { headers: { Authorization: `Bearer ${key}` } };
 
     Promise.all([

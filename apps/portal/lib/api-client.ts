@@ -1,6 +1,6 @@
 import { PORTAL_API_KEY } from "@/lib/config";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;

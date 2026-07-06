@@ -23,7 +23,7 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   "cascade": <RefreshCw className="size-3.5" />,
 };
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY || "sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU";
 
 const FIRST_NAMES = ["Amina","Chidi","Fatima","Emeka","Blessing","Tunde","Ngozi","Yusuf","Grace"];

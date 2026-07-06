@@ -62,7 +62,7 @@ export default function CustomerDetailPage() {
         // Fetch payment methods
         let pms: PMInfo[] = [];
         try {
-          const pmRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/v1/payment-methods`, {
+          const pmRes = await fetch(          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/v1/payment-methods`, {
             headers: { Authorization: `Bearer ${API_KEY}` }
           });
           const pmJson = await pmRes.json();
