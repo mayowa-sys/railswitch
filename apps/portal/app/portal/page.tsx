@@ -42,7 +42,8 @@ function OverviewPageContent() {
         setInvoices(custInvoices);
         
         if (custSubs.length > 0) {
-          setSubscription(custSubs[0]);
+          const realSub = custSubs.find((s: any) => !plansData.find((p: any) => p.id === s.plan_id)?.name?.startsWith('[deleted]')) || custSubs.find((s: any) => s.plan_id?.startsWith('plan_')) || custSubs[0];
+          setSubscription(realSub);
         }
         
         try {
