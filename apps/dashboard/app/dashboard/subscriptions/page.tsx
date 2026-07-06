@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { useAuth } from "@/lib/auth-context";
 import { SubscriptionsTable } from "@/components/dashboard/subscriptions/subscriptions-table-live";
 import { api } from "@/lib/api-client";
+import { isTestCustomer, isTestPlan } from "@/lib/utils";
 
 interface LiveSubscription {
   id: string;
@@ -35,15 +36,21 @@ export default function SubscriptionsPage() {
       api.plans.list(key),
       api.customers.list(key),
     ]).then(([rawSubs, rawPlans, rawCusts]) => {
-      const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]') && !p.name.startsWith('Test ')).map((p) => [p.id, p]));
-      setPlans(rawPlans.map((p) => ({ id: p.id, name: p.name, amount: Number(p.amount) })));
-      setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
+      const realPlans = rawPlans.filter((p: any) => !isTestPlan(p.name));
+      const realCustomers = rawCusts.filter((c: any) => !isTestCustomer(c.email, c.name));
+      const custSet = new Set(realCustomers.map((c: any) => c.id));
+      const planMap = new Map(realPlans.map((p: any) => [p.id, p]));
+      const planIdSet = new Set(realPlans.map((p: any) => p.id));
+
+      setPlans(realPlans.map((p: any) => ({ id: p.id, name: p.name, amount: Number(p.amount) })));
+      setCustomers(realCustomers.map((c: any) => ({ id: c.id, name: c.name, email: c.email })));
       const STATUS_MAP: Record<string, string> = {
         active: "active", charging: "active", past_due: "past_due", cancelled: "cancelled",
         paused: "paused", trialing: "trialing", retrying: "retrying",
         va_fallback: "va_fallback", whatsapp_fallback: "whatsapp_fallback", expired: "cancelled",
       };
-      setSubs(rawSubs.map((s) => ({
+      const realSubs = rawSubs.filter((s: any) => custSet.has(s.customer_id) && planIdSet.has(s.plan_id));
+      setSubs(realSubs.map((s) => ({
         id: s.id,
         customerId: s.customer_id,
         planId: s.plan_id,
