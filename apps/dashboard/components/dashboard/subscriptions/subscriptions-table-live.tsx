@@ -44,7 +44,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function SubscriptionsTable({ subscriptions, plans, customers, loading }: Props) {
-  const planOptions = plans.map((p) => ({ value: p.id, label: p.name }));
+  const planOptions = plans.filter(p => !p.name.startsWith('[deleted]')).map((p) => ({ value: p.id, label: p.name }));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [planFilter, setPlanFilter] = useState("");

@@ -76,7 +76,7 @@ export default function CustomersPage() {
       api.plans.list(key),
       api.invoices.list(key),
     ]).then(async ([rawCustomers, rawSubs, rawPlans, rawInvoices]) => {
-      const planMap = new Map(rawPlans.map((p) => [p.id, p]));
+      const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, p]));
       const subsByCust: Record<string, typeof rawSubs> = {};
       for (const s of rawSubs) {
         if (!subsByCust[s.customer_id]) subsByCust[s.customer_id] = [];
