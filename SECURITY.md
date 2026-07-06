@@ -85,7 +85,7 @@ Nomba sends payment notifications to the Gateway at `POST /webhooks/nomba`.
 - **Algorithm enforcement.** Only `HmacSHA256` is accepted. Unknown algorithms are rejected with `400`.
 - **Timestamp validation.** The `nomba-timestamp` header is included in the signature payload, binding each request to a point in time.
 - **Secret not stored in code.** `NOMBA_WEBHOOK_SECRET` is set as a Fly secret at deploy time and injected into the Gateway environment. It never appears in source files or version control.
-- **Forwarding.** Verified payloads are forwarded to the Engine over the internal network with `X-Internal-Auth`. The Engine handler will resolve the merchant from the Nomba sub-account ID in the payload and scope all subsequent state transitions accordingly.
+- **Forwarding.** Verified payloads are forwarded synchronously to the Engine over the internal network with `X-Internal-Auth` (30s timeout). The Engine handler resolves the merchant from the Nomba sub-account ID in the payload and scopes all subsequent state transitions accordingly. Synchronous forwarding (changed from fire-and-forget `BackgroundTasks`) ensures webhooks are processed before the Gateway returns a response, preventing silent drops.
 
 ### Outbound webhooks (RailSwitch → merchants)
 
@@ -107,6 +107,7 @@ Merchants register webhook endpoints and signing secrets. RailSwitch delivers ev
 | **Engine → Database** | Encrypted connection (Neon pooled URL over TLS), RLS enforcement |
 | **Engine → Nomba** | HTTPS with Nomba's Client ID + HMAC-signed requests |
 | **Engine → WhatsApp** | HTTPS with WhatsApp Cloud API access token |
+| **Engine → Resend** | HTTPS with Resend API key for transactional emails |
 
 The Engine has no public port binding. Fly configuration sets `handlers = []` on its port, making it unreachable from the internet.
 
@@ -123,6 +124,7 @@ Subscription state transitions are governed by an XState v5 state machine with 1
 3. **Version check.** The wrapper validates `version` matches before persisting, providing optimistic concurrency control.
 4. **Atomic audit log.** Audit entries are written in the same transaction as the state update. A failed transaction rolls back both.
 5. **At-most-once charging.** The `charging → charge_result` transition checks `invoice.charge_attempts` before initiating a new Nomba charge.
+6. **Cascade VA creation.** When a charge failure transitions to `va_fallback`, the webhook handler directly triggers `initiateVAFallback()` to create a real Nomba virtual account. The pending invoice is created before `CYCLE_BOUNDARY_REACHED` to satisfy the FK constraint on `current_invoice_id`.
 
 ### Immutable audit log
 
@@ -138,6 +140,8 @@ The `audit_log` table is append-only. No code path ever issues `UPDATE` or `DELE
 | `NOMBA_WEBHOOK_SECRET` | Fly secret / docker-compose env | Nomba webhook verification |
 | `DATABASE_URL` | Fly secret / docker-compose env | Engine + Gateway DB connection |
 | Nomba Client ID + Private Key | Fly secret | Engine → Nomba API |
+| Resend API Key | Fly secret | Engine → Resend email API |
+| WhatsApp Cloud API Token | Fly secret | Engine → Meta WhatsApp API |
 | Merchant webhook signing secrets | `webhook_endpoints` table | Per-merchant outbound signing |
 
 Secrets are never committed to the repository. Local development uses a shared dummy secret (`dev-internal-secret-change-me`) set in `docker-compose.yml`. Production secrets are injected via `fly secrets set`.

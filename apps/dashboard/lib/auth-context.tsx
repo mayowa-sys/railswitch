@@ -30,7 +30,7 @@ const MOCK_API_KEY = "sk_test_mockmerchanta";
 
 // Demo API key for demo@railswitch.dev auto-login
 // Override via NEXT_PUBLIC_DEMO_API_KEY env var
-const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
+const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU";
 
 function loadUserFromStorage(): AuthUser | null {
   if (typeof localStorage === "undefined") return null;

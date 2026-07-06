@@ -55,7 +55,7 @@ Plus:
 
 ## What's built
 
-**Engine — core complete (96 unit tests + 113 integration tests):**
+**Engine — core complete (112 unit tests + integration tests):**
 
 - XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
@@ -73,6 +73,9 @@ Plus:
 - Inbound Nomba webhook ingress — signature verification + engine handler
 - **RLS infrastructure** — `engine_user` Postgres role, `setRLSContext` middleware, per-request `app.current_merchant_id` GUC
 - **Cross-tenant isolation tests** — 5 tests verifying merchants cannot access each other's resources
+- **Resend email integration** — onboarding emails, payment receipts, dunning notifications via Resend API
+- **WhatsApp Cloud API** — recovery messages with VA details and checkout links via Meta Business API
+- **Test data cleanup** — soft-delete approach for playground test records (rename to `[deleted]` prefix)
 
 **Gateway — pytest suite:**
 
@@ -84,9 +87,9 @@ Plus:
 
 **Frontend:**
 
-- Merchant dashboard — 12 routes, real API integration, plans/customers/subscriptions from live data
+- Merchant dashboard — 12 routes, real API integration, plans/customers/subscriptions from live data, interactive cascade playground
 - Customer portal — 5 pages, token-based access, subscription management, invoice history
-- Demo storefront — FitCore Nigeria demo with 250 customers, ₦13.1M MRR
+- Demo storefront — FitCore Nigeria demo with 285 customers, ₦13.1M MRR
 
 ---
 
@@ -122,15 +125,39 @@ curl http://localhost:3001/health
 python3 scripts/seed-demo.py
 ```
 
-Creates FitCore Nigeria demo: 250 customers, 5 plans, 250 subscriptions, ₦13.1M MRR.
+Creates FitCore Nigeria demo: 285 customers, 5 plans, 285 subscriptions, ₦13.1M MRR.
 
 Login: `demo@railswitch.dev` / `demo123456`
 
 ---
 
+## Live Demo
+
+All services are deployed on Fly.io:
+
+| Service | URL |
+|---|---|
+| **Dashboard** | https://railswitch-dashboard.fly.dev |
+| **Portal** | https://railswitch-portal.fly.dev |
+| **Storefront** | https://railswitch-storefront.fly.dev |
+| **Gateway API** | https://railswitch-gateway.fly.dev |
+| **Engine** | Internal only (Fly private network) |
+
+### Playground — Full Cascade Demo
+
+The dashboard includes an interactive **Playground** that simulates the entire cascade recovery flow:
+
+- **Card Charge (Success/Insufficient)** — Simulates successful or retryable card charges
+- **Full Cascade** — Walks the complete lifecycle: `active` → non-retryable decline → `va_fallback` → VA funded → `active`
+- **VA Funded** — Simulates a virtual account being funded after VA fallback
+
+Each simulation fires real Nomba-format webhooks with HMAC-SHA256 signatures, triggering actual state transitions in the engine.
+
+---
+
 ## Running tests
 
-**Engine (vitest — 96 unit tests):**
+**Engine (vitest — 112 unit tests):**
 
 ```bash
 cd services/engine && npm test
@@ -148,7 +175,7 @@ cd services/engine && npx vitest run tests/tenants/
 cd services/gateway && source .venv/bin/activate && pytest
 ```
 
-**Integration test (113 tests, 18 sections):**
+**Integration test (end-to-end, 18 sections):**
 
 ```bash
 bash test_integration.sh

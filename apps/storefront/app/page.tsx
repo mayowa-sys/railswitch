@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Zap, Shield, Landmark, CreditCard, ArrowRight, Loader2, AlertCircle, Dumbbell, Heart, Users, Clock, Building } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const FITCORE_API_KEY = process.env.NEXT_PUBLIC_FITCORE_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
+const FITCORE_API_KEY = process.env.NEXT_PUBLIC_FITCORE_API_KEY ?? "sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU";
 
 const PLANS = [
   { id: "starter", name: "Basic", price: "₦9,900", amountKobo: 990000, features: ["Access to 1 location", "Open gym floor", "Locker room access", "1 group class/week", "Mobile app check-in"], color: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", border: "border-emerald-200", icon: "Dumbbell" },

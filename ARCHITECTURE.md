@@ -198,8 +198,8 @@ recovery_rate = paid_invoices / (paid_invoices + uncollectible_invoices)
 
 ### Demo Merchant
 ```
-Merchant ID: mer_2fDBVGY7fs
-API Key:     sk_test_mer_2fDBVGY7fs__e52611c9ba0b74b3f68e158acf1246
+Merchant ID: mer_k_W0XspbNN
+API Key:     sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU
 Email:       demo@railswitch.dev
 Password:    demo123456
 ```
