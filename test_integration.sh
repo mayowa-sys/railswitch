@@ -12,8 +12,8 @@
 
 set -uo pipefail
 
-KEY="${KEY:-sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE}"
-MID="${MID:-mer_2fDBVGY7fs}"
+KEY="${KEY:-sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU}"
+MID="${MID:-mer_k_W0XspbNN}"
 ENGINE="http://localhost:3001"
 GATEWAY="http://localhost:8000"
 DASHBOARD="http://localhost:3000"

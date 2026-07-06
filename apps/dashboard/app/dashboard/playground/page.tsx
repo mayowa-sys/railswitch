@@ -24,7 +24,7 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
 };
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_2fDBVGY7fs__Jt79FedYxBAdNiY6tuN_YxPjaIE";
+const DEMO_API_KEY = process.env.NEXT_PUBLIC_DEMO_API_KEY ?? "sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU";
 
 const FIRST_NAMES = ["Amina","Chidi","Fatima","Emeka","Blessing","Tunde","Ngozi","Yusuf","Grace"];
 const LAST_NAMES = ["Ibrahim","Okonkwo","Bello","Nwosu","Adeyemi","Bakare","Eze","Mohammed","Oluwole"];
