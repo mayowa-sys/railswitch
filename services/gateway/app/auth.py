@@ -4,9 +4,6 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import os
 import json
-import hmac
-import hashlib
-import base64
 
 bearer_scheme = HTTPBearer()
 
@@ -31,27 +28,22 @@ if _USE_MOCK_KEYS:
 
 
 async def get_portal_merchant(request: Request) -> str | None:
-    """If request has x-portal-token, resolve it and return merchant_id."""
+    """If request has x-portal-token, resolve it via engine and return merchant_id."""
     token = request.headers.get("x-portal-token")
     if not token:
         return None
     
     try:
-        # Verify token locally
-        secret = os.getenv("PORTAL_SECRET")
-        if not secret:
-            raise Exception("PORTAL_SECRET not set")
-        payload_b64, sig = token.split(".")
-        payload = base64.urlsafe_b64decode(payload_b64 + "=" * (4 - len(payload_b64) % 4))
-        expected_sig = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expected_sig):
-            return None
-        
-        data = json.loads(payload)
-        if data.get("exp", 0) < __import__("time").time() * 1000:
-            return None
-        
-        return data.get("merchantId")
+        client = request.app.state.http_client
+        engine_url = os.getenv("ENGINE_URL", "http://localhost:3001")
+        resp = await client.get(
+            f"{engine_url}/internal/v1/portal/resolve",
+            params={"token": token},
+            headers={"X-Internal-Auth": os.getenv("INTERNAL_AUTH_SECRET", "local-dev-shared-secret")},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("merchant_id")
     except Exception:
         return None
 
