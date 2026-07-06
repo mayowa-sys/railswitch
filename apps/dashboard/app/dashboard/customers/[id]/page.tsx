@@ -7,6 +7,7 @@ import { ChevronLeft, Loader2, CreditCard, Landmark } from "lucide-react";
 import { api, isMockMode, type GatewayPlan, type GatewayInvoice } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { formatNaira } from "@/lib/mock-data";
+import { isTestPlan } from "@/lib/utils";
 
 interface SubInfo {
   id: string;
@@ -55,7 +56,7 @@ export default function CustomerDetailPage() {
         if (cancelled) return;
         if (!c) { setStatus("not-found"); return; }
 
-        const planMap = new Map(allPlans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, p]));
+        const planMap = new Map(allPlans.filter(p => !isTestPlan(p.name)).map((p) => [p.id, p]));
         const custSubs = allSubs.filter((s) => s.customer_id === id);
 
         // Fetch payment methods

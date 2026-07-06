@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
       const invoices: any[] = iRes.data ?? [];
       const customers: any[] = cRes.data ?? [];
 
-      const planMap = new Map(plans.filter(p => !p.name.startsWith('[deleted]')).map(p => [p.id, p]));
+      const planMap = new Map(plans.filter(p => !p.name.startsWith('[deleted]') && !p.name.startsWith('Test ')).map(p => [p.id, p]));
       const active = subs.filter(s => s.state === "active");
       const cancelled = subs.filter(s => s.state === "cancelled");
 

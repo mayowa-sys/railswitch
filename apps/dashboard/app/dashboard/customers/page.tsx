@@ -8,6 +8,7 @@ import { SearchFilterBar } from "@/components/shared/search-filter-bar";
 import { useAuth } from "@/lib/auth-context";
 import { api, type GatewayPlan, type GatewayInvoice } from "@/lib/api-client";
 import { formatNaira } from "@/lib/mock-data";
+import { isTestCustomer, isTestPlan } from "@/lib/utils";
 import { CreditCard, Landmark, ExternalLink } from "lucide-react";
 
 interface LiveCustomer {
@@ -76,7 +77,7 @@ export default function CustomersPage() {
       api.plans.list(key),
       api.invoices.list(key),
     ]).then(async ([rawCustomers, rawSubs, rawPlans, rawInvoices]) => {
-      const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, p]));
+      const planMap = new Map(rawPlans.filter(p => !isTestPlan(p.name)).map((p) => [p.id, p]));
       const subsByCust: Record<string, typeof rawSubs> = {};
       for (const s of rawSubs) {
         if (!subsByCust[s.customer_id]) subsByCust[s.customer_id] = [];
@@ -108,15 +109,7 @@ export default function CustomersPage() {
         pmByCust[pm.customer_id].push(pm);
       }
 
-      // Filter out test/demo accounts — only show real seed customers
-      const realCustomers = rawCustomers.filter((c) => {
-        if (c.email.startsWith('[deleted]')) return false;
-        if (c.email.startsWith('test_')) return false;
-        if (c.email.includes('playground.dev')) return false;
-        if (['livetest@email.com','judge@demo.com','decline@email.com','demo@video.test','final@demo.test','testing@email.com'].includes(c.email)) return false;
-        if (c.email.startsWith('webhook_test') || c.email.startsWith('cascade_test')) return false;
-        return true;
-      });
+      const realCustomers = rawCustomers.filter((c) => !isTestCustomer(c.email, c.name));
 
       const mapped: LiveCustomer[] = realCustomers.map((c) => {
         const custSubs = subsByCust[c.id] || [];

@@ -34,7 +34,7 @@ export default function SubscriptionsPage() {
       api.plans.list(key),
       api.customers.list(key),
     ]).then(([rawSubs, rawPlans, rawCusts]) => {
-      const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, p]));
+      const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]') && !p.name.startsWith('Test ')).map((p) => [p.id, p]));
       setPlans(rawPlans.map((p) => ({ id: p.id, name: p.name, amount: Number(p.amount) })));
       setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
       setSubs(rawSubs.map((s) => ({
