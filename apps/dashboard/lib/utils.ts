@@ -10,6 +10,7 @@ export function isTestPlan(name: string) {
 }
 
 export function isTestCustomer(email: string, name?: string) {
+  if (!email) return false
   if (email.startsWith("[deleted]")) return true
   if (email.startsWith("test_") || email.includes("_test@") || email.includes("testing@")) return true
   if (email.includes("@playground.dev")) return true

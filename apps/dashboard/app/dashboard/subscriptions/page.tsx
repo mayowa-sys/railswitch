@@ -29,6 +29,7 @@ export default function SubscriptionsPage() {
 
   useEffect(() => {
     const key = user?.apiKey ?? "";
+    if (!key) { setLoading(false); return; }
     Promise.all([
       api.subscriptions.list(key),
       api.plans.list(key),
@@ -37,11 +38,16 @@ export default function SubscriptionsPage() {
       const planMap = new Map(rawPlans.filter(p => !p.name.startsWith('[deleted]') && !p.name.startsWith('Test ')).map((p) => [p.id, p]));
       setPlans(rawPlans.map((p) => ({ id: p.id, name: p.name, amount: Number(p.amount) })));
       setCustomers(rawCusts.map((c) => ({ id: c.id, name: c.name, email: c.email })));
+      const STATUS_MAP: Record<string, string> = {
+        active: "active", charging: "active", past_due: "past_due", cancelled: "cancelled",
+        paused: "paused", trialing: "trialing", retrying: "retrying",
+        va_fallback: "va_fallback", whatsapp_fallback: "whatsapp_fallback", expired: "cancelled",
+      };
       setSubs(rawSubs.map((s) => ({
         id: s.id,
         customerId: s.customer_id,
         planId: s.plan_id,
-        status: (s.state as LiveSubscription["status"]) ?? "active",
+        status: (STATUS_MAP[s.state] || s.state) as LiveSubscription["status"],
         state: s.state,
         amount: Number(planMap.get(s.plan_id)?.amount ?? 0) / 100,
         nextBillingDate: s.current_period_end ?? new Date().toISOString(),

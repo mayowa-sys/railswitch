@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import Request, Depends, Header
 
-from app.auth import ApiKeyRecord, get_current_merchant
+from app.auth import ApiKeyRecord, get_current_merchant, get_current_merchant_with_portal
 from app.config import settings
 
 
@@ -483,7 +483,7 @@ class EngineClient:
 
 async def get_engine_client(
     request: Request,
-    merchant: ApiKeyRecord = Depends(get_current_merchant),
+    merchant: ApiKeyRecord = Depends(get_current_merchant_with_portal),
     idempotency_key: str | None = Header(default=None),
 ) -> EngineClient:
     return EngineClient(

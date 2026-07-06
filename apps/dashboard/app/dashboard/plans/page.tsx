@@ -9,17 +9,10 @@ import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { api, type GatewayPlan } from "@/lib/api-client";
 import { type Plan as MockPlan } from "@/lib/mock-data";
+import { isTestPlan } from "@/lib/utils";
 
 function computePlans(rawPlans: GatewayPlan[], rawSubs: { plan_id: string; state: string }[]): MockPlan[] {
-  // Filter out test/playground plans
-  const testPlanNames = new Set(["Test plan for cascade simulation", "Playground test plan", "Test plan for VA simulation"]);
-  const filteredPlans = rawPlans.filter((p) => {
-    if (p.name.startsWith('[deleted]')) return false;
-    if (p.name.startsWith('Test ')) return false;
-    if (testPlanNames.has(p.name)) return false;
-    if (p.name === 'Cascade Plan') return false;
-    return true;
-  });
+  const filteredPlans = rawPlans.filter((p) => !isTestPlan(p.name));
 
   const subCounts: Record<string, number> = {};
   for (const s of rawSubs) { subCounts[s.plan_id] = (subCounts[s.plan_id] || 0) + 1; }

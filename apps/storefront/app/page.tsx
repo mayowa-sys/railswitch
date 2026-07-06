@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Zap, Shield, Landmark, CreditCard, ArrowRight, Loader2, AlertCircle, Dumbbell, Heart, Users, Clock, Building } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const FITCORE_API_KEY = process.env.NEXT_PUBLIC_FITCORE_API_KEY || "sk_test_mer_k_W0XspbNN__y70_WaK_hR1iJU7qn95WUclycPU";
 
 const PLANS = [
@@ -67,7 +67,8 @@ export default function StorefrontPage() {
   };
 
   const handleSubmitPayment = async () => {
-    if (!selectedPlan || !email || !name || cardNumber.replace(/\s/g, "").length < 15) {
+    const rawCard = cardNumber.replace(/\s/g, "");
+    if (!selectedPlan || !email || !name || rawCard.length < 15) {
       setError("Please fill in all fields with a valid card number.");
       return;
     }
@@ -76,130 +77,90 @@ export default function StorefrontPage() {
     const ref = "FTCORE-" + Date.now().toString(36).toUpperCase();
     setPaymentRef(ref);
 
-    // Check if this is the decline card
-    const isDeclined = cardNumber.includes("674");
+    // Exact match for decline test card (not substring)
+    const DECLINE_CARD = "5060666666666666674";
+    const isDeclined = rawCard === DECLINE_CARD;
 
-    if (isDeclined) {
-      // Card declined — create subscription via API to get real VA details
-      try {
-        const key = FITCORE_API_KEY;
+    const key = FITCORE_API_KEY;
+    const headers = (body?: Record<string, unknown>) => ({
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      Authorization: "Bearer " + key,
+    });
 
-        // Create customer
-        const custRes = await fetch(API + "/v1/customers", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ name, email, phone }),
+    const apiCall = async (path: string, method = "GET", body?: Record<string, unknown>) => {
+      const res = await fetch(API + path, {
+        method, headers: headers(body), body: body ? JSON.stringify(body) : undefined,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || json.detail || `API ${res.status}`);
+      return json;
+    };
+
+    try {
+      // Create customer
+      const custData = await apiCall("/v1/customers", "POST", { name, email, phone });
+      const customerId = custData.data?.id;
+      if (!customerId) throw new Error("Profile setup failed");
+
+      // Find or create plan
+      const plansData = await apiCall("/v1/plans");
+      let planId = plansData.data?.find((p: any) => p.name === selectedPlan.name && !p.name.startsWith('[deleted]'))?.id;
+      if (!planId) {
+        const planData = await apiCall("/v1/plans", "POST", {
+          name: selectedPlan.name, description: "FitCore " + selectedPlan.name,
+          amount: selectedPlan.amountKobo, currency: "NGN", interval: "monthly", interval_count: 1,
         });
-        const custData = await custRes.json();
-        const customerId = custData.data?.id;
+        planId = planData.data?.id;
+      }
+      if (!planId) throw new Error("Plan setup failed");
 
-        // Find or create plan
-        const plansRes = await fetch(API + "/v1/plans", {
-          headers: { Authorization: "Bearer " + key },
-        });
-        const plansData = await plansRes.json();
-        let planId = plansData.data?.find((p: any) => p.name === selectedPlan.name)?.id;
-        if (!planId) {
-          const planCreate = await fetch(API + "/v1/plans", {
-            method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-            body: JSON.stringify({ name: selectedPlan.name, description: "FitCore " + selectedPlan.name, amount: selectedPlan.amountKobo, currency: "NGN", interval: "monthly", interval_count: 1 }),
+      // Create subscription (server auto-creates invoice)
+      const subData = await apiCall("/v1/subscriptions", "POST", {
+        customer_id: customerId, plan_id: planId, start_date: new Date().toISOString(),
+      });
+      const subId = subData.data?.id;
+      if (!subId) throw new Error("Membership setup failed");
+      setPaymentRef(subId);
+
+      // Add payment method
+      const last4 = rawCard.slice(-4);
+      const brand = rawCard.startsWith("5") ? "mastercard" : rawCard.startsWith("4") ? "visa" : "verve";
+      await apiCall("/v1/payment-methods", "POST", {
+        customer_id: customerId, type: "card",
+        nomba_token: "tok_fc_" + Date.now(), last4, brand, is_default: true,
+      });
+
+      if (isDeclined) {
+        // Card declined — get VA fallback details
+        try {
+          const invoicesData = await apiCall("/v1/invoices");
+          const inv = invoicesData.data?.find((i: any) => i.subscription_id === subId);
+          if (inv) {
+            const fallbackData = await apiCall("/v1/invoices/" + inv.id + "/fallback", "POST");
+            const va = fallbackData.fallback_methods?.find((m: any) => m.type === "virtual_account");
+            setVaDetails({
+              accountNumber: va?.account_number ?? "7038059983",
+              bankName: va?.bank_name ?? "Nombank MFB",
+              amount: selectedPlan.amountKobo,
+              reference: subId,
+            });
+          } else {
+            throw new Error("Invoice not found");
+          }
+        } catch {
+          setVaDetails({
+            accountNumber: "7038059983", bankName: "Nombank MFB",
+            amount: selectedPlan.amountKobo, reference: subId,
           });
-          const planCreateData = await planCreate.json();
-          planId = planCreateData.data?.id;
         }
-
-        // Create subscription
-        const subRes = await fetch(API + "/v1/subscriptions", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ customer_id: customerId, plan_id: planId, start_date: new Date().toISOString() }),
-        });
-        const subData = await subRes.json();
-        const subId = subData.data?.id;
-        setPaymentRef(subId ?? "FTCORE-" + Date.now().toString(36).toUpperCase());
-
-        // Create invoice
-        const invRes = await fetch(API + "/v1/invoices", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ subscription_id: subId, amount: selectedPlan.amountKobo, due_date: new Date().toISOString() }),
-        });
-        const invData = await invRes.json();
-
-        // Get fallback methods (VA details)
-        const fallbackRes = await fetch(API + "/v1/invoices/" + invData.data?.id + "/fallback", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-        });
-        const fallbackData = await fallbackRes.json();
-        const va = fallbackData.fallback_methods?.find((m: any) => m.type === "virtual_account");
-
-        setVaDetails({
-          accountNumber: va?.account_number ?? "7038059983",
-          bankName: va?.bank_name ?? "Nombank MFB",
-          amount: selectedPlan.amountKobo,
-          reference: subId ?? ref,
-        });
-      } catch (err) {
-        // Fallback to static details if API fails
-        setVaDetails({
-          accountNumber: "7038059983",
-          bankName: "Nombank MFB",
-          amount: selectedPlan.amountKobo,
-          reference: ref,
-        });
-      }
-      await new Promise((r) => setTimeout(r, 1500));
-      setStep("va_fallback");
-    } else {
-      // Card approved — create the actual subscription via RailSwitch
-      try {
-        const key = FITCORE_API_KEY;
-
-        const planRes = await fetch(API + "/v1/plans", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ name: selectedPlan.name, description: "FitCore " + selectedPlan.name + " Membership", amount: selectedPlan.amountKobo, currency: "NGN", interval: "monthly", interval_count: 1 }),
-        });
-        const planData = await planRes.json();
-        const planId = planData.data?.id;
-        if (!planId) throw new Error("Plan setup failed");
-
-        const custRes = await fetch(API + "/v1/customers", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ name, email, phone }),
-        });
-        const custData = await custRes.json();
-        const customerId = custData.data?.id;
-        if (!customerId) throw new Error("Profile setup failed");
-
-        const last4 = cardNumber.replace(/\s/g, "").slice(-4);
-        const brand = cardNumber.startsWith("5") ? "mastercard" : cardNumber.startsWith("4") ? "visa" : "verve";
-        await fetch(API + "/v1/payment-methods", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ customer_id: customerId, type: "card", nomba_token: "tok_fc_" + Date.now(), last4, brand, is_default: true }),
-        });
-
-        const subRes = await fetch(API + "/v1/subscriptions", {
-          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({ customer_id: customerId, plan_id: planId, start_date: new Date().toISOString() }),
-        });
-        const subData = await subRes.json();
-        const subId = subData.data?.id;
-        if (!subId) throw new Error("Membership setup failed");
-
-        setPaymentRef(subId);
-        
-        // Create first invoice immediately (charge at signup)
-        await fetch(API + "/v1/invoices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-          body: JSON.stringify({
-            subscription_id: subId,
-            amount: selectedPlan.amountKobo,
-            due_date: new Date().toISOString()
-          })
-        }).catch(() => {});
-        
+        await new Promise((r) => setTimeout(r, 1500));
+        setStep("va_fallback");
+      } else {
+        // Server already created invoice with subscription — no need to duplicate
         setStep("success");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
     setLoading(false);
   };

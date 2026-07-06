@@ -23,7 +23,7 @@ export default function PaymentMethodsPage() {
     const token = new URLSearchParams(window.location.search).get('token') || '';
     if (!token) { setLoading(false); return; }
     
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     // Resolve token to get customer ID first
     fetch(`${API}/v1/portal/resolve?token=${token}`)
       .then(r => r.json())

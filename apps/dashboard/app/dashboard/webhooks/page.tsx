@@ -51,7 +51,7 @@ export default function WebhooksPage() {
     const key = user?.apiKey ?? "";
     if (!key) return;
 
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     Promise.all([
       fetch(`${API}/v1/webhooks/endpoints`, { headers: { Authorization: `Bearer ${key}` } }).then(r => r.json()),
       fetch(`${API}/v1/webhooks/deliveries?limit=20`, { headers: { Authorization: `Bearer ${key}` } }).then(r => r.json()),
@@ -66,7 +66,7 @@ export default function WebhooksPage() {
 
   const addEndpoint = async () => {
     if (!newUrl || !user?.apiKey) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     await fetch(`${API}/v1/webhooks/endpoints`, {
       method: "POST",
       headers: { Authorization: `Bearer ${user.apiKey}`, "Content-Type": "application/json" },
@@ -79,7 +79,7 @@ export default function WebhooksPage() {
 
   const toggleEndpoint = async (id: string, isActive: boolean) => {
     if (!user?.apiKey) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const newStatus = isActive ? "inactive" : "active";
     await fetch(`${API}/v1/webhooks/endpoints/${id}`, {
       method: "PATCH",
@@ -91,7 +91,7 @@ export default function WebhooksPage() {
 
   const deleteEndpoint = async (id: string) => {
     if (!user?.apiKey || !confirm("Delete this webhook endpoint?")) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     await fetch(`${API}/v1/webhooks/endpoints/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${user.apiKey}` },

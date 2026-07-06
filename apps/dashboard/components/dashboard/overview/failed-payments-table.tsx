@@ -12,7 +12,7 @@ export function FailedPaymentsTable() {
 
   useEffect(() => {
     if (!user?.apiKey) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     fetch(`${API}/v1/subscriptions`, { headers: { Authorization: `Bearer ${user.apiKey}` } })
       .then(r => r.json())
       .then(d => {

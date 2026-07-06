@@ -56,7 +56,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!user?.apiKey) return;
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     
     const fetchNotifications = () => {
       Promise.all([
@@ -106,7 +106,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     return () => clearInterval(interval);
   }, [user?.apiKey]);
 
-  const initials = user ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : "??";
+  const initials = (user?.name || "??").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0c0c0e] font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden">
