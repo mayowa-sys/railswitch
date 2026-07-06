@@ -9,6 +9,7 @@ import { FailedPaymentsTable } from "@/components/dashboard/overview/failed-paym
 import { WebhookFeed } from "@/components/dashboard/overview/webhook-feed";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api-client";
+import { isTestPlan, isTestCustomer } from "@/lib/utils";
 
 const STATS_COLOR_MAP: Record<string, { bg: string; icon: string }> = {
   emerald: { bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
@@ -38,7 +39,7 @@ export default function OverviewPage() {
       api.invoices.list(key),
       api.customers.list(key),
     ]).then(([subs, plans, invoices, customers]) => {
-        const planMap = new Map(plans.filter(p => !p.name.startsWith('[deleted]')).map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
+        const planMap = new Map(plans.filter(p => !isTestPlan(p.name)).map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
         const allSubs = subs.map((s) => {
           const plan = planMap.get(s.plan_id);
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
@@ -52,7 +53,7 @@ export default function OverviewPage() {
         setMrr(m / 100);
         setArr((m * 12) / 100);
         setActiveSubscribers(active.length);
-        setTotalCustomers(customers.length);
+        setTotalCustomers(customers.filter((c: any) => !isTestCustomer(c.email, c.name)).length);
         setChurnRate(allSubs.length > 0 ? `${((cancelled.length / allSubs.length) * 100).toFixed(1)}%` : "—");
       
       // Compute recovery rate from invoices in terminal states
