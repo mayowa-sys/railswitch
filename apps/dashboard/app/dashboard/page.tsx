@@ -40,7 +40,9 @@ export default function OverviewPage() {
       api.customers.list(key),
     ]).then(([subs, plans, invoices, customers]) => {
         const planMap = new Map(plans.filter(p => !isTestPlan(p.name)).map((p) => [p.id, { name: p.name, amount: Number(p.amount) }]));
-        const allSubs = subs.map((s) => {
+        const planIdSet = new Set([...planMap.keys()]);
+        const realSubs = subs.filter(s => planIdSet.has(s.plan_id));
+        const allSubs = realSubs.map((s) => {
           const plan = planMap.get(s.plan_id);
           return { name: plan?.name ?? "Unknown", amount: plan?.amount ?? 0, status: s.state };
         }) as { name: string; amount: number; status: string }[];
