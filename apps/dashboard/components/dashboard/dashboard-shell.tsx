@@ -16,6 +16,7 @@ import {
   LogOut,
   Webhook,
   BarChart3,
+  Gamepad2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { label: "Plans", icon: FileText, href: "/dashboard/plans" },
   { label: "Subscriptions", icon: Zap, href: "/dashboard/subscriptions" },
   { label: "Customers", icon: Users, href: "/dashboard/customers" },
+  { label: "Playground", icon: Gamepad2, href: "/dashboard/playground" },
   { label: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
   { label: "Webhooks", icon: Webhook, href: "/dashboard/webhooks" },
   { label: "Audit Log", icon: BookOpen, href: "/dashboard/audit-log" },
