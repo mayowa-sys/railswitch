@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
-import { api, type GatewayInvoice } from "@/lib/api-client";
+import { api, type GatewayInvoice, type GatewaySubscription } from "@/lib/api-client";
 import { Search, Loader2 } from "lucide-react";
 
 function InvoicesContent() {
@@ -12,8 +12,9 @@ function InvoicesContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    api.invoices.list().then((data) => {
-      setInvoices(data);
+    Promise.all([api.invoices.list(), api.subscriptions.list()]).then(([allInvs, subs]) => {
+      const subIds = new Set(subs.map((s: GatewaySubscription) => s.id));
+      setInvoices(allInvs.filter((inv: GatewayInvoice) => subIds.has(inv.subscription_id)));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
