@@ -50,6 +50,7 @@ export function KpiCards({
             {subscriptionStatus === "paused" && "Billing is paused"}
             {subscriptionStatus === "past_due" && "Grace period active"}
             {subscriptionStatus === "cancelled" && "No active plan"}
+            {(subscriptionStatus === "va_fallback" || subscriptionStatus === "whatsapp_fallback" || subscriptionStatus === "retrying") && "Payment recovery in progress"}
           </p>
         </div>
       </Card>
@@ -69,6 +70,7 @@ export function KpiCards({
           <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">
             {subscriptionStatus === "active" && "Auto-pay enabled"}
             {subscriptionStatus === "past_due" && "Card declined"}
+            {(subscriptionStatus === "va_fallback" || subscriptionStatus === "whatsapp_fallback" || subscriptionStatus === "retrying") && "Card declined — recovery active"}
             {subscriptionStatus === "paused" && "Billing paused"}
             {subscriptionStatus === "cancelled" && "Card disabled"}
           </p>
