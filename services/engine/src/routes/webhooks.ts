@@ -74,7 +74,13 @@ webhooksRouter.post('/nomba', async (req: Request, res: Response) => {
 
     switch (event_type) {
       case 'payment_success': {
-        await handlePaymentSuccess(eventData, requestId);
+        // Route to VA handler if this is a virtual account transfer
+        const txnData = (eventData.transaction ?? {}) as Record<string, unknown>;
+        if (txnData.type === 'vact_transfer' || txnData.aliasAccountReference) {
+          await handleVAFunded(eventData, requestId);
+        } else {
+          await handlePaymentSuccess(eventData, requestId);
+        }
         break;
       }
       case 'virtual_account.funded': {
@@ -266,7 +272,8 @@ async function handleVAFunded(
   eventData: Record<string, unknown>,
   requestId: string,
 ) {
-  const accountRef = (eventData.accountRef ?? '') as string;
+  const transaction = (eventData.transaction ?? {}) as Record<string, unknown>;
+  const accountRef = ((eventData.accountRef ?? transaction.aliasAccountReference ?? '') as string).trim();
 
   if (!accountRef) {
     logger.warn('virtual_account.funded without accountRef', { requestId });
