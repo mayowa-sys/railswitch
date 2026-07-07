@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { KpiCards } from "@/components/portal/overview/kpi-cards";
 import { SubscriptionDetails } from "@/components/portal/overview/subscription-details";
 import { api, type GatewaySubscription, type GatewayPlan, type GatewayInvoice, type GatewayPaymentMethod, type PortalCustomer } from "@/lib/api-client";
-import { resolveToken, PORTAL_API_URL, PORTAL_API_KEY } from "@/lib/config";
-import { AlertOctagon, Loader2, Landmark } from "lucide-react";
+import { resolveToken } from "@/lib/config";
+import { AlertOctagon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -24,18 +24,7 @@ function OverviewPageContent() {
 
   useEffect(() => {
     if (!token) { 
-      // Auto-generate demo portal link for Jumoke Bakare
-      fetch(`${PORTAL_API_URL}/v1/portal/customers/409046deb19d41928f92/link`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${PORTAL_API_KEY}` },
-      }).then(res => res.json()).then(data => {
-        if (data.data?.portal_url) {
-          window.location.href = data.data.portal_url;
-        } else {
-          setError('No portal token provided');
-          setLoading(false);
-        }
-      }).catch(() => { setError('No portal token provided'); setLoading(false); });
+      window.location.href = "/portal?token=eyJjdXN0b21lcklkIjoiNDA5MDQ2ZGViMTlkNDE5MjhmOTIiLCJtZXJjaGFudElkIjoibWVyX2tfVzBYc3BiTk4iLCJleHAiOjE3ODQwNTkxMDE3NDh9.50facbf4e142acadca3f4802033fac43786599d808f24d706b05ddef9cd544cd";
       return;
     }
     
