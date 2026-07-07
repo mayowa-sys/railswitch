@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { InvoicesTable } from "@/components/portal/invoices/invoices-table";
 import { api, type GatewayInvoice, type GatewaySubscription } from "@/lib/api-client";
+import { resolveToken } from "@/lib/config";
 import { Search, Loader2 } from "lucide-react";
 
 function InvoicesContent() {
@@ -12,10 +13,20 @@ function InvoicesContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    Promise.all([api.invoices.list(), api.subscriptions.list()]).then(([allInvs, subs]) => {
-      const subIds = new Set(subs.map((s: GatewaySubscription) => s.id));
-      setInvoices(allInvs.filter((inv: GatewayInvoice) => subIds.has(inv.subscription_id)));
-      setLoading(false);
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    if (!token) { setLoading(false); return; }
+
+    resolveToken(token).then(async (data) => {
+      if (!data) { setLoading(false); return; }
+      const customerId = (data.customer as any).id;
+
+      Promise.all([api.invoices.list(), api.subscriptions.list()]).then(([allInvs, subs]) => {
+        const custSubIds = new Set(
+          subs.filter((s: GatewaySubscription) => (s as any).customer_id === customerId).map((s: GatewaySubscription) => s.id)
+        );
+        setInvoices(allInvs.filter((inv: GatewayInvoice) => custSubIds.has(inv.subscription_id)));
+        setLoading(false);
+      }).catch(() => setLoading(false));
     }).catch(() => setLoading(false));
   }, []);
 
