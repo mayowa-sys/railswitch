@@ -49,7 +49,12 @@ export default function PlaygroundPage() {
       body: JSON.stringify(body),
     });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error?.message ?? json.detail ?? `HTTP ${res.status}`);
+    if (!res.ok) {
+      const detail = json.meta?.errors
+        ? JSON.stringify(json.meta.errors)
+        : json.error?.message ?? json.detail ?? `HTTP ${res.status}`;
+      throw new Error(detail);
+    }
     return json.data ?? json;
   };
 
