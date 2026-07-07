@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { KpiCards } from "@/components/portal/overview/kpi-cards";
 import { SubscriptionDetails } from "@/components/portal/overview/subscription-details";
 import { api, type GatewaySubscription, type GatewayPlan, type GatewayInvoice, type GatewayPaymentMethod, type PortalCustomer } from "@/lib/api-client";
-import { resolveToken } from "@/lib/config";
+import { resolveToken, PORTAL_API_URL, PORTAL_API_KEY } from "@/lib/config";
 import { AlertOctagon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -23,7 +23,21 @@ function OverviewPageContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) { setError('No portal token provided'); setLoading(false); return; }
+    if (!token) { 
+      // Auto-generate demo portal link for Jumoke Bakare
+      fetch(`${PORTAL_API_URL}/v1/portal/customers/409046deb19d41928f92/link`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PORTAL_API_KEY}` },
+      }).then(res => res.json()).then(data => {
+        if (data.data?.portal_url) {
+          window.location.href = data.data.portal_url;
+        } else {
+          setError('No portal token provided');
+          setLoading(false);
+        }
+      }).catch(() => { setError('No portal token provided'); setLoading(false); });
+      return;
+    }
     
     resolveToken(token).then(async (data) => {
       if (!data) { setError('Invalid or expired portal link'); setLoading(false); return; }
