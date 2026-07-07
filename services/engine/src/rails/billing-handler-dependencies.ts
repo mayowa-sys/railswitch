@@ -18,6 +18,7 @@ function createNombaClient(): NombaClient {
       clientId: process.env.NOMBA_CLIENT_ID,
       clientSecret: process.env.NOMBA_CLIENT_SECRET,
       accountId: process.env.NOMBA_ACCOUNT_ID,
+      subAccountId: process.env.NOMBA_SUB_ACCOUNT_ID ?? "",
       baseUrl: process.env.NOMBA_BASE_URL ?? "https://sandbox.nomba.com",
     });
   }

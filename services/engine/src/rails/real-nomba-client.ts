@@ -38,6 +38,7 @@ export class RealNombaClient implements NombaClient {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly accountId: string;
+  private readonly subAccountId: string;
   private readonly logger: GlobalLogger;
   private tokenCache: CachedToken | null = null;
 
@@ -45,11 +46,13 @@ export class RealNombaClient implements NombaClient {
     clientId: string;
     clientSecret: string;
     accountId: string;
+    subAccountId: string;
     baseUrl?: string;
   }) {
     this.clientId = opts.clientId;
     this.clientSecret = opts.clientSecret;
     this.accountId = opts.accountId;
+    this.subAccountId = opts.subAccountId;
     this.baseUrl = opts.baseUrl ?? 'https://sandbox.nomba.com';
     this.logger = new GlobalLogger('RealNombaClient');
   }
@@ -106,7 +109,7 @@ export class RealNombaClient implements NombaClient {
         .split('T')[0],
     };
 
-    const json = await this.request('POST', '/v1/accounts/virtual', body);
+    const json = await this.request('POST', `/v1/accounts/virtual/${this.subAccountId}`, body);
     const va = nombaData(json);
 
     return {
