@@ -41,7 +41,7 @@ export default function PlansPage() {
       .then(([rawPlans, rawSubs]) => {
         setPlans(computePlans(rawPlans, rawSubs.map((s) => ({ plan_id: s.plan_id, state: s.state }))));
       })
-      .catch(() => {});
+      .catch(() => { setPlans([]); });
   };
 
   useEffect(fetchPlans, [user?.apiKey]);
