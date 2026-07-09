@@ -157,6 +157,7 @@ export interface GatewayInvoice {
   currency: string;
   description?: string;
   due_date: string;
+  paid_at?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
 }

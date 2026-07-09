@@ -18,9 +18,19 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const fetchSub = () => {
-    Promise.all([api.subscriptions.list(), api.plans.list()])
-      .then(([subs, plansData]) => { const s = Array.isArray(subs) ? (subs.length > 0 ? subs[0] : null) : subs; setSubscription(s); setPlans(plansData); setLoading(false); })
-      .catch(() => setLoading(false));
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    if (!token) { setLoading(false); return; }
+
+    api.portal.resolve().then(data => {
+      const cid = (data as any)?.customer?.id;
+      Promise.all([api.subscriptions.list(), api.plans.list()])
+        .then(([subs, plansData]) => { 
+          const custSubs = Array.isArray(subs) ? subs.filter((s: any) => s.customer_id === cid || !cid) : [subs];
+          const s = custSubs.length > 0 ? custSubs[0] : null;
+          setSubscription(s); setPlans(plansData); setLoading(false); 
+        })
+        .catch(() => setLoading(false));
+    }).catch(() => setLoading(false));
   };
 
   useEffect(() => { fetchSub(); }, []);
