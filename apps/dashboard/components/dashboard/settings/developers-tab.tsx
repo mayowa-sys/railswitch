@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff, Copy, Check, Trash2, Plus, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, Copy, Check, Trash2, Plus, ShieldCheck, Loader2 } from "lucide-react";
 
 interface ApiKey {
   id: string;
@@ -23,23 +22,11 @@ function relativeDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function generateKeyId() {
-  return "key_" + Math.random().toString(36).slice(2, 9);
+function getPrefix(key: string): string {
+  const match = key.match(/^(sk_(?:live|test)_[A-Za-z0-9_]+?)([A-Za-z0-9]{6})/);
+  if (match) return match[1] + match[2];
+  return key.slice(0, 14);
 }
-
-function generateSecret(type: "live" | "test"): string {
-  const prefix = type === "live" ? "rs_live_" : "rs_test_";
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const body = Array.from({ length: 48 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  return prefix + body;
-}
-
-function getPrefix(secret: string): string {
-  const match = secret.match(/^(rs_(?:live|test)_)([A-Za-z0-9]{6})/);
-  return match ? match[1] + match[2] : secret.slice(0, 14);
-}
-
-// ─── Key row ───────────────────────────────────────────────────────────────────
 
 function ApiKeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string) => void }) {
   const [revealed, setRevealed] = useState(false);
@@ -49,17 +36,10 @@ function ApiKeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string
 
   function reveal() {
     if (revealedOnce || apiKey.revoked) return;
-    setRevealed(true);
-    setRevealedOnce(true);
+    setRevealed(true); setRevealedOnce(true);
     setTimeout(() => setRevealed(false), 20000);
   }
-
-  function copy() {
-    navigator.clipboard.writeText(apiKey.secret).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
+  function copy() { navigator.clipboard.writeText(apiKey.secret).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }
   const masked = apiKey.prefix + "••••••••••••••••••";
 
   return (
@@ -74,7 +54,6 @@ function ApiKeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string
           <div className="flex items-center gap-3 text-[10px] text-zinc-400">
             <span>Created {relativeDate(apiKey.createdAt)}</span>
             {apiKey.lastUsedAt && <span>· Last used {relativeDate(apiKey.lastUsedAt)}</span>}
-            {!apiKey.lastUsedAt && !apiKey.revoked && <span>· Never used</span>}
           </div>
         </div>
         {!apiKey.revoked && (
@@ -100,56 +79,61 @@ function ApiKeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string
   );
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
-
 export function DevelopersTab() {
   const { user } = useAuth();
-  const [keys, setKeys] = useState<ApiKey[]>(() => {
-    // Initialize with the user's actual API key
-    if (user?.apiKey) {
-      return [{
-        id: "key_demo",
-        label: "Default",
-        type: "test",
-        prefix: getPrefix(user.apiKey),
-        secret: user.apiKey,
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        revoked: false,
-      }];
-    }
-    return [];
-  });
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  function addKey(type: "live" | "test", label: string) {
-    const secret = generateSecret(type);
-    const newKey: ApiKey = {
-      id: generateKeyId(),
-      label,
-      type,
-      prefix: getPrefix(secret),
-      secret,
-      createdAt: new Date().toISOString(),
-      lastUsedAt: null,
-      revoked: false,
-    };
-    setKeys((prev) => [newKey, ...prev]);
+  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const header = { Authorization: `Bearer ${user?.apiKey || ""}` };
+
+  const fetchKeys = async () => {
+    try {
+      const res = await fetch(`${API}/v1/auth/keys`, { headers: header });
+      const data = await res.json();
+      const remoteKeys = (data.data || []).map((k: any) => ({
+        id: k.id,
+        label: k.mode === "live" ? "Live Key" : "Test Key",
+        type: (k.mode === "live" ? "live" : "test") as "live" | "test",
+        prefix: k.prefix,
+        secret: k.key || `${k.prefix}••••••••••••••••••`,
+        createdAt: k.created_at,
+        lastUsedAt: null,
+        revoked: !k.is_active,
+      }));
+      setKeys(remoteKeys);
+    } catch {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { if (user?.apiKey) fetchKeys(); }, [user?.apiKey]);
+
+  async function addKey(type: "live" | "test") {
+    try {
+      const res = await fetch(`${API}/v1/auth/keys?mode=${type}`, { method: "POST", headers: header });
+      const data = await res.json();
+      if (data.data?.key) {
+        fetchKeys();
+      }
+    } catch {}
   }
 
-  function revokeKey(id: string) {
-    setKeys((prev) => prev.map((k) => k.id === id ? { ...k, revoked: true } : k));
+  async function revokeKey(id: string) {
+    try {
+      await fetch(`${API}/v1/auth/keys/${id}`, { method: "DELETE", headers: header });
+      setKeys((prev) => prev.map((k) => k.id === id ? { ...k, revoked: true } : k));
+    } catch {}
   }
 
   const liveKeys = keys.filter((k) => k.type === "live");
   const testKeys = keys.filter((k) => k.type === "test");
+
+  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="size-5 animate-spin text-zinc-400" /></div>;
 
   return (
     <div className="space-y-10 max-w-2xl">
       {(["live", "test"] as const).map((type) => {
         const isLive = type === "live";
         const typeKeys = isLive ? liveKeys : testKeys;
-        const [createOpen, setCreateOpen] = useState(false);
-        const [label, setLabel] = useState("");
 
         return (
           <section key={type} className="space-y-4">
@@ -163,19 +147,8 @@ export function DevelopersTab() {
                   <p className="text-[11px] text-zinc-400">{isLive ? "Charge real money. Never expose publicly." : "Safe for development and CI pipelines."}</p>
                 </div>
               </div>
-              <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"><Plus className="size-3.5" /> Create key</button>
+              <button onClick={() => addKey(type)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"><Plus className="size-3.5" /> Create key</button>
             </div>
-
-            {createOpen && (
-              <div className="rounded-xl border border-indigo-300/60 bg-indigo-50/30 p-4 space-y-3">
-                <p className="text-xs font-semibold">Create {isLive ? "live" : "test"} key</p>
-                <div className="flex items-center gap-2">
-                  <input autoFocus value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Key label" className="flex-1 h-9 rounded-lg border bg-white px-3 text-sm outline-none focus:border-indigo-400" />
-                  <button onClick={() => { if (label.trim()) { addKey(type, label.trim()); setLabel(""); setCreateOpen(false); } }} className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">Create</button>
-                  <button onClick={() => { setCreateOpen(false); setLabel(""); }} className="h-9 px-3 rounded-lg border text-sm hover:bg-zinc-50">Cancel</button>
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               {typeKeys.length === 0 && <div className="rounded-xl border border-dashed p-6 text-center"><p className="text-sm text-zinc-400">No {isLive ? "live" : "test"} keys yet</p></div>}
