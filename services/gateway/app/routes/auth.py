@@ -58,10 +58,10 @@ async def list_keys(
 
 @router.post("/keys")
 async def create_key(
-    payload: CreateKeyRequest,
+    body: CreateKeyRequest,
     engine: EngineClient = Depends(get_engine_client),
 ) -> Envelope:
-    result = await engine.create_api_key(payload.model_dump())
+    result = await engine.create_api_key(body.model_dump())
     return Envelope(data=result.get("data", result))
 
 
