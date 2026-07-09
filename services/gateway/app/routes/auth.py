@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Body
+from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from pydantic import BaseModel
@@ -60,10 +60,10 @@ async def list_keys(
 @router.post("/keys")
 async def create_key(
     request: Request,
-    body: dict = Body(...),
+    payload: CreateKeyRequest,
     engine: EngineClient = Depends(get_engine_client),
 ) -> Envelope:
-    result = await engine.create_api_key(body)
+    result = await engine.create_api_key(payload.model_dump())
     return Envelope(data=result.get("data", result))
 
 

@@ -145,7 +145,7 @@ authRouter.get('/keys', async (req: Request, res: Response) => {
   try {
     const merchantId = req.merchantId!;
     const keys = await db.select().from(ApiKeysTable).where(eq(ApiKeysTable.merchant_id, merchantId));
-    res.json({ data: keys.map(k => ({ id: k.id, mode: k.mode, prefix: k.key_prefix, is_active: !k.is_revoked, created_at: k.created_at })) });
+    res.json({ data: keys.map(k => ({ id: k.id, mode: k.type, prefix: k.key_prefix, is_active: !k.revoked_at, created_at: k.created_at })) });
   } catch (err) {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to list keys' } });
   }
@@ -155,16 +155,15 @@ authRouter.post('/keys', async (req: Request, res: Response) => {
   try {
     const merchantId = req.merchantId!;
     const mode = req.body.mode === 'live' ? 'live' : 'test';
-    const apiKey = generateApiKey(merchantId, mode);
+    const apiKey = generateApiKey(merchantId, mode as 'live' | 'test');
     const [key] = await db.insert(ApiKeysTable).values({
-      id: `key_${randomBytes(8).toString('hex')}`,
       merchant_id: merchantId,
       key_hash: apiKey.hash,
       key_prefix: apiKey.prefix,
-      mode,
+      type: mode as 'live' | 'test',
       created_at: new Date(),
     }).returning();
-    res.status(201).json({ data: { id: key.id, mode: key.mode, prefix: key.key_prefix, is_active: true, key: apiKey.raw, created_at: key.created_at } });
+    res.status(201).json({ data: { id: key.id, mode: key.type, prefix: key.key_prefix, is_active: true, key: apiKey.raw, created_at: key.created_at } });
   } catch (err) {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create key' } });
   }
@@ -178,7 +177,7 @@ authRouter.delete('/keys/:id', async (req: Request, res: Response) => {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Key not found' } });
       return;
     }
-    await db.update(ApiKeysTable).set({ is_revoked: true }).where(eq(ApiKeysTable.id, req.params.id));
+    await db.update(ApiKeysTable).set({ revoked_at: new Date() }).where(eq(ApiKeysTable.id, req.params.id));
     res.json({ data: { id: key.id, revoked: true } });
   } catch (err) {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to revoke key' } });
