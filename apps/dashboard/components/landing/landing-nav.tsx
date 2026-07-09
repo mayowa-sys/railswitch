@@ -27,7 +27,7 @@ export function LandingNav() {
           <a href="#features" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-zinc-900 dark:hover:text-white transition-colors">How it works</a>
           <a href="#pricing" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Pricing</a>
-          <a href="#docs" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Docs</a>
+          <a href="https://railswitch.mintlify.site" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Docs</a>
         </nav>
 
         {/* CTA */}
@@ -61,7 +61,7 @@ export function LandingNav() {
         mobileOpen ? "max-h-72" : "max-h-0"
       )}>
         <nav className="px-4 py-4 space-y-1 text-sm font-medium">
-          {["Features", "How it works", "Pricing", "Docs"].map((item) => (
+          {["Features", "How it works", "Pricing"].map((item) => (
             <a
               key={item}
               href={`#${item.toLowerCase().replace(/ /g, "-")}`}
@@ -71,6 +71,15 @@ export function LandingNav() {
               {item}
             </a>
           ))}
+          <a
+            href="https://railswitch.mintlify.site"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block py-2 px-3 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            onClick={() => setMobileOpen(false)}
+          >
+            Docs
+          </a>
           <div className="pt-3 flex flex-col gap-2">
             <Link href="/auth/signin" onClick={() => setMobileOpen(false)}>
               <Button variant="outline" size="sm" className="w-full">Sign in</Button>
