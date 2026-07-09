@@ -412,6 +412,15 @@ class EngineClient:
     async def login(self, payload: dict) -> dict:
         return await self._request("POST", "/internal/v1/auth/login", json=payload)
 
+    async def list_api_keys(self) -> dict:
+        return await self._request("GET", "/internal/v1/auth/keys")
+
+    async def create_api_key(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/auth/keys", json=payload)
+
+    async def revoke_api_key(self, key_id: str) -> dict:
+        return await self._request("DELETE", f"/internal/v1/auth/keys/{key_id}")
+
     # =========== WEBHOOKS ===================
 
     async def create_webhook_endpoint(self, payload: dict) -> dict:
