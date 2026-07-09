@@ -26,19 +26,27 @@ function createNombaClient(): NombaClient {
   return new MockNombaClient();
 }
 
-const nomba = createNombaClient();
-const orchestrator = new RailOrchestrator({ nomba, logger });
+let _orchestrator: RailOrchestrator | null = null;
+
+function getOrchestrator(): RailOrchestrator {
+  if (!_orchestrator) {
+    const nomba = createNombaClient();
+    _orchestrator = new RailOrchestrator({ nomba, logger });
+  }
+  return _orchestrator;
+}
 
 export function createBillingHandler(merchantId: string) {
   const repo = new DrizzleSubscriptionRepository(db, merchantId);
   const wrapper = new SubscriptionWrapper({ repo, logger });
 
-  return new BillingHandler(wrapper, orchestrator);
+  return new BillingHandler(wrapper, getOrchestrator());
 }
 
 export function createCascadeCoordinator(merchantId: string) {
   const repo = new DrizzleSubscriptionRepository(db, merchantId);
   const wrapper = new SubscriptionWrapper({ repo, logger });
+  const orchestrator = getOrchestrator();
   const billingHandler = new BillingHandler(wrapper, orchestrator);
 
   return new CascadeCoordinator({
