@@ -50,6 +50,7 @@ class CreateKeyRequest(BaseModel):
 
 @router.get("/keys")
 async def list_keys(
+    request: Request,
     engine: EngineClient = Depends(get_engine_client),
 ) -> Envelope:
     result = await engine.list_api_keys()
@@ -58,6 +59,7 @@ async def list_keys(
 
 @router.post("/keys")
 async def create_key(
+    request: Request,
     body: CreateKeyRequest,
     engine: EngineClient = Depends(get_engine_client),
 ) -> Envelope:
