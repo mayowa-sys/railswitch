@@ -24,7 +24,7 @@ function OverviewPageContent() {
 
   useEffect(() => {
     if (!token) { 
-      window.location.href = "/portal?token=eyJjdXN0b21lcklkIjoiNDA5MDQ2ZGViMTlkNDE5MjhmOTIiLCJtZXJjaGFudElkIjoibWVyX2tfVzBYc3BiTk4iLCJleHAiOjE3ODQwNTkxMDE3NDh9.50facbf4e142acadca3f4802033fac43786599d808f24d706b05ddef9cd544cd";
+      window.location.href = "/portal?token=eyJjdXN0b21lcklkIjoiNDA5MDQ2ZGViMTlkNDE5MjhmOTIiLCJtZXJjaGFudElkIjoibWVyX2tfVzBYc3BiTk4iLCJleHAiOjE3ODQyMDgwMTAyMzR9.f75fa448a7a429089106aa19a33b8f20e5bde66fb6671eee164946ebb66ee0dc";
       return;
     }
     
