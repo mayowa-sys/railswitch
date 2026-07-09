@@ -13,6 +13,8 @@ export default function AnalyticsPage() {
   const [churnRate, setChurnRate] = useState("0.0");
   const [recoveryRate, setRecoveryRate] = useState("100.0");
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [recoveryFees, setRecoveryFees] = useState(0);
+  const [recoveredAmount, setRecoveredAmount] = useState(0);
   const [customerCount, setCustomerCount] = useState(0);
   const [monthlyData, setMonthlyData] = useState<{ label: string; revenue: number }[]>([]);
   const [planData, setPlanData] = useState<{ name: string; count: number; revenue: number }[]>([]);
@@ -57,6 +59,18 @@ export default function AnalyticsPage() {
       const total = paid + uncollectible;
       setRecoveryRate(total > 0 ? ((paid / total) * 100).toFixed(1) : "100.0");
       setTotalRevenue(invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100);
+
+      // Recovery fees (5% of recovered revenue)
+      const totalRecoveryFees = invoices
+        .filter(i => i.status === "paid")
+        .reduce((sum, i) => sum + Number((i.metadata as any)?.recovery_fee ?? 0), 0) / 100;
+
+      const totalRecovered = invoices
+        .filter(i => i.status === "paid" && (i.metadata as any)?.recovery_fee)
+        .reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100;
+
+      setRecoveryFees(totalRecoveryFees);
+      setRecoveredAmount(totalRecovered);
 
       // Health
       const retrying = subs.filter(s => ["retrying", "va_fallback", "whatsapp_fallback"].includes(s.state));
@@ -133,11 +147,12 @@ export default function AnalyticsPage() {
       <PageHeader title="Analytics" description="Subscription analytics and revenue insights." />
 
       {/* KPI Row */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <KpiCard label="MRR" value={`₦${Math.round(mrr).toLocaleString()}`} sub={`ARR: ₦${Math.round(arr).toLocaleString()}`} accent="indigo" />
         <KpiCard label="Active Subscribers" value={String(activeCount)} sub={`${churnRate}% churn`} accent="emerald" />
         <KpiCard label="Recovery Rate" value={`${recoveryRate}%`} sub={`${healthData.paid} of ${healthData.paid + healthData.failed} charges`} accent="violet" />
         <KpiCard label="Total Revenue" value={`₦${Math.round(totalRevenue).toLocaleString()}`} sub={`${healthData.paid + healthData.failed} paid invoices`} accent="amber" />
+        <KpiCard label="Platform Fees (5%)" value={recoveryFees > 0 ? `₦${Math.round(recoveryFees).toLocaleString()}` : "—"} sub={recoveryFees > 0 ? `${((recoveryFees / recoveredAmount) * 100).toFixed(0)}% of recovered` : "Pending first recovery"} accent="rose" />
       </div>
 
       {/* Health Row */}

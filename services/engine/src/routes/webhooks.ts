@@ -332,12 +332,16 @@ async function handleVAFunded(
     idempotencyKey: `webhook:va_funded:${requestId}`,
   });
 
+  const recoveryFee = Math.round(amountReceived * 0.05); // 5% of recovered amount
+  const currentMetadata = (invoice.metadata ?? {}) as Record<string, unknown>;
+
   await db
     .update(InvoicesTable)
     .set({
       status: 'paid',
       amount_paid: String(amountReceived),
       paid_at: new Date(),
+      metadata: { ...currentMetadata, recovery_fee: recoveryFee },
     })
     .where(eq(InvoicesTable.id, invoice.id));
 
@@ -350,6 +354,7 @@ async function handleVAFunded(
       invoice_id: invoice?.id ?? subscription?.id ?? '',
       amount_received: amountReceived,
       amount_expected: amountExpected,
+      recovery_fee: recoveryFee,
     },
     merchant_id: subscription.merchant_id,
   });
