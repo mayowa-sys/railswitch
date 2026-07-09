@@ -15,6 +15,11 @@ export function extractMerchantId(req: Request, res: Response, next: NextFunctio
     next();
     return;
   }
+  // Auth register/login are no-merchant endpoints
+  if ((req.path === '/register' || req.path === '/login') && req.method === 'POST') {
+    next();
+    return;
+  }
 
   const merchantId = req.headers['x-merchant-id'] as string | undefined;
 

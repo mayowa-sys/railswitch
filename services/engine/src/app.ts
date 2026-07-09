@@ -71,7 +71,7 @@ app.use('/internal/v1/payment-methods', requireInternalAuth, extractMerchantId, 
 app.use('/internal/v1/webhooks', requireInternalAuth, webhooksRouter);
 
 // Auth — internal auth only, no merchant scoping (login/register create/verify merchants).
-app.use('/internal/v1/auth', requireInternalAuth, authLimiter, authRouter);
+app.use('/internal/v1/auth', requireInternalAuth, extractMerchantId, authLimiter, authRouter);
 app.use('/internal/v1/audit-logs', requireInternalAuth, extractMerchantId, setRLSContext, auditRouter);
 
 // Webhook management — gateway-only, CRUD + delivery logs.

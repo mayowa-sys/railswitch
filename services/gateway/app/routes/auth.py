@@ -3,7 +3,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from pydantic import BaseModel
 
-from app.engine_client import EngineClient, get_engine_client_no_auth
+from app.engine_client import EngineClient, get_engine_client_no_auth, get_engine_client
 from app.envelope import Envelope
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
@@ -42,3 +42,33 @@ async def login(
 ) -> Envelope:
     result = await engine.login(payload.model_dump())
     return Envelope(data=result)
+
+
+class CreateKeyRequest(BaseModel):
+    mode: str = "test"
+
+
+@router.get("/keys")
+async def list_keys(
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.list_api_keys()
+    return Envelope(data=result.get("data", result))
+
+
+@router.post("/keys")
+async def create_key(
+    payload: CreateKeyRequest,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.create_api_key(payload.model_dump())
+    return Envelope(data=result.get("data", result))
+
+
+@router.delete("/keys/{key_id}")
+async def revoke_key(
+    key_id: str,
+    engine: EngineClient = Depends(get_engine_client),
+) -> Envelope:
+    result = await engine.revoke_api_key(key_id)
+    return Envelope(data=result.get("data", result))
