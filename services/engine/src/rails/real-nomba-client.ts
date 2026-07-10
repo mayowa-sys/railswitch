@@ -102,23 +102,24 @@ export class RealNombaClient implements NombaClient {
       accountRef: opts.reference,
       accountName: opts.beneficiaryName,
       amount: Math.round(opts.amount * 100),
-      expiryDate: new Date(
-        Date.now() + opts.expiresInDays * 86_400_000,
-      )
-        .toISOString()
-        .split('T')[0],
+      expiryDate: new Date(Date.now() + opts.expiresInDays * 86_400_000).toISOString().split('T')[0],
     };
 
-    const json = await this.request('POST', `/v1/accounts/virtual/${this.subAccountId}`, body);
-    console.log('[NOMBA-VA] FULL RESPONSE JSON:', JSON.stringify(json).substring(0, 500));
-    const rawData = (json as any).data;
-    console.log('[NOMBA-VA] Has data field:', !!rawData, 'Has bankAccountNumber:', !!rawData?.bankAccountNumber);
-    
+    const token = await this.getAccessToken();
+    const url = `${this.baseUrl}/v1/accounts/virtual/${this.subAccountId}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, accountId: this.accountId, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    const vaData = (data as any).data;
+
     return {
-      vaId: rawData?.id ?? rawData?.accountRef ?? opts.reference,
-      accountNumber: rawData?.bankAccountNumber || rawData?.accountNumber || `VA-${Date.now()}`,
-      bankName: rawData?.bankName || 'Nomba',
-      expiresAt: rawData?.expiryDate || '',
+      vaId: opts.reference,
+      accountNumber: vaData?.bankAccountNumber || `VA-${Date.now()}`,
+      bankName: vaData?.bankName || 'Nomba',
+      expiresAt: vaData?.expiryDate || '',
     };
   }
 
