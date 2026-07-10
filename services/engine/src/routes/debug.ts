@@ -34,8 +34,9 @@ debugRouter.get('/test-va', async (req: Request, res: Response) => {
     });
     res.json({ 
       accountNumber: va.accountNumber,
-      keys: Object.keys(va),
-      raw: JSON.parse(JSON.stringify(va)),
+      bankName: va.bankName,
+      vaId: va.vaId,
+      expiresAt: va.expiresAt,
     });
   } catch (err) {
     res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
