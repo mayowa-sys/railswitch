@@ -46,7 +46,7 @@ export default function PlaygroundPage() {
     const res = await fetch(`${GATEWAY_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEMO_API_KEY}` },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ payload: body }),
     });
     const json = await res.json();
     if (!res.ok) {
