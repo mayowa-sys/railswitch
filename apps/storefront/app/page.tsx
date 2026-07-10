@@ -89,7 +89,7 @@ export default function StorefrontPage() {
 
     const apiCall = async (path: string, method = "GET", body?: Record<string, unknown>) => {
       const res = await fetch(API + path, {
-        method, headers: headers(body), body: body ? JSON.stringify(body) : undefined,
+        method, headers: headers(body), body: body ? JSON.stringify({ payload: body }) : undefined,
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || json.detail || `API ${res.status}`);
