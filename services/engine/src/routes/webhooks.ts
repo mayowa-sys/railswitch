@@ -9,7 +9,7 @@ import { SubscriptionWrapper } from '../wrapper/subscription-wrapper.js';
 import { eq } from 'drizzle-orm';
 import { emitWebhooks } from '../webhooks/emitter.js';
 import { GlobalLogger } from '../utils/logger.js';
-import { createCascadeCoordinator } from '../rails/billing-handler-dependencies.js';
+import { createCascadeCoordinator, getOrchestrator } from '../rails/billing-handler-dependencies.js';
 
 export const webhooksRouter = Router();
 const logger = new GlobalLogger('WebhookHandler');
@@ -214,14 +214,45 @@ async function handlePaymentSuccess(
         newState: failResult.state,
       });
 
-      // If transitioned to va_fallback, trigger VA creation
+      // If transitioned to va_fallback, trigger VA creation directly
       if (failResult.state === 'va_fallback') {
         const coordinator = createCascadeCoordinator(subscription.merchant_id);
         const invoiceId = invoice?.id ?? failResult.context.currentInvoiceId ?? '';
         const merchant = (eventData.merchant ?? {}) as Record<string, unknown>;
-        const amount = Number(merchant.amount ?? eventData.amount ?? invoice?.amount ?? 0);
-        coordinator.initiateVAFallback(subscription.id, invoiceId, amount, subscription.merchant_id)
-          .catch(err => logger.warn('Failed to initiate VA fallback', err as Error));
+        const vaAmount = Number(merchant.amount ?? eventData.amount ?? invoice?.amount ?? 990000);
+        
+        try {
+          // Create VA directly via orchestrator (bypasses coordinator complexity)
+          const orch = getOrchestrator();
+          const va = await orch.createVirtualAccount({
+            context: {
+              subscriptionId: subscription.id,
+              merchantId: subscription.merchant_id,
+              customerId: subscription.customer_id,
+              planId: subscription.plan_id,
+              policy: subscription.policy as any,
+              retryCount: subscription.retry_count,
+            },
+            amount: vaAmount || 990000,
+            invoiceId,
+            expiresInDays: 7,
+          });
+          
+          await wrapper.processEvent({
+            subscriptionId: subscription.id,
+            event: { type: 'VA_CREATED', vaId: va.accountNumber, expiresAt: va.expiresAt },
+            idempotencyKey: `webhook:va_created:${invoiceId}`,
+          });
+          
+          logger.info('VA created via webhook handler', {
+            subscriptionId: subscription.id,
+            vaAccountNumber: va.accountNumber,
+          });
+        } catch (vaErr) {
+          logger.warn('Direct VA creation failed, trying coordinator', vaErr as Error);
+          coordinator.initiateVAFallback(subscription.id, invoiceId, vaAmount, subscription.merchant_id)
+            .catch(err => logger.warn('Coordinator VA fallback also failed', err as Error));
+        }
       }
     }
     await recordProcessed(requestId);
