@@ -21,10 +21,10 @@ function InvoicesContent() {
       const customerId = (data.customer as any).id;
 
       Promise.all([api.invoices.list(), api.subscriptions.list()]).then(([allInvs, subs]) => {
-        const custSubIds = new Set(
-          subs.filter((s: GatewaySubscription) => (s as any).customer_id === customerId).map((s: GatewaySubscription) => s.id)
-        );
-        setInvoices(allInvs.filter((inv: GatewayInvoice) => custSubIds.has(inv.subscription_id)));
+      const custSubIds = new Set(
+        subs.filter((s: GatewaySubscription) => (s as any).customer_id === customerId).map((s: GatewaySubscription) => s.id)
+      );
+      setInvoices(allInvs.filter((inv: GatewayInvoice) => custSubIds.has(inv.subscription_id) && Number(inv.amount) > 0));
         setLoading(false);
       }).catch(() => setLoading(false));
     }).catch(() => setLoading(false));
