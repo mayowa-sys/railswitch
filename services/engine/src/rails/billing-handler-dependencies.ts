@@ -28,7 +28,7 @@ function createNombaClient(): NombaClient {
 
 let _orchestrator: RailOrchestrator | null = null;
 
-function getOrchestrator(): RailOrchestrator {
+export function getOrchestrator(): RailOrchestrator {
   if (!_orchestrator) {
     const nomba = createNombaClient();
     _orchestrator = new RailOrchestrator({ nomba, logger });
