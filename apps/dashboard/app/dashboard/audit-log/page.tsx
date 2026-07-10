@@ -5,9 +5,9 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SearchFilterBar } from "@/components/shared/search-filter-bar";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { useAuth } from "@/lib/auth-context";
-import { api, type GatewayAuditEntry } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { Radio, ArrowRight, Bot, User, Building2 } from "lucide-react";
+import { ArrowRight, Bot, User, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ACTOR_ICON = { system: Bot, merchant: Building2, customer: User };
@@ -75,6 +75,7 @@ export default function AuditLogPage() {
       .catch(() => setLoading(false));
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(fetchAuditLogs, [user?.apiKey]);
 
   // Poll every 15 seconds for new entries

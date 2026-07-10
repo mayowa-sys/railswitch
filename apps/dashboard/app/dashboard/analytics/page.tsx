@@ -15,7 +15,6 @@ export default function AnalyticsPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [recoveryFees, setRecoveryFees] = useState(0);
   const [recoveredAmount, setRecoveredAmount] = useState(0);
-  const [customerCount, setCustomerCount] = useState(0);
   const [monthlyData, setMonthlyData] = useState<{ label: string; revenue: number }[]>([]);
   const [planData, setPlanData] = useState<{ name: string; count: number; revenue: number }[]>([]);
   const [stateData, setStateData] = useState<{ state: string; count: number; color: string }[]>([]);
@@ -24,6 +23,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const key = user?.apiKey ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!key) { setLoading(false); return; }
     const API = process.env.NEXT_PUBLIC_API_URL || "";
     const h = { headers: { Authorization: `Bearer ${key}` } };
@@ -34,9 +34,13 @@ export default function AnalyticsPage() {
       fetch(`${API}/v1/invoices`, h).then(r => r.json()),
       fetch(`${API}/v1/customers`, h).then(r => r.json()),
     ]).then(([sRes, pRes, iRes, cRes]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subs: any[] = sRes.data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const plans: any[] = pRes.data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invoices: any[] = iRes.data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const customers: any[] = cRes.data ?? [];
 
       const planMap = new Map(plans.filter(p => !p.name.startsWith('[deleted]') && !p.name.startsWith('Test ')).map(p => [p.id, p]));
@@ -48,7 +52,6 @@ export default function AnalyticsPage() {
       setMrr(m);
       setArr(m * 12);
       setActiveCount(active.length);
-      setCustomerCount(customers.length);
 
       // Churn
       setChurnRate(subs.length > 0 ? ((cancelled.length / subs.length) * 100).toFixed(1) : "0.0");
@@ -63,9 +66,11 @@ export default function AnalyticsPage() {
       // Recovery fees (5% of recovered revenue)
       const totalRecoveryFees = invoices
         .filter(i => i.status === "paid")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .reduce((sum, i) => sum + Number((i.metadata as any)?.recovery_fee ?? 0), 0) / 100;
 
       const totalRecovered = invoices
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter(i => i.status === "paid" && (i.metadata as any)?.recovery_fee)
         .reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100;
 
