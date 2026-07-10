@@ -32,7 +32,13 @@ debugRouter.get('/test-va', async (req: Request, res: Response) => {
       invoiceId: 'test_va_' + Date.now(),
       expiresInDays: 7,
     });
-    res.json({ success: true, accountNumber: va.accountNumber, bankName: va.bankName });
+    res.json({ 
+      accountNumber: va.accountNumber,
+      accountNumberType: typeof va.accountNumber,
+      keys: Object.keys(va),
+      // Force all values by using JSON stringify
+      raw: JSON.parse(JSON.stringify(va)),
+    });
   } catch (err) {
     res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
