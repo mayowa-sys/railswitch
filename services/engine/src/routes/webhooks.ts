@@ -158,7 +158,8 @@ async function handlePaymentSuccess(
   const repo = new DrizzleSubscriptionRepository(db, subscription.merchant_id);
   const wrapper = new SubscriptionWrapper({ repo });
 
-  const amount = Number(eventData.amount ?? invoice?.amount ?? 0);
+  const merchantData = (eventData.merchant ?? {}) as Record<string, unknown>;
+  const amount = Number(merchantData.amount ?? eventData.amount ?? invoice?.amount ?? 990000);
   const transaction = (eventData.transaction ?? {}) as Record<string, unknown>;
   const txStatus = (transaction.status ?? 'SUCCESS') as string;
 
@@ -217,7 +218,8 @@ async function handlePaymentSuccess(
       if (failResult.state === 'va_fallback') {
         const coordinator = createCascadeCoordinator(subscription.merchant_id);
         const invoiceId = invoice?.id ?? failResult.context.currentInvoiceId ?? '';
-        const amount = Number(eventData.amount ?? invoice?.amount ?? 0);
+        const merchant = (eventData.merchant ?? {}) as Record<string, unknown>;
+        const amount = Number(merchant.amount ?? eventData.amount ?? invoice?.amount ?? 0);
         coordinator.initiateVAFallback(subscription.id, invoiceId, amount, subscription.merchant_id)
           .catch(err => logger.warn('Failed to initiate VA fallback', err as Error));
       }
