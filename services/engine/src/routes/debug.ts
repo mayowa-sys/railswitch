@@ -32,8 +32,8 @@ debugRouter.get('/test-va', async (req: Request, res: Response) => {
       invoiceId: 'test_va_' + Date.now(),
       expiresInDays: 7,
     });
-    res.json({ success: true, accountNumber: va.accountNumber, bankName: va.bankName });
+    res.json({ success: true, vaId: va.vaId, accountNumber: va.accountNumber, bankName: va.bankName, fullVa: va });
   } catch (err) {
-    res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    res.json({ success: false, error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : '' });
   }
 });
