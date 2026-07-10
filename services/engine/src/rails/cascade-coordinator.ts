@@ -183,6 +183,7 @@ export class CascadeCoordinator {
     amount: number,
     merchantId: string,
   ) {
+    console.log(`[CASCADE-COORDINATOR] initiateVAFallback called: sub=${subscriptionId} inv=${invoiceId} amount=${amount}`);
     this.logger.info('Initiating VA fallback', { subscriptionId, invoiceId });
 
     const repo = new DrizzleSubscriptionRepository(db, merchantId);
@@ -250,7 +251,9 @@ export class CascadeCoordinator {
         expiresAt: va.expiresAt,
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.error('VA creation failed', err as Error, { subscriptionId });
+      console.error(`[CASCADE-COORDINATOR] VA creation failed for ${subscriptionId}: ${message}`, err);
     }
   }
 
