@@ -107,12 +107,14 @@ export class RealNombaClient implements NombaClient {
 
     const token = await this.getAccessToken();
     const url = `${this.baseUrl}/v1/accounts/virtual/${this.subAccountId}`;
+    console.log(`[VA] Calling ${url} with token ${token.substring(0, 10)}...`);
     const resp = await fetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, accountId: this.accountId, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     const data = await resp.json();
+    console.log(`[VA] Status: ${resp.status}, code: ${data.code}, hasData: ${!!data.data}, dataKeys: ${data.data ? Object.keys(data.data).join(',') : 'none'}`);
     if (!resp.ok) throw new Error(`Nomba VA creation failed (${resp.status}): ${JSON.stringify(data).substring(0, 200)}`);
     const vaData = (data as any).data;
 
