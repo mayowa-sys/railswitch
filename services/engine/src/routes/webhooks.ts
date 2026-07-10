@@ -214,44 +214,38 @@ async function handlePaymentSuccess(
         newState: failResult.state,
       });
 
-      // If transitioned to va_fallback, trigger VA creation directly
       if (failResult.state === 'va_fallback') {
-        const coordinator = createCascadeCoordinator(subscription.merchant_id);
-        const invoiceId = invoice?.id ?? failResult.context.currentInvoiceId ?? '';
-        const merchant = (eventData.merchant ?? {}) as Record<string, unknown>;
-        const vaAmount = Number(merchant.amount ?? eventData.amount ?? invoice?.amount ?? 990000);
-        
         try {
-          // Create VA directly via orchestrator (bypasses coordinator complexity)
-          const orch = getOrchestrator();
-          const va = await orch.createVirtualAccount({
-            context: {
-              subscriptionId: subscription.id,
-              merchantId: subscription.merchant_id,
-              customerId: subscription.customer_id,
-              planId: subscription.plan_id,
-              policy: subscription.policy as any,
-              retryCount: subscription.retry_count,
-            },
-            amount: vaAmount || 990000,
-            invoiceId,
-            expiresInDays: 7,
+          // Direct Nomba VA creation (bypasses orchestrator which has a parsing issue)
+          const url = `${process.env.NOMBA_BASE_URL || 'https://api.nomba.com'}/v1/accounts/virtual/${process.env.NOMBA_SUB_ACCOUNT_ID || ''}`;
+          const authResp = await fetch(`${process.env.NOMBA_BASE_URL || 'https://api.nomba.com'}/v1/auth/token/issue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', accountId: process.env.NOMBA_ACCOUNT_ID || 'f666ef9b-888e-4799-85ce-acb505b28023' },
+            body: JSON.stringify({ grant_type: 'client_credentials', client_id: process.env.NOMBA_CLIENT_ID, client_secret: process.env.NOMBA_CLIENT_SECRET }),
           });
-          
-          await wrapper.processEvent({
-            subscriptionId: subscription.id,
-            event: { type: 'VA_CREATED', vaId: va.accountNumber, expiresAt: va.expiresAt },
-            idempotencyKey: `webhook:va_created:${invoiceId}`,
-          });
-          
-          logger.info('VA created via webhook handler', {
-            subscriptionId: subscription.id,
-            vaAccountNumber: va.accountNumber,
-          });
+          const authData = await authResp.json();
+          const token = (authData as any).data?.access_token;
+
+          if (token) {
+            const invoiceId = invoice?.id ?? failResult.context?.currentInvoiceId ?? '';
+            const vaResp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, accountId: process.env.NOMBA_ACCOUNT_ID || '' },
+              body: JSON.stringify({ accountName: 'Subscriber', accountRef: invoiceId, amount: 990000, expiryDate: new Date(Date.now() + 7*86400000).toISOString().split('T')[0] }),
+            });
+            const vaData = await vaResp.json();
+            const accountNumber = (vaData as any)?.data?.bankAccountNumber;
+            if (accountNumber) {
+              await wrapper.processEvent({
+                subscriptionId: subscription.id,
+                event: { type: 'VA_CREATED', vaId: accountNumber, expiresAt: new Date(Date.now() + 7*86400000).toISOString() },
+                idempotencyKey: `webhook:direct_va:${invoiceId}`,
+              });
+              logger.info('VA created via direct Nomba call', { subscriptionId: subscription.id, accountNumber });
+            }
+          }
         } catch (vaErr) {
-          logger.warn('Direct VA creation failed, trying coordinator', vaErr as Error);
-          coordinator.initiateVAFallback(subscription.id, invoiceId, vaAmount, subscription.merchant_id)
-            .catch(err => logger.warn('Coordinator VA fallback also failed', err as Error));
+          logger.warn('Direct VA creation failed', vaErr as Error);
         }
       }
     }
