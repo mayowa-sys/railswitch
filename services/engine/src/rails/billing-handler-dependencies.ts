@@ -12,16 +12,20 @@ import type { NombaClient } from "./nomba-client.js";
 const logger = createLogger("billing-handler");
 
 function createNombaClient(): NombaClient {
+  console.log(`[NOMBA-CLIENT] Checking env vars: CLIENT_ID=${!!process.env.NOMBA_CLIENT_ID} SECRET=${!!process.env.NOMBA_CLIENT_SECRET} ACCOUNT_ID=${!!process.env.NOMBA_ACCOUNT_ID} BASE_URL=${process.env.NOMBA_BASE_URL || 'default: sandbox'} SUB_ID=${!!process.env.NOMBA_SUB_ACCOUNT_ID}`);
   if (process.env.NOMBA_CLIENT_ID && process.env.NOMBA_CLIENT_SECRET && process.env.NOMBA_ACCOUNT_ID) {
+    const baseUrl = process.env.NOMBA_BASE_URL ?? "https://sandbox.nomba.com";
+    console.log(`[NOMBA-CLIENT] Using RealNombaClient with baseUrl=${baseUrl}`);
     logger.info("Using RealNombaClient (sandbox)");
     return new RealNombaClient({
       clientId: process.env.NOMBA_CLIENT_ID,
       clientSecret: process.env.NOMBA_CLIENT_SECRET,
       accountId: process.env.NOMBA_ACCOUNT_ID,
       subAccountId: process.env.NOMBA_SUB_ACCOUNT_ID ?? "",
-      baseUrl: process.env.NOMBA_BASE_URL ?? "https://sandbox.nomba.com",
+      baseUrl,
     });
   }
+  console.log('[NOMBA-CLIENT] Using MockNombaClient - env vars not set');
   logger.info("Using MockNombaClient (no Nomba credentials in env)");
   return new MockNombaClient();
 }
