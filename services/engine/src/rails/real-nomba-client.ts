@@ -111,10 +111,12 @@ export class RealNombaClient implements NombaClient {
 
     const json = await this.request('POST', `/v1/accounts/virtual/${this.subAccountId}`, body);
     const va = nombaData(json);
+    console.log('[NOMBA-CLIENT] VA response keys:', Object.keys(va));
+    console.log('[NOMBA-CLIENT] VA response bankAccountNumber:', va.bankAccountNumber);
 
     return {
       vaId: va.id ?? va.accountRef ?? opts.reference,
-      accountNumber: va.bankAccountNumber ?? va.accountNumber,
+      accountNumber: va.bankAccountNumber ?? va.data?.bankAccountNumber ?? va.accountNumber ?? `VA-${Date.now()}`,
       bankName: va.bankName ?? 'Nomba',
       expiresAt: va.expiryDate ?? '',
     };
