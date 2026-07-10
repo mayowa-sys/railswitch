@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { subscriptionMachine } from '../state-machines/subscription.js';
+import { getOrchestrator } from '../rails/billing-handler-dependencies.js';
 
 export const debugRouter = Router();
 
@@ -20,4 +21,19 @@ debugRouter.get('/nomba-config', (req: Request, res: Response) => {
     baseUrl: process.env.NOMBA_BASE_URL || '(not set)',
     subAccountId: !!process.env.NOMBA_SUB_ACCOUNT_ID,
   });
+});
+
+debugRouter.get('/test-va', async (req: Request, res: Response) => {
+  try {
+    const orch = getOrchestrator();
+    const va = await orch.createVirtualAccount({
+      context: { subscriptionId: 'test', merchantId: 'mer_k_W0XspbNN', customerId: 'test', planId: 'test', policy: {} as any, retryCount: 0 },
+      amount: 9900,
+      invoiceId: 'test_va_' + Date.now(),
+      expiresInDays: 7,
+    });
+    res.json({ success: true, accountNumber: va.accountNumber, bankName: va.bankName });
+  } catch (err) {
+    res.json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
