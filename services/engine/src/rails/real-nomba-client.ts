@@ -110,17 +110,15 @@ export class RealNombaClient implements NombaClient {
     };
 
     const json = await this.request('POST', `/v1/accounts/virtual/${this.subAccountId}`, body);
-    const va = nombaData(json);
-    // Nomba live API response has data nested in json.data
+    console.log('[NOMBA-VA] FULL RESPONSE JSON:', JSON.stringify(json).substring(0, 500));
     const rawData = (json as any).data;
-    console.log('[NOMBA-CLIENT] VA raw data keys:', rawData ? Object.keys(rawData) : 'none');
-    console.log('[NOMBA-CLIENT] bankAccountNumber from raw data:', rawData?.bankAccountNumber);
-
+    console.log('[NOMBA-VA] Has data field:', !!rawData, 'Has bankAccountNumber:', !!rawData?.bankAccountNumber);
+    
     return {
-      vaId: va.id ?? va.accountRef ?? opts.reference,
-      accountNumber: rawData?.bankAccountNumber ?? va.bankAccountNumber ?? va.accountNumber ?? `VA-${Date.now()}`,
-      bankName: rawData?.bankName ?? va.bankName ?? 'Nomba',
-      expiresAt: rawData?.expiryDate ?? va.expiryDate ?? '',
+      vaId: rawData?.id ?? rawData?.accountRef ?? opts.reference,
+      accountNumber: rawData?.bankAccountNumber || rawData?.accountNumber || `VA-${Date.now()}`,
+      bankName: rawData?.bankName || 'Nomba',
+      expiresAt: rawData?.expiryDate || '',
     };
   }
 
