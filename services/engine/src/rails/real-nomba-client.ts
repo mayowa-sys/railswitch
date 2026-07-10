@@ -113,6 +113,7 @@ export class RealNombaClient implements NombaClient {
       body: JSON.stringify(body),
     });
     const data = await resp.json();
+    if (!resp.ok) throw new Error(`Nomba VA creation failed (${resp.status}): ${JSON.stringify(data).substring(0, 200)}`);
     const vaData = (data as any).data;
 
     return {
