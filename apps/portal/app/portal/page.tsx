@@ -98,9 +98,9 @@ function OverviewPageContent() {
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-500 mb-1">Bank Transfer Details</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-zinc-400">Bank</span><p className="font-bold">Nombank MFB</p></div>
-                  <div><span className="text-zinc-400">Account</span><p className="font-mono font-bold">{(subscription as any)?.va_id || "8484940474"}</p></div>
+                  <div><span className="text-zinc-400">Account</span><p className="font-mono font-bold">{(subscription as any)?.va_id || ((subscription as any)?.metadata?.va_id) || "8484940474"}</p></div>
                   <div><span className="text-zinc-400">Amount</span><p className="font-bold">₦{(planPrice / 100).toLocaleString()}</p></div>
-                  <div><span className="text-zinc-400">Expires</span><p className="font-bold">{(subscription as any)?.va_expires_at ? new Date((subscription as any).va_expires_at).toLocaleDateString('en-NG', {day:'numeric', month:'long'}) : '14 July 2026'}</p></div>
+                  <div><span className="text-zinc-400">Expires</span><p className="font-bold">{((subscription as any)?.va_expires_at || (subscription as any)?.metadata?.va_expires) ? new Date(((subscription as any)?.va_expires_at || (subscription as any)?.metadata?.va_expires)).toLocaleDateString('en-NG', {day:'numeric', month:'long'}) : '17 July 2026'}</p></div>
                 </div>
               </div>
           </div>
