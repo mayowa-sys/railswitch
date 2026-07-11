@@ -157,7 +157,7 @@ export default function AnalyticsPage() {
         <KpiCard label="Active Subscribers" value={String(activeCount)} sub={`${churnRate}% churn`} accent="emerald" />
         <KpiCard label="Recovery Rate" value={`${recoveryRate}%`} sub={`${healthData.paid} of ${healthData.paid + healthData.failed} charges`} accent="violet" />
         <KpiCard label="Total Revenue" value={`₦${Math.round(totalRevenue).toLocaleString()}`} sub={`${healthData.paid + healthData.failed} paid invoices`} accent="amber" />
-        <KpiCard label="Platform Fees (5%)" value={recoveryFees > 0 ? `₦${Math.round(recoveryFees).toLocaleString()}` : "—"} sub={recoveryFees > 0 ? `${((recoveryFees / recoveredAmount) * 100).toFixed(0)}% of recovered` : "Pending first recovery"} accent="rose" />
+        <KpiCard label="Platform Fees (5%)" value={recoveryFees > 0 ? `₦${Math.round(recoveryFees).toLocaleString()}` : "—"} sub={recoveryFees > 0 && recoveredAmount > 0 ? `${((recoveryFees / recoveredAmount) * 100).toFixed(0)}% of recovered` : "Pending first recovery"} accent="rose" />
       </div>
 
       {/* Health Row */}
