@@ -63,19 +63,14 @@ export default function AnalyticsPage() {
       setRecoveryRate(total > 0 ? ((paid / total) * 100).toFixed(1) : "100.0");
       setTotalRevenue(invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100);
 
-      // Recovery fees (5% of recovered revenue)
-      const totalRecoveryFees = invoices
-        .filter(i => i.status === "paid")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .reduce((sum, i) => sum + Number((i.metadata as any)?.recovery_fee ?? 0), 0) / 100;
+      // At-risk revenue from cascade-state subscriptions
+      const cascadeStates = ["retrying", "va_fallback", "whatsapp_fallback", "past_due"];
+      const atRiskRevenue = subs
+        .filter(s => cascadeStates.includes(s.state))
+        .reduce((sum, s) => sum + Number(planMap.get(s.plan_id)?.amount ?? 0), 0) / 100;
 
-      const totalRecovered = invoices
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter(i => i.status === "paid" && (i.metadata as any)?.recovery_fee)
-        .reduce((sum, i) => sum + Number(i.amount ?? 0), 0) / 100;
-
-      setRecoveryFees(totalRecoveryFees);
-      setRecoveredAmount(totalRecovered);
+      setRecoveryFees(Math.round(atRiskRevenue * 0.05)); // 5% of at-risk
+      setRecoveredAmount(atRiskRevenue);
 
       // Health
       const retrying = subs.filter(s => ["retrying", "va_fallback", "whatsapp_fallback"].includes(s.state));
@@ -157,7 +152,7 @@ export default function AnalyticsPage() {
         <KpiCard label="Active Subscribers" value={String(activeCount)} sub={`${churnRate}% churn`} accent="emerald" />
         <KpiCard label="Recovery Rate" value={`${recoveryRate}%`} sub={`${healthData.paid} of ${healthData.paid + healthData.failed} charges`} accent="violet" />
         <KpiCard label="Total Revenue" value={`₦${Math.round(totalRevenue).toLocaleString()}`} sub={`${healthData.paid + healthData.failed} paid invoices`} accent="amber" />
-        <KpiCard label="Platform Fees (5%)" value={recoveryFees > 0 ? `₦${Math.round(recoveryFees).toLocaleString()}` : "—"} sub={recoveryFees > 0 && recoveredAmount > 0 ? `${((recoveryFees / recoveredAmount) * 100).toFixed(0)}% of recovered` : "Pending first recovery"} accent="rose" />
+        <KpiCard label="At-Risk Revenue" value={`₦${Math.round(recoveredAmount).toLocaleString()}`} sub={recoveryFees > 0 ? `₦${Math.round(recoveryFees).toLocaleString()} platform fee (5%)` : "No cascade subscriptions"} accent="rose" />
       </div>
 
       {/* Health Row */}
