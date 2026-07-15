@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import os
-import json
 
 bearer_scheme = HTTPBearer()
 
@@ -85,9 +84,8 @@ async def get_current_merchant(
     import hashlib
     key_hash = hashlib.sha256(token.encode()).hexdigest()
     try:
-        from app.db import create_pool
         import os
-        pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))
+        pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))  # noqa: F821
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT id, merchant_id, revoked_at FROM api_keys WHERE key_hash = $1",

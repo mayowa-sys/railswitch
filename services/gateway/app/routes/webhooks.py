@@ -7,7 +7,7 @@ import uuid
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, HTTPException
 import httpx
 
 logger = logging.getLogger("railswitch.gateway.webhooks")
