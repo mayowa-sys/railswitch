@@ -201,3 +201,4 @@ Row-level security is enforced at multiple layers:
 - **Unit tests (vitest):** 96 — state machine, wrapper, billing handler, orchestrator, retry timing, proration, utils
 - **Cross-tenant tests:** 5 — RLS isolation across all resource types
 - **Integration tests (bash):** 113 — full API coverage including auth, CRUD, lifecycle, portal, webhooks, error handling
+
