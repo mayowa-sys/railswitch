@@ -36,3 +36,4 @@ NEXT_PUBLIC_ENGINE_URL=http://localhost:3001
 Run `python3 scripts/seed-demo.py` to populate with FitCore Nigeria demo data (250 customers, 5 plans, 250 subscriptions).
 
 Login: `demo@railswitch.dev` / `demo123456`
+
