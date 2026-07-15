@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import Request, Depends, Header
 
-from app.auth import ApiKeyRecord, get_current_merchant, get_current_merchant_with_portal
+from app.auth import ApiKeyRecord, get_current_merchant_with_portal
 from app.config import settings
 
 

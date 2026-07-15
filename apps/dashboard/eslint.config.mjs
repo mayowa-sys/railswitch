@@ -10,6 +10,7 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
+      "no-implied-eval": "off",
     },
   },
   // Override default ignores of eslint-config-next.
