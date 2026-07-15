@@ -62,7 +62,7 @@ async def get_current_merchant_with_portal(
         bearer = HTTPBearer()
         credentials = await bearer(request)
     
-    return await get_current_merchant(credentials)
+    return await get_current_merchant(credentials if credentials else None)  # type: ignore[arg-type]
 
 async def get_current_merchant(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -85,7 +85,7 @@ async def get_current_merchant(
     key_hash = hashlib.sha256(token.encode()).hexdigest()
     try:
         import os
-        pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))  # noqa: F821
+        pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))  # noqa: F821  # type: ignore[name-defined]
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT id, merchant_id, revoked_at FROM api_keys WHERE key_hash = $1",

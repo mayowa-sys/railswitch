@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
       "no-implied-eval": "off",
+      "react-x/stable-names": "off",
+      "react-x/no-impure-render": "off",
     },
   },
   // Override default ignores of eslint-config-next.
