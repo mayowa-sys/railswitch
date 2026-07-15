@@ -10,14 +10,17 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
-      "no-implied-eval": "off",
-      "react-x/stable-names": "off",
-      "react-x/no-impure-render": "off",
+    },
+  },
+  // Disable React Compiler strict rules (Next.js 16)
+  {
+    files: ["**/*.tsx", "**/*.ts"],
+    rules: {
+      "react-compiler/react-compiler": "off",
     },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
