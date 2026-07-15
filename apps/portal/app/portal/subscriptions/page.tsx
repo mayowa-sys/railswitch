@@ -41,6 +41,7 @@ export default function SubscriptionsPage() {
   if (!subscription) return <div className="py-12 text-center"><p className="text-sm text-zinc-500">No subscription found</p></div>;
 
   const plan = plans.find((p) => p.id === subscription.plan_id);
+  const availablePlans = plans.map(p => ({ id: p.id, name: p.name, description: p.description || '', price: Number(p.amount), interval: p.interval as "monthly" | "annually" }));
   const currentPlan = { id: plan?.id ?? "", name: plan?.name ?? "Unknown", description: plan?.description ?? "", price: Number(plan?.amount ?? 0), interval: (plan?.interval === "annual" ? "annually" : "monthly") as "monthly" | "annually" };
   const nextBilling = new Date(subscription.current_period_end).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
   const formatNaira = (kobo: number) => `₦${(kobo / 100).toLocaleString()}`;
@@ -95,7 +96,7 @@ export default function SubscriptionsPage() {
         </div>
       </div>
       <PlanComparison currentPlan={currentPlan} />
-      <ChangePlanModal open={modalOpen} onOpenChange={setModalOpen} currentPlan={currentPlan} selectedPlanId={selectedPlanId} onSelectPlan={handleSelectPlan} previewLoading={previewLoading} previewData={previewData} applying={applying} success={success} onConfirm={handleConfirmPlanChange} />
+      <ChangePlanModal open={modalOpen} onOpenChange={setModalOpen} currentPlan={currentPlan} availablePlans={availablePlans} selectedPlanId={selectedPlanId} onSelectPlan={handleSelectPlan} previewLoading={previewLoading} previewData={previewData} applying={applying} success={success} onConfirm={handleConfirmPlanChange} />
     </div>
   );
 }

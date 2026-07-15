@@ -9,13 +9,14 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { formatNaira, PLANS, type Plan } from "@/lib/mock-data";
+import { formatNaira, type Plan } from "@/lib/mock-data";
 import { AlertCircle, CheckCircle, Loader2, TrendingUp } from "lucide-react";
 
 interface ChangePlanModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentPlan: Plan;
+  availablePlans: Plan[];
   selectedPlanId: string;
   onSelectPlan: (planId: string) => void;
   previewLoading: boolean;
@@ -30,6 +31,7 @@ export function ChangePlanModal({
   open,
   onOpenChange,
   currentPlan,
+  availablePlans,
   selectedPlanId,
   onSelectPlan,
   previewLoading,
@@ -65,7 +67,7 @@ export function ChangePlanModal({
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Choose a Plan</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {PLANS.map((plan) => (
+                  {availablePlans.map((plan) => (
                     <button
                       key={plan.id}
                       onClick={() => onSelectPlan(plan.id)}
