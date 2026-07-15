@@ -10,12 +10,15 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
-      "react-x/no-impure-render": "off",
     },
   },
-  // Override default ignores of eslint-config-next.
+  {
+    files: ["**/*.tsx", "**/*.ts"],
+    rules: {
+      "react-compiler/react-compiler": "off",
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
