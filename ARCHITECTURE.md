@@ -157,6 +157,40 @@ recovery_rate = paid_invoices / (paid_invoices + uncollectible_invoices)
 
 ---
 
+## AI-Powered Enhancements
+
+Three AI capabilities layer on top of the deterministic cascade. Each has an explicit fallback path so nothing user-facing depends on the AI succeeding.
+
+### 1. Retry Timing (ML)
+
+- **Module**: `services/engine/src/ai/retry-timing-model.ts`
+- **Model**: Logistic regression over 8 features — hour of day (WAT), day of month, day of week, retry count, hours since failure, amount, payday-window indicator, liquidity-window indicator.
+- **Weights**: Hand-tuned defaults that reproduce the intent of the legacy heuristic (payday and liquidity windows dominate). A `trainRetryModel` utility exists for batch training from `charge_attempts` history.
+- **Selection**: Scores every hour in the next 72, applies the policy floor (`baseDelayMinutes`) and ceiling (`maxDelayHours`), returns the argmax.
+- **Fallback**: `RAILSWITCH_AI_RETRY=off` or `mode: 'heuristic'` reverts to the payday/liquidity snap rules in `rails/retry-timing.ts`.
+- **Data**: Fully offline, no external API calls.
+
+### 2. Dunning Message Generation (LLM)
+
+- **Modules**: `services/engine/src/ai/gemini-client.ts`, `ai/dunning-generator.ts`
+- **Model**: Google Gemini 3.6 Flash (default; overridable via `GEMINI_MODEL`) via the public REST API. Thinking mode is disabled (`thinkingBudget: 0`) since we do not need reasoning for a 3-5 sentence recovery message.
+- **Prompt**: A payments-recovery system prompt (short, non-shaming, Nigerian English, VA/link CTA) + a user prompt with the customer's context (first name, plan, amount, days overdue, retry count, VA number, payment link, optional merchant tone hint).
+- **Output**: JSON `{ subject, body }` validated for presence + length caps (200 chars subject, 2000 chars body).
+- **Wiring**: WhatsApp recovery (`whatsapp-service.ts`) and dunning emails (`email-service.ts → aiDunningReminderEmail`) route their body copy through the generator.
+- **Fallback**: The caller always supplies a static template. Any of these triggers fallback: no `GEMINI_API_KEY`, `RAILSWITCH_AI_DUNNING=off`, HTTP timeout (8s), non-2xx, unparseable JSON, missing/oversized fields.
+- **PII sent to Gemini**: customer first name + plan name + amount + optional VA number and portal link. Full name, email, and phone number never leave the engine.
+
+### 3. Churn Risk Scoring (ML)
+
+- **Modules**: `services/engine/src/ai/churn-scoring.ts`, `ai/churn-features.ts`
+- **Model**: Logistic regression over 9 features — failed attempts, successful charges, days since signup, days since last success, current retry count, cascade stage depth, plan price, has-paused, is-past-due.
+- **Bands**: `low` (<0.25), `medium` (0.25–0.5), `high` (0.5–0.75), `critical` (≥0.75).
+- **Explainability**: The scorer returns the top-3 contributing features (signed contribution to the logit) for UI tooltips.
+- **API**: `GET /v1/ai/churn` returns per-subscription scores for a merchant (single SQL scan + in-memory scoring); `GET /v1/ai/churn/:subscriptionId` returns one score with drivers.
+- **Data**: Fully offline. Aggregation happens in Postgres, scoring in Node.
+
+---
+
 ## Proration
 
 ### Credits-Based Model

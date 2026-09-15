@@ -23,7 +23,7 @@
 import type { NombaClient } from './nomba-client.js';
 import type { SubscriptionContext } from '../state-machines/subscription.js';
 import { getWhatsAppService } from './whatsapp-service.js';
-import { getEmailTransport, paymentFailedEmail, paymentRecoveredEmail, subscriptionCancelledEmail, dunningReminderEmail } from './email-service.js';
+import { getEmailTransport, paymentFailedEmail, paymentRecoveredEmail, subscriptionCancelledEmail, aiDunningReminderEmail } from './email-service.js';
 import { generatePortalLink } from '../routes/portal.js';
 import { db } from '../db/client.js';
 import { CustomersTable } from '../schema/customers.schema.js';
@@ -186,6 +186,10 @@ export class RailOrchestrator {
       .where(eq(InvoicesTable.id, input.invoiceId))
       .limit(1);
 
+    const [plan] = subscription
+      ? await db.select().from(PlansTable).where(eq(PlansTable.id, subscription.plan_id)).limit(1)
+      : [null];
+
     const portalLink = customer ? generatePortalLink(customer.id, customer.merchant_id) : '';
 
     const sent = await wa.sendRecoveryMessage({
@@ -195,6 +199,8 @@ export class RailOrchestrator {
       amount: invoice ? Number(invoice.amount) : undefined,
       reference: input.invoiceId,
       paymentLink: portalLink,
+      customerName: customer?.name ?? undefined,
+      planName: plan?.name ?? undefined,
     });
 
     this.logger.info(sent ? 'WhatsApp recovery sent' : 'WhatsApp recovery failed to send', {
@@ -281,7 +287,7 @@ export class RailOrchestrator {
     if (!customer || !plan) return;
 
     const portalLink = generatePortalLink(customer.id, input.merchantId);
-    const msg = dunningReminderEmail({
+    const msg = await aiDunningReminderEmail({
       customerName: customer.name ?? 'Customer',
       planName: plan.name,
       amount: input.amount,

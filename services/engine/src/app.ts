@@ -23,6 +23,7 @@ import { webhookManagementRouter } from './routes/webhook_management.js';
 import { cleanupRouter } from './routes/cleanup.js';
 import { portalRouter } from './routes/portal.js';
 import { merchantActionsRouter } from './routes/merchant-actions.js';
+import { aiRouter } from './routes/ai.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -79,6 +80,7 @@ app.use('/internal/v1/webhooks/management', requireInternalAuth, extractMerchant
 app.use('/internal/v1/cleanup', requireInternalAuth, extractMerchantId, setRLSContext, cleanupRouter);
 app.use('/internal/v1/portal', requireInternalAuth, extractMerchantId, portalRouter);
 app.use('/internal/v1/actions', requireInternalAuth, extractMerchantId, setRLSContext, merchantActionsRouter);
+app.use('/internal/v1/ai', requireInternalAuth, extractMerchantId, setRLSContext, aiRouter);
 
 // Global Express error handler — catches unhandled errors and returns JSON.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

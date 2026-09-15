@@ -9,6 +9,7 @@
 // Landed: July 1 2026 (hackathon window)
 
 import { GlobalLogger } from '../utils/logger.js';
+import { generateDunningMessage } from '../ai/dunning-generator.js';
 
 export interface WhatsAppMessage {
   /** Customer phone number in international format (234xxxxxxxxxx) */
@@ -23,6 +24,12 @@ export interface WhatsAppMessage {
   reference: string;
   /** Retry/checkout link */
   paymentLink?: string;
+  /** Customer first name — used by the AI dunning generator when available. */
+  customerName?: string;
+  /** Plan name — used by the AI dunning generator when available. */
+  planName?: string;
+  /** Merchant business name — flavors the message signature. */
+  merchantName?: string;
 }
 
 export interface WhatsAppConfig {
@@ -53,7 +60,7 @@ export class WhatsAppService {
       return false;
     }
 
-    const body = this.buildRecoveryBody(msg);
+    const body = await this.buildRecoveryBody(msg);
 
     try {
       const res = await fetch(
@@ -92,13 +99,13 @@ export class WhatsAppService {
     }
   }
 
-  private buildRecoveryBody(msg: WhatsAppMessage) {
+  private async buildRecoveryBody(msg: WhatsAppMessage) {
     const amountText = msg.amount ? `₦${msg.amount.toLocaleString()}` : 'your outstanding balance';
     const vaLine = msg.accountNumber
       ? `Transfer ${amountText} to:\nBank: ${msg.bankName ?? 'Nomba'}\nAccount: ${msg.accountNumber}\nRef: ${msg.reference}`
       : `Please complete your payment of ${amountText}`;
 
-    const bodyText = [
+    const templateBody = [
       `*Payment Recovery — RailSwitch*`,
       ``,
       `Your recent card payment could not be processed.`,
@@ -113,6 +120,21 @@ export class WhatsAppService {
       .filter(Boolean)
       .join('\n');
 
+    const generated = await generateDunningMessage(
+      {
+        channel: 'whatsapp',
+        stage: msg.accountNumber ? 'va_fallback' : 'whatsapp_fallback',
+        customerName: msg.customerName ?? 'Customer',
+        planName: msg.planName ?? 'your subscription',
+        amountNaira: msg.amount ?? 0,
+        vaAccountNumber: msg.accountNumber,
+        vaBankName: msg.bankName,
+        paymentLink: msg.paymentLink,
+        merchantName: msg.merchantName,
+      },
+      { subject: `Payment Recovery — ${msg.reference}`, body: templateBody },
+    );
+
     return {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -120,7 +142,7 @@ export class WhatsAppService {
       type: 'text',
       text: {
         preview_url: false,
-        body: bodyText,
+        body: generated.body,
       },
     };
   }

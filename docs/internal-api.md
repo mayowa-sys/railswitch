@@ -409,6 +409,115 @@ Manually trigger generation of fallback payment options (VA, USSD, WhatsApp link
 
 ---
 
+---
+
+### 7. AI Endpoints (Internal)
+
+The Engine exposes AI-powered helpers under `/internal/v1/ai/*`. All are internal-auth-protected and merchant-scoped (RLS).
+
+#### `POST /internal/v1/ai/dunning-preview`
+
+Generate a personalized dunning message (or return the static template fallback if the LLM is unavailable).
+
+**Request:**
+```json
+{
+  "channel": "whatsapp",
+  "stage": "va_fallback",
+  "customerName": "Ada",
+  "planName": "Pro",
+  "amountNaira": 15000,
+  "daysOverdue": 3,
+  "retryCount": 1,
+  "vaAccountNumber": "1234567890",
+  "vaBankName": "Nomba",
+  "paymentLink": "https://portal.example.com/pay/xyz",
+  "merchantName": "FitCore Nigeria",
+  "toneHint": "friendly, sign off with 'Stay fit.'"
+}
+```
+
+**Response 200:**
+```json
+{
+  "data": {
+    "subject": "Quick payment reminder",
+    "body": "Hi Ada, your ₦15,000 Pro plan payment couldn't go through...",
+    "generated": true
+  }
+}
+```
+
+`generated: false` means the template was used (no `GEMINI_API_KEY`, LLM error, or malformed response).
+
+#### `POST /internal/v1/ai/retry-recommendation`
+
+Rank the next N retry slots by predicted success probability.
+
+**Request:**
+```json
+{
+  "retryCount": 1,
+  "amountNaira": 15000,
+  "currentTime": "2026-07-20T08:00:00Z",
+  "policy": {
+    "maxRetries": 3,
+    "ussdEnabled": true,
+    "graceHours": 72,
+    "baseDelayMinutes": 60,
+    "maxDelayHours": 72
+  },
+  "topN": 5
+}
+```
+
+**Response 200:**
+```json
+{
+  "data": [
+    { "at": "2026-07-25T10:00:00.000Z", "probability": 0.87, "hourWAT": 11, "dayOfMonth": 25, "isPaydayWindow": true, "isLiquidityWindow": true },
+    { "at": "2026-07-25T11:00:00.000Z", "probability": 0.85, "hourWAT": 12, "dayOfMonth": 25, "isPaydayWindow": true, "isLiquidityWindow": true }
+  ]
+}
+```
+
+#### `GET /internal/v1/ai/churn/:subscription_id`
+
+Score churn risk for one subscription.
+
+**Response 200:**
+```json
+{
+  "data": {
+    "risk": 0.91,
+    "band": "critical",
+    "topDrivers": [
+      { "feature": "isPastDue", "contribution": 1.5 },
+      { "feature": "cascadeStageDepth", "contribution": 3.6 },
+      { "feature": "currentRetryCount", "contribution": 1.95 }
+    ],
+    "features": { "...": "..." }
+  }
+}
+```
+
+#### `GET /internal/v1/ai/churn`
+
+Bulk score every subscription for the caller merchant. One SQL scan + in-memory scoring.
+
+**Response 200:**
+```json
+{
+  "data": [
+    { "subscriptionId": "sub_abc", "risk": 0.91, "band": "critical" },
+    { "subscriptionId": "sub_def", "risk": 0.12, "band": "low" }
+  ],
+  "total": 2
+}
+```
+
+---
+
 ## Versioning
 
 The API is versioned via the URL path (`/internal/v1/...`). Breaking changes will bump the version to v2. The contract will be updated here as the pre‑window evolves.

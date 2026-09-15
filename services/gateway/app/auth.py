@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import os
 
 bearer_scheme = HTTPBearer()
+optional_bearer_scheme = HTTPBearer(auto_error=False)
 
 # Format: sk_(live|test)_<merchant_id>__<random_chars>
 _KEY_FORMAT = re.compile(r"^sk_(live|test)_(.+?)__[A-Za-z0-9_-]{8,}$")
@@ -48,7 +49,7 @@ async def get_portal_merchant(request: Request) -> str | None:
 
 async def get_current_merchant_with_portal(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
 ) -> ApiKeyRecord:
     # Try portal token first
     token = request.headers.get("x-portal-token")
@@ -56,12 +57,12 @@ async def get_current_merchant_with_portal(
         merchant_id = await get_portal_merchant(request)
         if merchant_id:
             return ApiKeyRecord(merchant_id=merchant_id, mode="test")
-    
+
     # Fall back to API key auth
     if credentials is None:
         bearer = HTTPBearer()
         credentials = await bearer(request)
-    
+
     return await get_current_merchant(credentials if credentials else None)  # type: ignore[arg-type]
 
 async def get_current_merchant(

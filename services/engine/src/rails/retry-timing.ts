@@ -16,6 +16,7 @@
 // constructing Date objects in local time (which depends on the host).
 
 import type { DunningPolicy } from '../state-machines/subscription.js';
+import { bestRetrySlot } from '../ai/retry-timing-model.js';
 
 export interface NextRetryInput {
   currentTime: Date;
@@ -24,6 +25,16 @@ export interface NextRetryInput {
   policy: DunningPolicy;
   /** Test seam for jitter. Defaults to Math.random. */
   rng?: () => number;
+  /**
+   * Amount in naira; used by the AI scorer to condition on charge size.
+   * Falls back to 0 when unknown, which is safe (weight is tiny).
+   */
+  amountNaira?: number;
+  /**
+   * Explicit switch to force one implementation. When absent, we read
+   * RAILSWITCH_AI_RETRY (values: "on" | "off"). Default is "on".
+   */
+  mode?: 'ai' | 'heuristic';
 }
 
 const WAT_OFFSET_MS = 60 * 60 * 1000;       // UTC+1
@@ -36,8 +47,23 @@ const PAYDAY_LOOKAHEAD_DAYS = 7;
 
 /**
  * Computes the next retry timestamp from the inputs. Pure.
+ *
+ * By default this delegates to the AI scorer in ai/retry-timing-model.ts,
+ * which ranks candidate slots by predicted success probability. Set
+ * RAILSWITCH_AI_RETRY=off (or pass mode: 'heuristic') to use the
+ * legacy payday/liquidity rule stack instead — same output shape.
  */
 export function nextRetryAt(input: NextRetryInput): Date {
+  const mode = input.mode ?? (process.env.RAILSWITCH_AI_RETRY === 'off' ? 'heuristic' : 'ai');
+  if (mode === 'ai') {
+    return bestRetrySlot({
+      currentTime: input.currentTime,
+      retryCount: input.retryCount,
+      policy: input.policy,
+      amountNaira: input.amountNaira ?? 0,
+    }).at;
+  }
+
   const { currentTime, retryCount, policy } = input;
   const rng = input.rng ?? Math.random;
 

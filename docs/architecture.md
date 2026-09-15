@@ -277,10 +277,25 @@ If the grace window expires without payment, the state machine transitions to `p
 
 ### Where the code lives
 
-- Retry timing: `services/engine/src/rails/retry-timing.ts`
+- Retry timing (heuristic): `services/engine/src/rails/retry-timing.ts`
+- Retry timing (ML scorer): `services/engine/src/ai/retry-timing-model.ts`
+- AI dunning generation: `services/engine/src/ai/dunning-generator.ts` + `ai/gemini-client.ts`
+- Churn scoring: `services/engine/src/ai/churn-scoring.ts` + `ai/churn-features.ts`
 - Orchestrator: `services/engine/src/rails/orchestrator.ts`
 - Nomba interface: `services/engine/src/rails/nomba-client.ts`
 - Mock client: `services/engine/src/rails/mock-nomba-client.ts`
+
+---
+
+## 5b. AI enhancements
+
+Three optional AI layers stack on top of the deterministic cascade. All have static fallbacks so nothing user-visible fails when the AI is unavailable.
+
+**ML retry timing** (default on) — logistic regression over 8 features (hour, day-of-month, day-of-week, retry count, hours since failure, amount, payday indicator, liquidity indicator) scores every hour in the next 72 and picks the argmax subject to the policy floor/ceiling. Set `RAILSWITCH_AI_RETRY=off` to revert to the payday/liquidity rules.
+
+**LLM dunning messages** (opt-in via `GEMINI_API_KEY`) — Google Gemini 3.6 Flash (default) generates personalized WhatsApp/email copy. Thinking mode is disabled to keep latency and token cost low. Missing key, HTTP timeout (8s), non-2xx, or malformed JSON all short-circuit to the static template. Only first name + payment context is sent — no email, phone, or full name. Set `RAILSWITCH_AI_DUNNING=off` to hard-disable.
+
+**Churn risk scoring** (always on, local) — logistic regression over 9 features (failure counts, cascade depth, plan tier, pause history, past-due flag) yields a 0-1 risk with `low`/`medium`/`high`/`critical` bands. Exposed at `GET /v1/ai/churn`; surfaced in the dashboard subscriptions table.
 
 ---
 

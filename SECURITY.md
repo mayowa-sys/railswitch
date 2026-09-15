@@ -142,9 +142,54 @@ The `audit_log` table is append-only. No code path ever issues `UPDATE` or `DELE
 | Nomba Client ID + Private Key | Fly secret | Engine → Nomba API |
 | Resend API Key | Fly secret | Engine → Resend email API |
 | WhatsApp Cloud API Token | Fly secret | Engine → Meta WhatsApp API |
+| `GEMINI_API_KEY` (optional) | Fly secret / docker-compose env | Engine → Google Gemini for AI dunning |
 | Merchant webhook signing secrets | `webhook_endpoints` table | Per-merchant outbound signing |
 
 Secrets are never committed to the repository. Local development uses a shared dummy secret (`dev-internal-secret-change-me`) set in `docker-compose.yml`. Production secrets are injected via `fly secrets set`.
+
+---
+
+## AI Feature Security
+
+The engine ships three AI capabilities. Two run entirely offline; one sends a bounded subset of payment context to Google Gemini.
+
+### Data sent to Gemini
+
+Only these fields are included in the LLM prompt for AI dunning message generation:
+
+- Customer **first name only** (the full name is split on the first whitespace, then trimmed)
+- Plan name, currency, amount due
+- Days overdue, retry count, cascade stage
+- Virtual account number + bank name (already customer-visible)
+- Portal payment link (already customer-visible)
+- Optional merchant-supplied tone hint
+
+The following are **never** sent to Gemini: customer email, phone number, full legal name, card token, card last-four, merchant API keys, internal IDs (subscription/customer/invoice), full DB rows.
+
+### Output handling
+
+LLM output is treated as untrusted user-generated content:
+
+- Length caps (200 chars subject, 2000 chars body) — anything larger falls back to the template.
+- HTML escaping via `escapeHtml()` in the email path before insertion into the mail body — the CTA button HTML is fixed by the template, never generated.
+- WhatsApp message bodies are plain text over the Meta Cloud API; no rendering context that could execute markup.
+- Missing/malformed JSON falls back to the template silently (logged at `warn` level).
+
+### Disabling AI at the environment level
+
+- `RAILSWITCH_AI_DUNNING=off` — disable LLM-generated messages entirely (all channels use templates).
+- `RAILSWITCH_AI_RETRY=off` — disable the ML retry scorer (use the legacy payday/liquidity heuristic).
+- Omitting `GEMINI_API_KEY` — equivalent to `RAILSWITCH_AI_DUNNING=off` for the LLM path; the churn/retry models still run because they're local.
+
+### Failure isolation
+
+The generator has an 8-second timeout, a try/catch around every fetch, and returns `null` on any error. The caller always passes a template fallback that is used verbatim on `null`. **No user-visible content path depends on the LLM being available.**
+
+### What we did NOT do
+
+- We do not fine-tune any model on customer data.
+- We do not store LLM prompts or responses beyond structured log lines (subject length, generated flag, status code) for troubleshooting.
+- We do not let LLM output influence state machine transitions, retry timing, or refund flows — only the free-form text in dunning messages.
 
 ---
 
@@ -163,6 +208,9 @@ Secrets are never committed to the repository. Local development uses a shared d
 | **Audit log tampering** | Audit log is append-only with no UPDATE/DELETE code paths |
 | **Secrets in source** | All secrets injected via environment; `.env` and docker-compose files are gitignored or use dummy values |
 | **Card data breach** | We never store raw card data; Nomba handles tokenization |
+| **Sensitive PII leaking to LLM** | Only first name + non-sensitive payment context is sent to Gemini; email, phone, full name never included |
+| **Malicious LLM output** | Length caps + HTML escaping + JSON schema validation; failure falls back to template silently |
+| **LLM outage breaking payments** | AI dunning is best-effort with static-template fallback; no state-machine transition depends on the LLM |
 
 ### Attacks we accept as out of scope
 
