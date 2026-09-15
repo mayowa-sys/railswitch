@@ -16,6 +16,8 @@ interface LiveSubscription {
   amount: number;
   nextBillingDate: string;
   cascadeHistory: { step: string; status: "success" | "failed" | "pending" }[];
+  churnRisk?: number;
+  churnBand?: string;
 }
 
 interface LivePlan { id: string; name: string; amount: number; }
@@ -35,7 +37,9 @@ export default function SubscriptionsPage() {
       api.subscriptions.list(key),
       api.plans.list(key),
       api.customers.list(key),
-    ]).then(([rawSubs, rawPlans, rawCusts]) => {
+      api.ai.churnScores(key).catch(() => [] as Array<{ subscriptionId: string; risk: number; band: string }>),
+    ]).then(([rawSubs, rawPlans, rawCusts, churnList]) => {
+      const churnMap = new Map(churnList.map(c => [c.subscriptionId, c]));
       const realPlans = rawPlans.filter((p: any) => !isTestPlan(p.name));
       const realCustomers = rawCusts.filter((c: any) => !isTestCustomer(c.email, c.name));
       const custSet = new Set(realCustomers.map((c: any) => c.id));
@@ -50,16 +54,21 @@ export default function SubscriptionsPage() {
         va_fallback: "va_fallback", whatsapp_fallback: "whatsapp_fallback", expired: "cancelled",
       };
       const realSubs = rawSubs.filter((s: any) => custSet.has(s.customer_id) && planIdSet.has(s.plan_id));
-      setSubs(realSubs.map((s) => ({
-        id: s.id,
-        customerId: s.customer_id,
-        planId: s.plan_id,
-        status: (STATUS_MAP[s.state] || s.state) as LiveSubscription["status"],
-        state: s.state,
-        amount: Number(planMap.get(s.plan_id)?.amount ?? 0) / 100,
-        nextBillingDate: s.current_period_end ?? new Date().toISOString(),
-        cascadeHistory: (s as any).cascade_history ?? [],
-      })) as LiveSubscription[]);
+      setSubs(realSubs.map((s) => {
+        const churn = churnMap.get(s.id);
+        return {
+          id: s.id,
+          customerId: s.customer_id,
+          planId: s.plan_id,
+          status: (STATUS_MAP[s.state] || s.state) as LiveSubscription["status"],
+          state: s.state,
+          amount: Number(planMap.get(s.plan_id)?.amount ?? 0) / 100,
+          nextBillingDate: s.current_period_end ?? new Date().toISOString(),
+          cascadeHistory: (s as any).cascade_history ?? [],
+          churnRisk: churn?.risk,
+          churnBand: churn?.band,
+        };
+      }) as LiveSubscription[]);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user?.apiKey]);

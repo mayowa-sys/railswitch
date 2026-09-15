@@ -41,6 +41,10 @@ services:
       REDIS_URL: redis://redis:6379
       ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
       INTERNAL_AUTH_SECRET: dev-internal-secret-change-me
+      # AI features — optional. Omit GEMINI_API_KEY to fall back to templates.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      RAILSWITCH_AI_RETRY: ${RAILSWITCH_AI_RETRY:-on}
+      RAILSWITCH_AI_DUNNING: ${RAILSWITCH_AI_DUNNING:-on}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,6 +61,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      ENGINE_URL: http://engine:3001
       ENGINE_INTERNAL_URL: http://engine:3001
       ENGINE_INTERNAL_SECRET: dev-internal-secret-change-me
       INTERNAL_AUTH_SECRET: dev-internal-secret-change-me

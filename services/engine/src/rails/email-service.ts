@@ -5,6 +5,7 @@
 // Falls back to console logging when no transport is configured.
 
 import { GlobalLogger } from '../utils/logger.js';
+import { generateDunningMessage } from '../ai/dunning-generator.js';
 
 export interface EmailMessage {
   to: string;
@@ -137,4 +138,53 @@ export function dunningReminderEmail(opts: { customerName: string; planName: str
     `,
     text: `${urgency}: Payment Overdue\n\nHi ${opts.customerName},\n${body.replace(/<[^>]+>/g, '')}\nAmount due: ₦${opts.amount.toLocaleString()}\nPay now: ${opts.portalLink}`,
   };
+}
+
+/**
+ * Async variant that runs the dunning body through the AI generator (with
+ * template fallback). The HTML shell + CTA button are always the template's —
+ * we only substitute the free-form paragraph copy, so the visual layout
+ * stays consistent and the payment link stays intact.
+ */
+export async function aiDunningReminderEmail(opts: { customerName: string; planName: string; amount: number; portalLink: string; dayNumber: number; merchantName?: string }): Promise<EmailMessage> {
+  const base = dunningReminderEmail(opts);
+  const fallbackBody = opts.dayNumber >= 3
+    ? `This is your final reminder. Your ${opts.planName} subscription will be cancelled if payment is not received within 24 hours.`
+    : `This is a friendly reminder that your payment for the ${opts.planName} plan is overdue.`;
+  const generated = await generateDunningMessage(
+    {
+      channel: 'email',
+      stage: opts.dayNumber >= 3 ? 'past_due' : 'va_fallback',
+      customerName: opts.customerName,
+      planName: opts.planName,
+      amountNaira: opts.amount,
+      daysOverdue: opts.dayNumber,
+      paymentLink: opts.portalLink,
+      merchantName: opts.merchantName,
+    },
+    { subject: base.subject, body: fallbackBody },
+  );
+  const escapedBody = escapeHtml(generated.body);
+  return {
+    to: '',
+    subject: generated.subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2>${escapeHtml(generated.subject)}</h2>
+        <p style="white-space:pre-wrap">${escapedBody}</p>
+        <p>Amount due: <strong>₦${opts.amount.toLocaleString()}</strong></p>
+        <p><a href="${opts.portalLink}" style="display:inline-block;padding:12px 24px;background:#ef4444;color:#fff;text-decoration:none;border-radius:6px">Pay Now</a></p>
+      </div>
+    `,
+    text: `${generated.subject}\n\n${generated.body}\n\nAmount due: ₦${opts.amount.toLocaleString()}\nPay now: ${opts.portalLink}`,
+  };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

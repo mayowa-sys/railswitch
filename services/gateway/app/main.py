@@ -25,6 +25,7 @@ from app.routes import (
     auth,
     webhook_management,
     payment_methods,
+    ai,
 )
 
 limiter = Limiter(key_func=get_remote_address)
@@ -92,3 +93,4 @@ app.include_router(audit.router)
 app.include_router(cleanup.router)
 app.include_router(portal.router)
 app.include_router(payment_methods.router)
+app.include_router(ai.router)

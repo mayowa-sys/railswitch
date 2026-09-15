@@ -489,6 +489,19 @@ class EngineClient:
     async def resolve_portal_token(self, token: str) -> dict:
         return await self._request("GET", f"/internal/v1/portal/resolve?token={token}")
 
+    # =========== AI ===================
+    async def dunning_preview(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/ai/dunning-preview", json=payload)
+
+    async def retry_recommendation(self, payload: dict) -> dict:
+        return await self._request("POST", "/internal/v1/ai/retry-recommendation", json=payload)
+
+    async def churn_score(self, subscription_id: str) -> dict:
+        return await self._request("GET", f"/internal/v1/ai/churn/{subscription_id}")
+
+    async def list_churn_scores(self) -> dict:
+        return await self._request("GET", "/internal/v1/ai/churn")
+
 
 async def get_engine_client(
     request: Request,

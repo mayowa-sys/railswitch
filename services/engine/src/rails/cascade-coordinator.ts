@@ -151,6 +151,8 @@ export class CascadeCoordinator {
       currentTime: new Date(),
       retryCount,
       policy,
+      // Amounts are in kobo internally; the model weight is calibrated to naira.
+      amountNaira: amount / 100,
     });
 
     const delayMs = Math.max(0, retryAt.getTime() - Date.now());

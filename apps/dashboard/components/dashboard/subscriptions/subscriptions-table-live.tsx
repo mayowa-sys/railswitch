@@ -16,6 +16,8 @@ interface LiveSubscription {
   amount: number;
   nextBillingDate: string;
   cascadeHistory: { step: string; status: "success" | "failed" | "pending" }[];
+  churnRisk?: number;
+  churnBand?: string;
 }
 interface LivePlan { id: string; name: string; amount: number; }
 interface LiveCustomer { id: string; name: string; email: string; }
@@ -134,6 +136,30 @@ export function SubscriptionsTable({ subscriptions, plans, customers, loading }:
           {row.status === "cancelled" ? "—" : new Date(row.nextBillingDate).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
         </span>
       ),
+    },
+    {
+      key: "churn",
+      header: "Churn risk",
+      cell: (row) => {
+        if (row.churnRisk === undefined) return <span className="text-[11px] text-zinc-300 dark:text-zinc-600">—</span>;
+        const pct = Math.round(row.churnRisk * 100);
+        const band = row.churnBand ?? 'low';
+        const cls = band === 'critical'
+          ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900'
+          : band === 'high'
+          ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900'
+          : band === 'medium'
+          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
+        return (
+          <span
+            className={`inline-flex items-center px-1.5 h-5 rounded text-[10px] font-semibold border tabular-nums ${cls}`}
+            title={`Predicted churn risk: ${pct}% (${band})`}
+          >
+            {pct}%
+          </span>
+        );
+      },
     },
     {
       key: "cascade",

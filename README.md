@@ -60,7 +60,9 @@ Plus:
 - XState v5 subscription state machine — 12 states (incl. pending, refunded), all transitions guarded
 - Transactional wrapper — row-level locking, idempotent event processing, atomic audit logging
 - Real Nomba client — OAuth 2.0, tokenized card charges, virtual account creation
-- Smart retry timing — payday-aware, liquidity-window optimization, exponential backoff with jitter
+- **AI retry timing** — logistic-regression scorer over 8 hand-crafted features (hour/day/payday/liquidity/retry-count/amount) ranking the next 72 hourly retry slots by predicted success probability; falls back to the payday-aware heuristic when `RAILSWITCH_AI_RETRY=off`
+- **AI dunning messages** — Gemini 3.6 Flash generates personalized WhatsApp/email recovery copy per customer, with the static template as automatic fallback (no `GEMINI_API_KEY` → templates; API error → templates; malformed response → templates)
+- **AI churn risk scoring** — local logistic model over subscription payment history, cascade depth, plan tier, pause history; surfaces a 0-1 risk score (`low` / `medium` / `high` / `critical`) with the top-3 contributing features per subscription
 - Cascade coordinator — Card → Retry → VA → WhatsApp → Past Due with real Nomba VAs
 - Portal token system — HMAC-SHA256 signed tokens for customer self-service access
 - BillingHandler — bridges orchestrator to state machine, idempotent
@@ -96,6 +98,8 @@ Plus:
 ## Quickstart
 
 **Requirements:** Docker Desktop, Node 20+, Python 3.12+, Git.
+
+**Optional AI configuration:** Set `GEMINI_API_KEY` in the engine's environment to enable LLM-generated dunning messages ([get a free key at aistudio.google.com](https://aistudio.google.com/app/apikey) — free tier on `gemini-3.6-flash`, more than enough for hackathon scale). Without it, the engine falls back to static templates automatically. Docker Compose picks the key up from `infra/.env` (gitignored) — a one-liner like `GEMINI_API_KEY=…` in that file is all you need; override the model with `GEMINI_MODEL=…` if you want a different one. To disable the AI retry timing scorer and use the legacy heuristic instead, set `RAILSWITCH_AI_RETRY=off`. To disable AI dunning entirely, set `RAILSWITCH_AI_DUNNING=off`. Churn scoring is always on and fully local.
 
 ```bash
 git clone https://github.com/mayowa-sys/railswitch.git
@@ -211,6 +215,7 @@ Public REST API at the gateway. Stripe-style conventions: `Authorization: Bearer
 | Invoices | `GET list`, `GET by id`, retry, refund |
 | Payment Methods | `POST`, `GET list`, `GET by id`, `DELETE` |
 | Webhooks | `POST /endpoints`, `GET list`, `GET by id`, `PATCH`, `DELETE`, events, deliveries, replay |
+| AI | `POST /v1/ai/dunning-preview`, `POST /v1/ai/retry-recommendation`, `GET /v1/ai/churn`, `GET /v1/ai/churn/:subscriptionId` |
 
 OpenAPI spec: `http://localhost:8000/openapi.json`
 

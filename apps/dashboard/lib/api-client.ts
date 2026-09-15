@@ -241,6 +241,16 @@ export const api = {
       request<GatewayAuditEntry[]>(`/v1/audit-logs/subscription/${subscriptionId}`, { apiKey }),
   },
 
+  ai: {
+    churnScores: (apiKey: string) =>
+      request<Array<{ subscriptionId: string; risk: number; band: string }>>("/v1/ai/churn", { apiKey }),
+    churnFor: (subscriptionId: string, apiKey: string) =>
+      request<{ risk: number; band: string; topDrivers: Array<{ feature: string; contribution: number }> }>(`/v1/ai/churn/${subscriptionId}`, { apiKey }),
+    dunningPreview: (payload: Record<string, unknown>, apiKey: string) =>
+      request<{ subject: string; body: string; generated: boolean }>("/v1/ai/dunning-preview", { method: "POST", body: payload, apiKey }),
+    retryRecommendation: (payload: Record<string, unknown>, apiKey: string) =>
+      request<Array<{ at: string; probability: number; hourWAT: number; dayOfMonth: number; isPaydayWindow: boolean; isLiquidityWindow: boolean }>>("/v1/ai/retry-recommendation", { method: "POST", body: payload, apiKey }),
+  },
 };
 
 /** Check whether the app is running against mock APIs. */
